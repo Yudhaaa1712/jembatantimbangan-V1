@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php:*)",
+      "Bash(mysql:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(final_verification_report.html)",
+      "Bash(rm:*)",
+      "Bash(curl:*)",
+      "Bash(start:*)",
+      "Bash(mkdir:*)",
+      "Bash(python:*)",
+      "Bash(auto_setup.bat:*)",
+      "Bash(./auto_setup.bat:*)",
+      "Bash(pip install:*)",
+      "Bash(taskkill:*)",
+      "Bash(for:*)",
+      "Bash(do curl -s http://127.0.0.1:5000/get_weight)",
+      "Bash(done:*)",
+      "Bash(do echo:*)",
+      "Bash(nul:*)",
+      "Bash(powershell:*)",
+      "Bash(wmic:*)",
+      "Bash(timeout:*)",
+      "Bash(dir:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(node:*)",
+      "Bash(vim:*)",
+      "Bash(perl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

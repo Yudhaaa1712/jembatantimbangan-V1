@@ -1,0 +1,12 @@
+# Deny access to cache directory
+<Files "*">
+    Require all denied
+</Files>
+
+# Prevent directory listing
+Options -Indexes
+
+# No cache for .htaccess itself
+<Files ".htaccess">
+    Require all granted
+</Files>

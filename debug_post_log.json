@@ -1,0 +1,15 @@
+{
+    "timestamp": "2025-11-05 02:59:12",
+    "post_data": {
+        "no_kendaraan": "TEST123",
+        "nama_pengemudi": "TestDriver",
+        "nama_suplier": "TestSupplier",
+        "material": "tbs",
+        "harga_display": "Rp 4.000",
+        "harga": "4000",
+        "berat": "1000"
+    },
+    "raw_material": "tbs",
+    "raw_harga": "4000",
+    "harga_display": "Rp 4.000"
+}
