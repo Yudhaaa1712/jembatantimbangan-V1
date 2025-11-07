@@ -31,11 +31,9 @@ if ($action == 'delete') {
 
 // Get material types (using static data since no material_types table exists)
 $materials = [
-    ['jenis_material' => 'tbs', 'nama_material' => 'TBS (Tandan Buah Segar)', 'deskripsi' => 'Tandan Buah Segar dari kebun sawit'],
-    ['jenis_material' => 'cpo', 'nama_material' => 'CPO (Crude Palm Oil)', 'deskripsi' => 'Minyak sawit mentah hasil pengolahan'],
-    ['jenis_material' => 'kernel', 'nama_material' => 'Kernel', 'deskripsi' => 'Inti sawit hasil pemisahan'],
-    ['jenis_material' => 'brondolan', 'nama_material' => 'Brondolan', 'deskripsi' => 'Buah sawit yang jatuh/terlepas'],
-    ['jenis_material' => 'lainnya', 'nama_material' => 'Lainnya', 'deskripsi' => 'Jenis material lainnya']
+    ['jenis_material' => 'TBS', 'nama_material' => 'TBS (Tandan Buah Segar)', 'deskripsi' => 'Tandan Buah Segar dari kebun sawit'],
+    ['jenis_material' => 'brondolan', 'nama_material' => 'Brondolan', 'deskripsi' => 'Buah sawit yang jatuh/terlepas']
+   
 ];
 
 include '../../../includes/header.php';
@@ -425,7 +423,7 @@ include '../../../includes/header.php';
                     <div class="material-icon">
                         <?php
                         $icon = 'fa-cube';
-                        if ($row['jenis_material'] == 'tbs') $icon = 'fa-apple-alt';
+                        if ($row['jenis_material'] == 'TBS') $icon = 'fa-apple-alt';
                         elseif ($row['jenis_material'] == 'cpo') $icon = 'fa-oil-can';
                         elseif ($row['jenis_material'] == 'kernel') $icon = 'fa-seedling';
                         ?>

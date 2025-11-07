@@ -42,15 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Material validation with fallback
     if (empty($material)) {
-        $material = 'tbs'; // Default material
+        $material = 'TBS'; // Default material
         error_log("Material was empty, set to default: '$material'");
     }
 
     // Validate material is in allowed list
-    $allowed_materials = ['tbs', 'cpo', 'kernel', 'brondolan', 'lainnya'];
+    $allowed_materials = ['TBS','brondolan'];
     if (!in_array($material, $allowed_materials)) {
-        $material = 'tbs'; // Default to valid material
-        error_log("Invalid material '$material', set to default 'tbs'");
+        $material = 'TBS'; // Default to valid material
+        error_log("Invalid material '$material', set to default 'TBS'");
     }
 
     // Harga validation
@@ -204,7 +204,7 @@ if ($suplier_list === null) {
                                     <i class="fas fa-box me-1"></i>Material
                                 </label>
                                 <select name="material" class="form-select bg-dark text-white border-secondary" required>
-                                    <?php echo get_material_options('tbs'); ?>
+                                    <?php echo get_material_options('TBS'); ?>
                                 </select>
                             </div>
 
@@ -984,7 +984,7 @@ document.getElementById('timbangan1Form').addEventListener('submit', function(e)
         // Set default material ke select field jika kosong
         const materialSelect = document.querySelector('select[name="material"]');
         if (materialSelect) {
-            materialSelect.value = 'tbs';
+            materialSelect.value = 'TBS';
             // Trigger change event untuk update display
             materialSelect.dispatchEvent(new Event('change'));
             console.log('Set material to default TBS');

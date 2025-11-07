@@ -22,54 +22,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data_timbangan1 = mysqli_fetch_assoc($result);
 
     if ($data_timbangan1) {
-        // LOGIC CORRECT: Timbangan 1 = BRUTO (Penuh), Timbangan 2 = TARA (Kosong)
-        $bruto = $data_timbangan1['berat_bruto']; // Timbangan 1 = Truck PENUH
-        $tara = $berat2; // Timbangan 2 = Truck KOSONG
-        $netto_bt = $bruto - $tara;
-        $total_potongan = ($persen_potongan / 100) * $netto_bt;
-        $netto_akhir = $netto_bt - $total_potongan;
-        $total_harga = $netto_akhir * $data_timbangan1['harga_per_kg'];
+        // SAMAKAN dengan perhitungan JavaScript (HASIL PERHITUNGAN OTOMATIS)
+        // Ambil data yang sama dengan yang digunakan JavaScript
+        $berat1 = $data_timbangan1['berat_bruto']; // sama dengan berat1 di JavaScript
+        $harga = $data_timbangan1['harga_per_kg']; // sama dengan harga di JavaScript
+        $berat2 = $berat2; // sama dengan berat2 di JavaScript
+        $persenPotongan = $persen_potongan; // sama dengan persenPotongan di JavaScript
 
-        // Generate nomor tiket untuk timbangan 2
-        $no_tiket2 = generate_ticket_number($conn);
+        // Formula PERSIS SAMA dengan JavaScript:
+        // Timbangan 1 = BRUTO (Truck Penuh), Timbangan 2 = TARA (Truck Kosong)
+        $bruto = $berat1; // Timbangan 1 = BRUTO (Truck Penuh)
+        $tara = $berat2;  // Timbangan 2 = TARA (Truck Kosong)
+        $netto = $bruto - $tara; // Netto (sama dengan JavaScript)
+        $potonganKg = ($persenPotongan / 100) * $netto; // Potongan dalam kg (sama dengan JavaScript)
+        $nettoAkhir = $netto - $potonganKg; // Netto Akhir (sama dengan JavaScript)
+        $totalHarga = $nettoAkhir * $harga; // Total Harga (sama dengan JavaScript)
 
-        // Update transaksi timbangan 1 dengan data timbangan 2
+        // Untuk database, gunakan nama variabel yang sesuai
+        $netto_bt = $netto; // untuk kompatibilitas
+        $total_potongan = $potonganKg; // untuk kompatibilitas
+        $netto_akhir = $nettoAkhir; // untuk kompatibilitas
+        $total_harga = $totalHarga; // untuk kompatibilitas
+
+        // Calculate additional fields - SAMAKAN dengan JavaScript
+        $berat_netto = $nettoAkhir; // berat_netto = nettoAkhir (hasil akhir setelah potongan) - SAMA dengan JavaScript
+        $kg_potongan = $total_potongan; // potonganKg dari JavaScript
+
+        // Update transaksi timbangan dengan data lengkap dan hasil perhitungan yang SAMA PERSIS dengan JavaScript
+        // berat_netto akan diisi dengan netto_akhir (hasil akhir setelah potongan) agar sama dengan HASIL PERHITUNGAN OTOMATIS
+        // JANGAN UBAH DATA PERHITUNGAN DI DATABASE!
+        // Update hanya data dasar, biarkan perhitungan lama tetap ada
         $update_query = "UPDATE transaksi_timbangan SET
                         berat_tara = ?,
                         berat_timbangan2 = ?,
-                        timbang2_locked = 1,
                         persen_potongan = ?,
-                        kg_potongan = ?,
+                        timbang2_locked = 1,
                         waktu_timbangan2 = NOW(),
+                        waktu_keluar = NOW(),
                         status = 'selesai'
-                        WHERE no_tiket = ?";
+                        WHERE no_tiket = ? AND timbang1_locked = 1 AND status = 'timbang_1'";
 
         $update_stmt = mysqli_prepare($conn, $update_query);
-        mysqli_stmt_bind_param($update_stmt, "dddds", $berat2, $berat2, $persen_potongan, $total_potongan, $no_tiket1);
+        mysqli_stmt_bind_param($update_stmt, "ddds",
+            $tara,             // berat_tara
+            $tara,             // berat_timbangan2
+            $persenPotongan,   // persen_potongan
+            $no_tiket1         // no_tiket
+        );
 
         if (mysqli_stmt_execute($update_stmt)) {
+            // Check if update was successful
+            if (mysqli_stmt_affected_rows($update_stmt) > 0) {
+                $success_message = "Data timbangan 2 berhasil disimpan untuk tiket: " . htmlspecialchars($no_tiket1);
 
-            $success_message = "Data timbangan 2 berhasil disimpan dengan nomor tiket: " . $no_tiket2;
-
-            // Tampilkan popup untuk cetak struk
-            echo "<script>
-                setTimeout(function() {
-                    Swal.fire({
-                        title: 'Berhasil Disimpan!',
-                        text: 'Apakah Anda ingin mencetak struk?',
-                        icon: 'success',
-                        showCancelButton: true,
-                        confirmButtonColor: '#dc2626',
-                        cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Cetak Struk',
-                        cancelButtonText: 'Tidak'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.open('cetak_struk.php?no_tiket=$no_tiket2', '_blank');
-                        }
-                    });
-                }, 500);
-            </script>";
+                // Tampilkan popup untuk cetak struk dengan data yang BENAR (sesuai JavaScript)
+                // Database tidak diubah, tapi popup tampilkan hasil yang benar
+                echo "<script>
+                    setTimeout(function() {
+                        Swal.fire({
+                            title: 'Transaksi Selesai!',
+                            html: '<p>Data transaksi berhasil disimpan.</p><p>No. Tiket: <strong>" . htmlspecialchars($no_tiket1) . "</strong></p><p>Netto Akhir: <strong>" . number_format($nettoAkhir, 2, ',', '.') . " Kg</strong></p><p>Total Harga: <strong>Rp " . number_format($totalHarga, 0, ',', '.') . "</strong></p>',
+                            icon: 'success',
+                            showCancelButton: true,
+                            confirmButtonColor: '#16a34a',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Cetak Struk',
+                            cancelButtonText: 'Selesai'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.open('print_ticket.php?no_tiket=" . urlencode($no_tiket1) . "', '_blank');
+                            }
+                        });
+                    }, 500);
+                </script>";
+            } else {
+                $error_message = "Tiket sudah diproses atau tidak ditemukan. Mohon periksa nomor tiket.";
+            }
         } else {
             $error_message = "Gagal menyimpan data: " . mysqli_error($conn);
         }

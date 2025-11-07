@@ -39,6 +39,25 @@ $settings = [];
 while ($row = mysqli_fetch_assoc($settings_result)) {
     $settings[$row['setting_key']] = $row['setting_value'];
 }
+
+// Perhitungan yang benar
+$berat_bruto = $data['berat_bruto'] ?? $data['berat_timbangan1'] ?? 0;
+$berat_tara = $data['berat_tara'] ?? $data['berat_timbangan2'] ?? 0;
+$persen_potongan = $data['persen_potongan'] ?? 0;
+$harga_per_kg = $data['harga_per_kg'] ?? 0;
+
+$bruto = $berat_bruto;
+$tara = $berat_tara;
+$netto = $bruto - $tara;
+$persenPotongan = $persen_potongan;
+$potonganKg = ($persenPotongan / 100) * $netto;
+$nettoAkhir = $netto - $potonganKg;
+$totalHarga = $nettoAkhir * $harga_per_kg;
+
+$berat_netto = $nettoAkhir;
+$kg_potongan = $potonganKg;
+$total_harga = $totalHarga;
+$netto_akhir = $nettoAkhir;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -50,7 +69,7 @@ while ($row = mysqli_fetch_assoc($settings_result)) {
         @media print {
             @page {
                 size: 241mm auto;
-                margin: 5mm 8mm;
+                margin: 0;
                 size: landscape;
             }
             body {
@@ -62,197 +81,235 @@ while ($row = mysqli_fetch_assoc($settings_result)) {
             .no-print {
                 display: none !important;
             }
-            .break-after {
-                page-break-after: always;
-            }
-            .no-break {
-                page-break-inside: avoid;
-            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Courier New', 'Courier', monospace;
-            font-size: 10px;
-            line-height: 1.2;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+            line-height: 1.3;
             width: 241mm;
-            margin: 0;
-            padding: 5mm 8mm;
+            margin: 0 auto;
+            padding: 8mm 10mm;
             background: white;
-            box-sizing: border-box;
+            color: #000;
         }
         
-        /* Continuous Form Styles */
         .ticket-container {
             width: 100%;
-            max-width: 225mm;
-            margin: 0 auto;
-            padding: 10px 0;
+            position: relative;
         }
 
-        .ticket-header {
+        /* Header Section */
+        .header-section {
             text-align: center;
-            border-bottom: 2px dashed #000;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 3mm;
+            padding-bottom: 2mm;
         }
 
-        .ticket-header h1 {
-            margin: 3px 0;
+        .company-name {
             font-size: 16px;
             font-weight: bold;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            margin-bottom: 1mm;
         }
 
-        .ticket-header h2 {
-            margin: 2px 0;
-            font-size: 12px;
-            font-weight: bold;
+        .company-info {
+            font-size: 10px;
+            line-height: 1.4;
         }
 
-        .ticket-header p {
-            margin: 1px 0;
-            font-size: 9px;
+        .separator {
+            border-bottom: 1px solid #000;
+            margin: 3mm 0;
         }
 
-        .ticket-info {
-            display: table;
-            width: 100%;
-            border-collapse: collapse;
-            margin: 8px 0;
+        /* Info Section - Two Column Layout */
+        .info-section {
+            margin: 3mm 0;
         }
 
         .info-row {
-            display: table-row;
+            display: flex;
+            margin-bottom: 1.5mm;
+            font-size: 11px;
         }
 
-        .info-label, .info-value {
-            display: table-cell;
-            padding: 2px 5px;
-            font-size: 10px;
-            vertical-align: top;
+        .info-col {
+            flex: 1;
+            display: flex;
         }
 
         .info-label {
-            font-weight: bold;
-            width: 25%;
+            min-width: 90px;
+            font-weight: normal;
         }
 
         .info-value {
-            width: 25%;
-            text-align: left;
+            flex: 1;
+            font-weight: normal;
         }
 
+        .info-separator {
+            width: 10mm;
+        }
+
+        /* Material and Additional Info */
+        .material-section {
+            margin: 3mm 0;
+            padding: 2mm 0;
+        }
+
+        /* Weight Section - Simple Table */
         .weight-section {
-            border: 2px solid #000;
-            padding: 8px;
-            margin: 10px 0;
-            text-align: center;
-        }
-
-        .weight-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 10px;
-        }
-
-        .weight-table td {
-            padding: 3px;
+            margin: 4mm 0;
             border: 1px solid #000;
+            padding: 2mm;
+        }
+
+        .weight-title {
             text-align: center;
             font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 2mm;
+            text-decoration: underline;
         }
 
-        .weight-table .label {
-            background: #f0f0f0;
+        .weight-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1mm 0;
+            border-bottom: 1px dotted #666;
+        }
+
+        .weight-row:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            background: #f5f5f5;
+            padding: 2mm;
+            margin-top: 1mm;
+        }
+
+        .weight-label {
             font-weight: normal;
-            width: 30%;
+            width: 100px;
         }
 
         .weight-value {
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .weight-netto {
-            font-size: 16px;
-            font-weight: bold;
-            background: #ffffcc;
-        }
-
-        .potongan-section {
-            margin: 8px 0;
-            border: 1px solid #ccc;
-            padding: 5px;
-        }
-
-        .potongan-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9px;
-        }
-
-        .potongan-table td {
-            padding: 2px;
             text-align: right;
+            font-weight: bold;
+            flex: 1;
         }
 
-        .potongan-table .label {
-            text-align: left;
+        .weight-unit {
+            text-align: right;
+            width: 30px;
+            font-weight: normal;
+        }
+
+        /* Potongan Detail */
+        .potongan-section {
+            margin: 3mm 0;
+            padding: 2mm;
+            border: 1px solid #000;
+            background: #fafafa;
+        }
+
+        .potongan-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 2mm;
+            text-decoration: underline;
+        }
+
+        .potongan-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1mm 0;
+        }
+
+        .potongan-label {
+            font-weight: normal;
+        }
+
+        .potongan-value {
+            text-align: right;
             font-weight: bold;
         }
 
-        .ticket-footer {
-            border-top: 2px dashed #000;
-            padding-top: 8px;
-            margin-top: 10px;
-            text-align: center;
-            font-size: 9px;
+        /* Price Section */
+        .price-section {
+            margin: 3mm 0;
+            padding: 2mm;
+            border: 2px solid #000;
         }
 
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1mm 0;
+        }
+
+        .price-label {
+            font-weight: normal;
+        }
+
+        .price-value {
+            text-align: right;
+            font-weight: bold;
+        }
+
+        .total-price {
+            margin-top: 2mm;
+            padding-top: 2mm;
+            border-top: 1px solid #000;
+            font-size: 13px;
+        }
+
+        /* Signature Section */
         .signature-section {
-            display: table;
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 20px 5px;
-            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10mm;
+            padding: 0 10mm;
         }
 
         .signature-box {
-            display: table-cell;
-            width: 50%;
             text-align: center;
-            vertical-align: bottom;
+            width: 80mm;
         }
 
         .signature-line {
+            margin-top: 15mm;
             border-top: 1px solid #000;
-            height: 20px;
-            margin-top: 30px;
+            padding-top: 1mm;
         }
 
-        .signature-name {
-            font-size: 9px;
-            margin-top: 2px;
-        }
-
-        .barcode {
-            text-align: center;
-            margin: 10px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            letter-spacing: 1px;
+        .signature-role {
+            margin-bottom: 2mm;
             font-weight: bold;
         }
 
-        .copy-label {
+        /* Footer */
+        .footer-section {
             text-align: center;
-            font-weight: bold;
-            margin: 5px 0;
-            padding: 3px;
-            border: 1px solid #000;
-            background: #f9f9f9;
+            margin-top: 5mm;
+            padding-top: 3mm;
+            border-top: 1px solid #000;
+            font-size: 10px;
         }
 
+        .print-date {
+            margin-top: 2mm;
+            font-style: italic;
+        }
+
+        /* Print Button */
         .print-button {
             position: fixed;
             bottom: 20px;
@@ -273,39 +330,16 @@ while ($row = mysqli_fetch_assoc($settings_result)) {
             background: #34495e;
         }
 
-        .double-copy {
-            margin-bottom: 30px;
-            border-bottom: 2px dashed #000;
-            padding-bottom: 20px;
+        /* Keterangan */
+        .keterangan-section {
+            margin: 3mm 0;
+            padding: 2mm;
+            border: 1px dashed #666;
         }
 
-        .copy-number {
-            position: absolute;
-            top: 5px;
-            right: 8mm;
-            font-size: 8px;
+        .keterangan-label {
             font-weight: bold;
-        }
-
-        .carbon-copy-info {
-            margin-top: 20px;
-            padding: 10px 0;
-            border-top: 2px solid #000;
-            border-bottom: 2px solid #000;
-            text-align: center;
-        }
-
-        .carbon-copy-info p {
-            margin: 3px 0;
-            font-size: 9px;
-            font-weight: 600;
-            line-height: 1.3;
-        }
-
-        .carbon-copy-info p strong {
-            font-size: 11px;
-            color: #000;
-            text-decoration: underline;
+            margin-bottom: 1mm;
         }
     </style>
 </head>
@@ -315,139 +349,166 @@ while ($row = mysqli_fetch_assoc($settings_result)) {
         🖨️ CETAK STRUK
     </button>
 
-    <!-- SINGLE STRUK WITH CARBON COPY INDICATION -->
-    <div class="ticket-container no-break">
-        <div class="ticket-header">
-            <h1>PT. JEMBATAN TIMBANGAN SAWIT</h1>
-            <h2>TIKET TIMBANGAN</h2>
-            <p>Jl. Industri No. 123, Jakarta | Telp: 021-5551234</p>
-        </div>
-
-        <div class="ticket-info">
-            <div class="info-row">
-                <span class="info-label">No. Tiket:</span>
-                <span class="info-value"><?php echo $data['no_tiket']; ?></span>
-                <span class="info-label">Tanggal:</span>
-                <span class="info-value"><?php echo $data['tanggal'] ? date('d/m/Y', strtotime($data['tanggal'])) : '-'; ?></span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">No. Polisi:</span>
-                <span class="info-value"><?php echo $data['no_polisi']; ?></span>
-                <span class="info-label">Supplier:</span>
-                <span class="info-value"><?php echo $data['nama_supplier'] ?? '-'; ?></span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Pengemudi:</span>
-                <span class="info-value"><?php echo $data['nama_supir']; ?></span>
-                <span class="info-label">Material:</span>
-                <span class="info-value"><?php echo strtoupper($data['jenis_material'] ?? '-'); ?></span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Waktu Timbang 1:</span>
-                <span class="info-value"><?php echo $data['waktu_timbangan1'] ? date('H:i:s', strtotime($data['waktu_timbangan1'])) : '-'; ?></span>
-                <span class="info-label">Waktu Timbang 2:</span>
-                <span class="info-value"><?php echo $data['waktu_timbangan2'] ? date('H:i:s', strtotime($data['waktu_timbangan2'])) : '-'; ?></span>
+    <div class="ticket-container">
+        <!-- Header -->
+        <div class="header-section">
+            <div class="company-name">PT. JEMBATAN TIMBANGAN SAWIT</div>
+            <div class="company-info">
+                Jl. Industri No. 123, Jakarta<br>
+                Telp: 021-5551234
             </div>
         </div>
 
+        <div class="separator"></div>
+
+<!-- Info Section -->
+        <div class="info-section">
+            <div class="info-row">
+                <div class="info-col">
+                    <span class="info-label">No. DO/TIKET</span>
+                    <span class="info-value">: <?php echo $data['no_tiket']; ?></span>
+                </div>
+                <div class="info-separator"></div>
+                <div class="info-col">
+                    <span class="info-label">No. Polisi</span>
+                    <span class="info-value">: <?php echo $data['no_polisi']; ?></span>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-col">
+                    <span class="info-label">Nama Supir</span>
+                    <span class="info-value">: <?php echo $data['nama_supir']; ?></span>
+                </div>
+                <div class="info-separator"></div>
+                <div class="info-col">
+                    <span class="info-label">Supplier</span>
+                    <span class="info-value">: <?php echo $data['nama_supplier'] ?? '-'; ?></span>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-col">
+                    <span class="info-label">Waktu Masuk</span>
+                    <span class="info-value">: <?php echo $data['waktu_timbangan1'] ? date('d/m/Y H:i:s', strtotime($data['waktu_timbangan1'])) : '-'; ?></span>
+                </div>
+                <div class="info-separator"></div>
+                <div class="info-col">
+                    <span class="info-label">Waktu Keluar</span>
+                    <span class="info-value">: <?php echo $data['waktu_timbangan2'] ? date('d/m/Y H:i:s', strtotime($data['waktu_timbangan2'])) : '-'; ?></span>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-col">
+                    <span class="info-label">Keterangan</span>
+                    <span class="info-value">: <?php echo $data['-'] ?? '-'; ?></span>
+                </div>
+                <div class="info-separator"></div>
+                <div class="info-col">
+                    <span class="info-label">Material</span>
+                    <span class="info-value">: <?php echo $data['jenis_material'] ?? '-'; ?></span>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="separator"></div>
+
+        <!-- Weight Section -->
         <div class="weight-section">
-            <table class="weight-table">
-                <tr>
-                    <td class="label">BERAT 1 (Bruto)</td>
-                    <td class="weight-value"><?php echo number_format($data['berat_timbangan1'] ?? 0, 0, ',', '.'); ?></td>
-                    <td class="label">Kg</td>
-                </tr>
-                <tr>
-                    <td class="label">BERAT 2 (Tara)</td>
-                    <td class="weight-value"><?php echo number_format($data['berat_timbangan2'] ?? 0, 0, ',', '.'); ?></td>
-                    <td class="label">Kg</td>
-                </tr>
-                <tr>
-                    <td class="label">BERAT BERSIH (Netto)</td>
-                    <td class="weight-netto"><?php
-                        $netto = ($data['berat_timbangan1'] ?? 0) - ($data['berat_timbangan2'] ?? 0);
-                        if ($netto <= 0) $netto = $data['berat_netto'] ?? 0;
-                        echo number_format($netto, 0, ',', '.');
-                    ?></td>
-                    <td class="label">Kg</td>
-                </tr>
-            </table>
+            <div class="weight-title">SLIP TIMBANGAN BARANG</div>
+            
+            <div class="weight-row">
+                <span class="weight-label">No. DO/Tiket</span>
+                <span class="weight-value"><?php echo $data['no_tiket']; ?></span>
+                <span class="weight-unit"></span>
+            </div>
+
+
+            <div class="weight-row">
+                <span class="weight-label">BRUTO</span>
+                <span class="weight-value"><?php echo number_format($bruto, 0, ',', '.'); ?></span>
+                <span class="weight-unit">Kg</span>
+            </div>
+
+            <div class="weight-row">
+                <span class="weight-label">TARA</span>
+                <span class="weight-value"><?php echo number_format($tara, 0, ',', '.'); ?></span>
+                <span class="weight-unit">Kg</span>
+            </div>
+
+            <div class="weight-row">
+                <span class="weight-label">NETTO 1</span>
+                <span class="weight-value"><?php echo number_format($netto, 0, ',', '.'); ?></span>
+                <span class="weight-unit">Kg</span>
+            </div>
+
+            <?php if ($persen_potongan > 0 || $kg_potongan > 0): ?>
+            <div class="weight-row">
+                <span class="weight-label">Potongan (<?php echo number_format($persen_potongan, 2, ',', '.'); ?>%)</span>
+                <span class="weight-value"><?php echo number_format($kg_potongan, 2, ',', '.'); ?></span>
+                <span class="weight-unit">Kg</span>
+            </div>
+
+            <div class="weight-row">
+                <span class="weight-label">NETTO 2</span>
+                <span class="weight-value"><?php echo number_format($netto_akhir, 2, ',', '.'); ?></span>
+                <span class="weight-unit">Kg</span>
+            </div>
+            <?php endif; ?>
         </div>
-
-        <?php
-        // Calculate netto and potongan
-        $netto = ($data['berat_timbangan1'] ?? 0) - ($data['berat_timbangan2'] ?? 0);
-        if ($netto <= 0) $netto = $data['berat_netto'] ?? 0;
-
-        $persen_potongan = $data['persen_potongan'] ?? 0;
-        $kg_potongan = $data['kg_potongan'] ?? 0;
-        $potongan_persen = ($netto * $persen_potongan / 100);
-        $total_potongan = $potongan_persen + $kg_potongan;
-        $netto_akhir = $netto - $total_potongan;
-
-        $harga_per_kg = $data['harga_per_kg'] ?? 0;
-        $total_harga = $data['total_harga'] ?? ($netto_akhir * $harga_per_kg);
-
-        if (($persen_potongan > 0) || ($kg_potongan > 0)):
-        ?>
-        <div class="potongan-section">
-            <table class="potongan-table">
-                <tr>
-                    <td class="label">Potongan (%):</td>
-                    <td><?php echo number_format($persen_potongan, 2, ',', '.'); ?> %</td>
-                    <td class="label">Potongan (Kg):</td>
-                    <td><?php echo number_format($kg_potongan, 0, ',', '.'); ?> Kg</td>
-                </tr>
-                <tr>
-                    <td class="label">Netto Akhir:</td>
-                    <td colspan="3"><?php echo number_format($netto_akhir, 0, ',', '.'); ?> Kg</td>
-                </tr>
-            </table>
-        </div>
-        <?php endif; ?>
 
         <?php if ($harga_per_kg > 0): ?>
-        <div class="ticket-info">
-            <div class="info-row">
-                <span class="info-label">Harga per Kg:</span>
-                <span class="info-value">Rp <?php echo number_format($harga_per_kg, 0, ',', '.'); ?></span>
-                <span class="info-label">Total Harga:</span>
-                <span class="info-value"><strong>Rp <?php echo number_format($total_harga, 0, ',', '.'); ?></strong></span>
+        <!-- Price Section -->
+        <div class="price-section">
+            <div class="price-row">
+                <span class="price-label">Harga</span>
+                <span class="price-value">Rp <?php echo number_format($harga_per_kg, 0, ',', '.'); ?></span>
+            </div>
+
+            <div class="price-row">
+                <span class="price-label">Jumlah (Rp.)</span>
+                <span class="price-value"></span>
+            </div>
+
+            <div class="price-row total-price">
+                <span class="price-label">TOTAL</span>
+                <span class="price-value">Rp <?php echo number_format($total_harga, 0, ',', '.'); ?></span>
             </div>
         </div>
         <?php endif; ?>
 
         <?php if (!empty($data['keterangan'])): ?>
-        <div class="ticket-info">
-            <div class="info-row">
-                <span class="info-label">Keterangan:</span>
-                <span class="info-value" colspan="3"><?php echo $data['keterangan']; ?></span>
-            </div>
+        <!-- Keterangan -->
+        <div class="keterangan-section">
+            <div class="keterangan-label">Keterangan:</div>
+            <div><?php echo $data['keterangan']; ?></div>
         </div>
         <?php endif; ?>
 
-        <div class="barcode">
-            [ <?php echo $data['no_tiket']; ?> ]
-        </div>
-
+        <!-- Signature Section -->
         <div class="signature-section">
             <div class="signature-box">
-                <div>Pengemudi</div>
-                <div class="signature-line"></div>
-                <div class="signature-name">(<?php echo $data['nama_supir']; ?>)</div>
+                <div class="signature-role">SUPIR</div>
+                <div class="signature-line">
+                    ( <?php echo $data['nama_supir']; ?> )
+                </div>
             </div>
+
             <div class="signature-box">
-                <div>Operator</div>
-                <div class="signature-line"></div>
-                <div class="signature-name">(<?php echo $_SESSION['nama_lengkap'] ?? 'Operator'; ?>)</div>
+                <div class="signature-role">OPERATOR</div>
+                <div class="signature-line">
+                    ( <?php echo $_SESSION['nama_lengkap'] ?? 'Operator'; ?> )
+                </div>
             </div>
         </div>
 
-  
-        <div class="ticket-footer">
-            <p>----------------------------------</p>
-            <p style="font-weight: bold;">*** DOKUMEN SAH ***</p>
-            <p>Dicetak: <?php echo date('d/m/Y H:i:s'); ?></p>
+        <!-- Footer -->
+        <div class="footer-section">
+            <div class="print-date">
+                Dicetak: <?php echo date('d/m/Y H:i:s'); ?>
+            </div>
         </div>
     </div>
 
