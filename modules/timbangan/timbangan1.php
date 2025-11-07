@@ -502,19 +502,40 @@ async function initializeAutoSerialConnector() {
 function updateWeightDisplayAutoSerial(weight) {
     const weightDisplay = document.getElementById('weightDisplay');
     const weightStatus = document.getElementById('weightStatus');
+    const beratInputForm = document.getElementById('beratInputForm');
 
+    // Update display timbangan
     if (weightDisplay) {
-        weightDisplay.textContent = weight.toLocaleString('id-ID') + ' Kg';
+        // JIKA BERAT SUDAH DI-LOCK, TUNJUKAN BERAT ASLI TAPI DENGAN INDIKATOR
+        if (window.isWeightLocked) {
+            weightDisplay.innerHTML = `${weight.toLocaleString('id-ID')} Kg<br><small style="color: #ef4444;">(Locked: ${window.capturedWeight.toLocaleString('id-ID')} Kg)</small>`;
+            weightDisplay.style.color = '#fbbf24'; // Warna kuning untuk menandakan locked
+        } else {
+            weightDisplay.textContent = weight.toLocaleString('id-ID') + ' Kg';
+        }
     }
 
+    // Update status
     if (weightStatus) {
-        if (weight > 0) {
+        if (window.isWeightLocked) {
+            weightStatus.textContent = 'Berat terkunci - Timbangan masih aktif';
+            weightStatus.className = 'text-warning opacity-75';
+        } else if (weight > 0) {
             weightStatus.textContent = 'Data diterima dari Sonic A283';
             weightStatus.className = 'text-success opacity-75';
         } else {
             weightStatus.textContent = 'Terhubung';
             weightStatus.className = 'text-light opacity-75';
         }
+    }
+
+    // JANGAN UPDATE FORM INPUT JIKA SUDAH DI-LOCK
+    if (beratInputForm && !window.isWeightLocked) {
+        currentWeight = weight;
+        lastWeightUpdate = Date.now();
+    } else if (beratInputForm && window.isWeightLocked) {
+        // Pastikan form input tetap menampilkan berat yang di-lock
+        beratInputForm.value = window.capturedWeight;
     }
 }
 
@@ -696,19 +717,40 @@ document.getElementById('toggleConnection').addEventListener('click', async func
 function updateWeightDisplayWebSerial(weight) {
     const weightDisplay = document.getElementById('weightDisplay');
     const weightStatus = document.getElementById('weightStatus');
+    const beratInputForm = document.getElementById('beratInputForm');
 
+    // Update display timbangan
     if (weightDisplay && window.WeightIndicatorUtils) {
-        weightDisplay.textContent = window.WeightIndicatorUtils.formatWeight(weight);
+        // JIKA BERAT SUDAH DI-LOCK, TUNJUKAN BERAT ASLI TAPI DENGAN INDIKATOR
+        if (window.isWeightLocked) {
+            weightDisplay.innerHTML = `${window.WeightIndicatorUtils.formatWeight(weight)}<br><small style="color: #ef4444;">(Locked: ${window.capturedWeight.toLocaleString('id-ID')} Kg)</small>`;
+            weightDisplay.style.color = '#fbbf24'; // Warna kuning untuk menandakan locked
+        } else {
+            weightDisplay.textContent = window.WeightIndicatorUtils.formatWeight(weight);
+        }
     }
 
+    // Update status
     if (weightStatus) {
-        if (weight > 0) {
+        if (window.isWeightLocked) {
+            weightStatus.textContent = 'Berat terkunci - Timbangan masih aktif';
+            weightStatus.className = 'text-warning opacity-75';
+        } else if (weight > 0) {
             weightStatus.textContent = 'Data diterima dari indikator';
             weightStatus.className = 'text-success opacity-75';
         } else {
             weightStatus.textContent = 'Menunggu data dari indikator...';
             weightStatus.className = 'text-light opacity-75';
         }
+    }
+
+    // JANGAN UPDATE FORM INPUT JIKA SUDAH DI-LOCK
+    if (beratInputForm && !window.isWeightLocked) {
+        currentWeight = weight;
+        lastWeightUpdate = Date.now();
+    } else if (beratInputForm && window.isWeightLocked) {
+        // Pastikan form input tetap menampilkan berat yang di-lock
+        beratInputForm.value = window.capturedWeight;
     }
 }
 
@@ -773,6 +815,7 @@ function updateWeightDisplay() {
     const weightDisplay = document.getElementById('weightDisplay');
     const weightStatus = document.getElementById('weightStatus');
     const toggleBtn = document.getElementById('toggleConnection');
+    const beratInputForm = document.getElementById('beratInputForm');
 
     $.ajax({
         url: 'ajax.php',
@@ -781,14 +824,28 @@ function updateWeightDisplay() {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                // Update weight displays
-                if (weightDisplay) weightDisplay.textContent = response.data.weight.toLocaleString('id-ID') + ' Kg';
+                const weight = response.data.weight;
+
+                // Update weight display dengan lock indicator
+                if (weightDisplay) {
+                    if (window.isWeightLocked) {
+                        weightDisplay.innerHTML = `${weight.toLocaleString('id-ID')} Kg<br><small style="color: #ef4444;">(Locked: ${window.capturedWeight.toLocaleString('id-ID')} Kg)</small>`;
+                        weightDisplay.style.color = '#fbbf24';
+                    } else {
+                        weightDisplay.textContent = weight.toLocaleString('id-ID') + ' Kg';
+                    }
+                }
 
                 // Update connection status
                 if (response.data.connected) {
                     if (weightStatus) {
-                        weightStatus.textContent = 'Terhubung via Bridge Service';
-                        weightStatus.className = 'text-success opacity-75';
+                        if (window.isWeightLocked) {
+                            weightStatus.textContent = 'Berat terkunci - Terhubung via Bridge Service';
+                            weightStatus.className = 'text-warning opacity-75';
+                        } else {
+                            weightStatus.textContent = 'Terhubung via Bridge Service';
+                            weightStatus.className = 'text-success opacity-75';
+                        }
                     }
                     if (toggleBtn) {
                         toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Disconnect Indicator';
@@ -803,6 +860,15 @@ function updateWeightDisplay() {
                         toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Connect Indicator';
                         toggleBtn.className = 'btn btn-outline-info btn-sm w-100';
                     }
+                }
+
+                // JANGAN UPDATE FORM INPUT JIKA SUDAH DI-LOCK
+                if (beratInputForm && !window.isWeightLocked) {
+                    currentWeight = weight;
+                    lastWeightUpdate = Date.now();
+                } else if (beratInputForm && window.isWeightLocked) {
+                    // Pastikan form input tetap menampilkan berat yang di-lock
+                    beratInputForm.value = window.capturedWeight;
                 }
             } else {
                 if (weightStatus) {
@@ -877,10 +943,15 @@ document.getElementById('captureWeight').addEventListener('click', function() {
         return;
     }
 
+    // SIMPAN BERAT YANG SUDAH DI-CAPTURE
+    window.capturedWeight = weightValue; // Global variable untuk menyimpan berat yang di-lock
+
     // Set captured state
     isCaptured = true;
     beratInputForm.value = weightValue;
-    beratInputForm.readOnly = false;
+    beratInputForm.readOnly = true; // FORM INPUT DI-LOCK SEHINGGA TIDAK BISA DIUBAH
+    beratInputForm.style.backgroundColor = '#2d3748'; // Visual feedback bahwa form terkunci
+    beratInputForm.style.border = '2px solid #22c55e'; // Border hijau menandakan terkunci
 
     // Visual feedback - stop animation
     weightDisplay.style.animation = 'none';
@@ -888,19 +959,22 @@ document.getElementById('captureWeight').addEventListener('click', function() {
     weightDisplay.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.5)';
 
     // Visual feedback button
-    this.innerHTML = '<i class="fas fa-check me-2"></i>TERTANGKAP!';
+    this.innerHTML = '<i class="fas fa-lock me-2"></i>BERAT TERKUNCI!';
     this.classList.remove('btn-outline-warning');
     this.classList.add('btn-success');
     this.disabled = true;
 
-    // Stop weight update interval
+    // Stop weight update interval untuk display, tapi tetap terima data untuk monitoring
     if (weightInterval) {
         clearInterval(weightInterval);
         weightInterval = null;
     }
 
+    // Set flag bahwa berat sudah di-lock
+    window.isWeightLocked = true;
+
     // Show success toast
-    showNotification(`Berat ${currentWeight.toLocaleString('id-ID')} Kg berhasil di-capture!`, 'success');
+    showNotification(`Berat ${weightValue.toLocaleString('id-ID')} Kg berhasil di-capture dan dikunci!`, 'success');
 });
 
 // Reset form
@@ -912,12 +986,20 @@ function resetForm() {
         document.getElementById('beratInputForm').value = '0';
         document.getElementById('beratInputForm').readOnly = true;
 
+        // RESET FORM INPUT STYLE
+        const beratInputForm = document.getElementById('beratInputForm');
+        if (beratInputForm) {
+            beratInputForm.style.backgroundColor = '';
+            beratInputForm.style.border = '';
+        }
+
         // Reset weight display
         const weightDisplay = document.getElementById('weightDisplay');
         if (weightDisplay) {
             weightDisplay.style.animation = 'pulse 2s infinite';
             weightDisplay.style.color = '';
             weightDisplay.style.textShadow = '';
+            weightDisplay.innerHTML = '0 Kg'; // Reset dari innerHTML ke textContent
         }
 
         // Reset capture button
@@ -929,11 +1011,18 @@ function resetForm() {
             captureBtn.disabled = false;
         }
 
+        // CLEAR LOCK VARIABLES
+        window.isWeightLocked = false;
+        window.capturedWeight = 0;
+
         // Restart weight updates
         isCaptured = false;
         if (!weightInterval) {
             weightInterval = setInterval(updateWeight, 2000);
         }
+
+        // Initial weight update
+        updateWeight();
     }
 }
 

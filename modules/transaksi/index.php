@@ -38,21 +38,37 @@ switch($date_filter) {
         $date_condition = "tanggal = CURDATE()";
 }
 
-// Get transactions - hanya yang sudah selesai dari timbangan 2
+// Get transactions - hanya yang sudah selesai dari timbangan 2 dengan perhitungan JavaScript
 $query = "SELECT tt.*,
                  tt.no_polisi as no_polisi_display, -- Use no_polisi directly from transaksi_timbangan
                  s.nama_supplier,
                  u.nama_lengkap as operator_nama,
+                 -- Hitung dengan formula JavaScript yang sama seperti struk
+                 (tt.berat_timbangan1 - tt.berat_timbangan2) as netto1_calc, -- Netto 1 (sebelum potongan)
+                 CASE
+                     WHEN (tt.berat_timbangan1 - tt.berat_timbangan2) > 0 AND tt.persen_potongan > 0 THEN
+                         (tt.berat_timbangan1 - tt.berat_timbangan2) - ((tt.persen_potongan / 100) * (tt.berat_timbangan1 - tt.berat_timbangan2))
+                     WHEN tt.berat_netto > 0 THEN tt.berat_netto
+                     ELSE (tt.berat_timbangan1 - tt.berat_timbangan2)
+                 END as netto2_calc, -- Netto 2 (setelah potongan)
                  CASE
                      WHEN tt.berat_timbangan1 > 0 AND tt.berat_timbangan2 > 0 THEN tt.berat_timbangan1 - tt.berat_timbangan2
                      WHEN tt.berat_netto > 0 THEN tt.berat_netto
                      ELSE 0
                  END as berat_netto_calc,
                  CASE
+                     WHEN (tt.berat_timbangan1 - tt.berat_timbangan2) > 0 AND tt.persen_potongan > 0 THEN
+                         ((tt.berat_timbangan1 - tt.berat_timbangan2) - ((tt.persen_potongan / 100) * (tt.berat_timbangan1 - tt.berat_timbangan2))) * tt.harga_per_kg
                      WHEN tt.harga_per_kg > 0 AND (tt.berat_timbangan1 > 0 AND tt.berat_timbangan2 > 0) THEN (tt.berat_timbangan1 - tt.berat_timbangan2) * tt.harga_per_kg
                      WHEN tt.total_harga > 0 THEN tt.total_harga
                      ELSE 0
-                 END as total_harga_calc
+                 END as total_harga_calc,
+                 -- Hitung potongan dalam kg dengan formula JavaScript yang sama
+                 CASE
+                     WHEN (tt.berat_timbangan1 - tt.berat_timbangan2) > 0 AND tt.persen_potongan > 0 THEN
+                         ((tt.persen_potongan / 100) * (tt.berat_timbangan1 - tt.berat_timbangan2))
+                     ELSE 0
+                 END as potongan_kg_calc
           FROM transaksi_timbangan tt
           LEFT JOIN supplier s ON tt.id_supplier = s.id
           LEFT JOIN users u ON tt.operator_id = u.id
@@ -67,16 +83,20 @@ if (!$result) {
     $result = mysqli_query($conn, "SELECT * FROM transaksi_timbangan WHERE $date_condition ORDER BY created_at DESC");
 }
 
-// Get statistics - untuk semua transaksi dengan perhitungan aman
+// Get statistics - dengan perhitungan JavaScript yang sama
 $query_stats = "SELECT
                     COUNT(*) as total_transaksi,
                     COALESCE(SUM(berat_timbangan1), 0) as total_bruto,
                     COALESCE(SUM(CASE
+                        WHEN (berat_timbangan1 - berat_timbangan2) > 0 AND persen_potongan > 0 THEN
+                            (berat_timbangan1 - berat_timbangan2) - ((persen_potongan / 100) * (berat_timbangan1 - berat_timbangan2))
                         WHEN berat_timbangan1 > 0 AND berat_timbangan2 > 0 THEN berat_timbangan1 - berat_timbangan2
                         WHEN berat_netto > 0 THEN berat_netto
                         ELSE 0
                     END), 0) as total_netto,
                     COALESCE(SUM(CASE
+                        WHEN (berat_timbangan1 - berat_timbangan2) > 0 AND persen_potongan > 0 THEN
+                            ((berat_timbangan1 - berat_timbangan2) - ((persen_potongan / 100) * (berat_timbangan1 - berat_timbangan2))) * harga_per_kg
                         WHEN harga_per_kg > 0 AND berat_timbangan1 > 0 AND berat_timbangan2 > 0 THEN (berat_timbangan1 - berat_timbangan2) * harga_per_kg
                         WHEN total_harga > 0 THEN total_harga
                         ELSE 0
@@ -526,9 +546,10 @@ include '../../includes/header.php';
                     <th>Material</th>
                     <th>Bruto (Kg)</th>
                     <th>Tara (Kg)</th>
-                    <th>Netto (Kg)</th>
+                    <th>Netto 1 (Kg)</th>
                     <th>Potongan (%)</th>
                     <th>Potongan (Kg)</th>
+                    <th>Netto 2 (Kg)</th>
                     <th>Harga/Kg</th>
                     <th>Total Harga</th>
                     <th>Operator</th>
@@ -552,16 +573,31 @@ include '../../includes/header.php';
                     <td><?php echo ucfirst($row['jenis_material']); ?></td>
                     <td style="text-align: right;"><?php echo number_format($row['berat_timbangan1'], 0, ',', '.'); ?></td>
                     <td style="text-align: right;"><?php echo number_format($row['berat_timbangan2'], 0, ',', '.'); ?></td>
-                    <td style="text-align: right; font-weight: bold;">
-                        <?php echo number_format($row['berat_netto_calc'] ?? $row['berat_netto'] ?? 0, 0, ',', '.'); ?>
+                    <td style="text-align: right; font-weight: bold; background: #00000;">
+                        <?php echo number_format($row['netto1_calc'] ?? 0, 0, ',', '.'); ?>
                     </td>
                     <td style="text-align: right;"><?php echo number_format($row['persen_potongan'] ?? 0, 1, ',', '.'); ?></td>
-                    <td style="text-align: right;"><?php echo number_format($row['kg_potongan'] ?? 0, 0, ',', '.'); ?></td>
+                    <td style="text-align: right; font-weight: bold; color: #f59e0b;">
+                        <?php echo number_format($row['potongan_kg_calc'] ?? 0, 2, ',', '.'); ?>
+                    </td>
+                    <td style="text-align: right; font-weight: bold; background: #00000;">
+                        <?php echo number_format($row['netto2_calc'] ?? 0, 2, ',', '.'); ?>
+                    </td>
                     <td style="text-align: right;"><?php echo 'Rp ' . number_format($row['harga_per_kg'] ?? 0, 0, ',', '.'); ?></td>
                     <td style="text-align: right; font-weight: bold; color: #22c55e;">
                         <?php echo 'Rp ' . number_format($row['total_harga_calc'] ?? $row['total_harga'] ?? 0, 0, ',', '.'); ?>
                     </td>
-                    <td><?php echo $row['operator_nama'] ?? '-'; ?></td>
+                    <td>
+                    <?php
+                    if (!empty($row['operator_nama'])) {
+                        echo $row['operator_nama'];
+                    } elseif (!empty($row['operator_id'])) {
+                        echo 'Operator ID: ' . $row['operator_id'];
+                    } else {
+                        echo '<span style="color: #6b7280;">-</span>';
+                    }
+                    ?>
+                </td>
                     <td>
                         <button class="btn-receipt" onclick="printReceipt('<?php echo $row['no_tiket']; ?>')" title="Cetak Struk Continuous Form">
                             <i class="fas fa-print"></i> Cetak
