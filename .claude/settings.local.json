@@ -28,7 +28,11 @@
       "Bash(findstr:*)",
       "Bash(node:*)",
       "Bash(vim:*)",
-      "Bash(perl:*)"
+      "Bash(perl:*)",
+      "Bash(git checkout:*)",
+      "Bash(test_output.html)",
+      "Bash(test_final.xls)",
+      "Bash(test_manual_debug.html)"
     ],
     "deny": [],
     "ask": []

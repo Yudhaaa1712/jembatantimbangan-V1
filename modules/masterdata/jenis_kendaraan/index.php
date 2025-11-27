@@ -85,7 +85,7 @@ include '../../../includes/header.php';
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
 
 </body>
 </html>

@@ -97,39 +97,219 @@ function check_role($allowed_roles = []) {
     }
 }
 
-// Function: Generate ticket number
+// Function: Generate ticket number (Thread-safe with retry mechanism)
 function generate_ticket_number($conn) {
     global $conn;
+    $max_retries = 5;
+    $retry_count = 0;
 
-    // Get prefix from settings
-    $query = "SELECT setting_value FROM settings WHERE setting_key = 'ticket_prefix'";
-    $result = mysqli_query($conn, $query);
-    $row = mysqli_fetch_assoc($result);
-    $prefix = $row['setting_value'] ?? 'TKT';
+    while ($retry_count < $max_retries) {
+        try {
+            // Start transaction for atomic ticket generation
+            mysqli_begin_transaction($conn, MYSQLI_TRANS_START_READ_WRITE);
 
-    $today = date('Y-m-d');
-    $date_prefix = date('ymd');
+            // Get prefix from settings
+            $query = "SELECT setting_value FROM settings WHERE setting_key = 'ticket_prefix' FOR UPDATE";
+            $result = mysqli_query($conn, $query);
+            $row = mysqli_fetch_assoc($result);
+            $prefix = $row['setting_value'] ?? 'TKT';
 
-    // Use atomic approach with proper query
-    $query = "SELECT COALESCE(MAX(CAST(SUBSTRING(no_tiket, -3) AS UNSIGNED)), 0) as max_num
-              FROM transaksi_timbangan
-              WHERE tanggal = ? AND no_tiket LIKE ?";
+            $today = date('Y-m-d');
+            $date_prefix = date('ymd');
 
+            // Use atomic approach with proper locking and pessimistic locking
+            $query = "SELECT COALESCE(MAX(CAST(SUBSTRING(no_tiket, -3) AS UNSIGNED)), 0) as max_num
+                      FROM transaksi_timbangan
+                      WHERE tanggal = ? AND no_tiket LIKE ?
+                      FOR UPDATE";
+
+            $stmt = mysqli_prepare($conn, $query);
+            $pattern = $prefix . '-' . $date_prefix . '%';
+            mysqli_stmt_bind_param($stmt, "ss", $today, $pattern);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            $row = mysqli_fetch_assoc($result);
+            mysqli_stmt_close($stmt);
+
+            $max_num = intval($row['max_num'] ?? 0);
+            $number = $max_num + 1;
+
+            // Format: TKT-YYMMDD-XXX
+            $ticket_number = $prefix . '-' . $date_prefix . '-' . str_pad($number, 3, '0', STR_PAD_LEFT);
+
+            // Pre-reserve the ticket number to prevent duplication
+            $reserve_query = "INSERT INTO transaksi_timbangan
+                              (no_tiket, tanggal, status, created_at, timbang1_locked)
+                              VALUES (?, ?, 'reserved', NOW(), 0)";
+
+            $reserve_stmt = mysqli_prepare($conn, $reserve_query);
+            mysqli_stmt_bind_param($reserve_stmt, "ss", $ticket_number, $today);
+
+            if (mysqli_stmt_execute($reserve_stmt)) {
+                // Successfully reserved, commit transaction
+                mysqli_commit($conn);
+                mysqli_stmt_close($reserve_stmt);
+
+                // Log successful generation
+                error_log("Ticket generated successfully: $ticket_number on attempt " . ($retry_count + 1));
+                return $ticket_number;
+            } else {
+                // Failed to reserve, rollback and retry
+                mysqli_rollback($conn);
+                mysqli_stmt_close($reserve_stmt);
+                $retry_count++;
+
+                if ($retry_count < $max_retries) {
+                    // Add random delay to avoid race conditions
+                    usleep(rand(10000, 100000)); // 10ms to 100ms
+                    continue;
+                }
+            }
+
+        } catch (Exception $e) {
+            // Rollback on any error and retry
+            mysqli_rollback($conn);
+            $retry_count++;
+
+            if ($retry_count < $max_retries) {
+                // Add random delay to avoid race conditions
+                usleep(rand(10000, 100000)); // 10ms to 100ms
+                continue;
+            }
+
+            error_log("Failed to generate ticket after $max_retries attempts: " . $e->getMessage());
+            throw new Exception("Failed to generate unique ticket number after $max_retries attempts");
+        }
+    }
+
+    // If we get here, all retries failed
+    throw new Exception("Failed to generate unique ticket number after $max_retries attempts. Please try again.");
+}
+
+// Function: Check if ticket exists and remove reservation if needed
+function is_ticket_exists($conn, $no_tiket) {
+    $query = "SELECT id, status FROM transaksi_timbangan WHERE no_tiket = ?";
     $stmt = mysqli_prepare($conn, $query);
-    $pattern = $prefix . '-' . $date_prefix . '%';
-    mysqli_stmt_bind_param($stmt, "ss", $today, $pattern);
+    mysqli_stmt_bind_param($stmt, "s", $no_tiket);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
-    $row = mysqli_fetch_assoc($result);
+
+    if (mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        mysqli_stmt_close($stmt);
+
+        // If it's a reserved ticket, allow reuse
+        if ($row['status'] === 'reserved') {
+            return false;
+        }
+
+        return true;
+    }
+
     mysqli_stmt_close($stmt);
+    return false;
+}
 
-    $max_num = intval($row['max_num'] ?? 0);
-    $number = $max_num + 1;
+// Function: Activate reserved ticket (FIXED VERSION)
+function activate_reserved_ticket($conn, $no_tiket, $data) {
+    // Validate required data
+    $required_fields = ['no_polisi', 'nama_supir', 'id_supplier', 'jenis_material',
+                       'harga_per_kg', 'berat_bruto', 'berat_timbangan1',
+                       'keterangan', 'operator_id'];
 
-    // Format: TKT-YYMMDD-XXX
-    $ticket_number = $prefix . '-' . $date_prefix . '-' . str_pad($number, 3, '0', STR_PAD_LEFT);
+    foreach ($required_fields as $field) {
+        if (!isset($data[$field])) {
+            throw new Exception("Missing required field: $field");
+        }
+    }
 
-    return $ticket_number;
+    mysqli_begin_transaction($conn);
+
+    try {
+        // Simplified approach: Update step by step for debugging
+        error_log("Activating ticket: $no_tiket with data: " . json_encode($data));
+
+        // Step 1: Update basic fields first
+        $basic_query = "UPDATE transaksi_timbangan SET
+                        no_polisi = ?,
+                        nama_supir = ?,
+                        id_supplier = ?,
+                        updated_at = NOW()
+                        WHERE no_tiket = ? AND status = 'reserved'";
+
+        $basic_stmt = mysqli_prepare($conn, $basic_query);
+        mysqli_stmt_bind_param($basic_stmt, "ssis",
+            $data['no_polisi'],
+            $data['nama_supir'],
+            $data['id_supplier'],
+            $no_tiket
+        );
+
+        if (!mysqli_stmt_execute($basic_stmt)) {
+            throw new Exception("Failed to update basic fields: " . mysqli_stmt_error($basic_stmt));
+        }
+        $basic_affected = mysqli_stmt_affected_rows($basic_stmt);
+        mysqli_stmt_close($basic_stmt);
+
+        error_log("Basic update affected rows: $basic_affected");
+
+        if ($basic_affected == 0) {
+            throw new Exception("No reserved ticket found to update");
+        }
+
+        // Step 2: Update material and keterangan
+        $detail_query = "UPDATE transaksi_timbangan SET
+                          jenis_material = ?,
+                          keterangan = ?,
+                          harga_per_kg = ?,
+                          berat_bruto = ?,
+                          berat_timbangan1 = ?
+                          WHERE no_tiket = ?";
+
+        $detail_stmt = mysqli_prepare($conn, $detail_query);
+        mysqli_stmt_bind_param($detail_stmt, "ssddds",
+            $data['jenis_material'],
+            $data['keterangan'],
+            $data['harga_per_kg'],
+            $data['berat_bruto'],
+            $data['berat_timbangan1'],
+            $no_tiket
+        );
+
+        if (!mysqli_stmt_execute($detail_stmt)) {
+            throw new Exception("Failed to update detail fields: " . mysqli_stmt_error($detail_stmt));
+        }
+        mysqli_stmt_close($detail_stmt);
+
+        error_log("Detail update completed");
+
+        // Step 3: Update status and lock
+        $status_query = "UPDATE transaksi_timbangan SET
+                          status = 'timbang_1',
+                          timbang1_locked = 1,
+                          waktu_timbangan1 = NOW(),
+                          operator_id = ?
+                          WHERE no_tiket = ?";
+
+        $status_stmt = mysqli_prepare($conn, $status_query);
+        mysqli_stmt_bind_param($status_stmt, "is", $data['operator_id'], $no_tiket);
+
+        if (!mysqli_stmt_execute($status_stmt)) {
+            throw new Exception("Failed to update status: " . mysqli_stmt_error($status_stmt));
+        }
+        mysqli_stmt_close($status_stmt);
+
+        error_log("Status update completed");
+
+        mysqli_commit($conn);
+        error_log("Ticket activation successful: $no_tiket");
+        return true;
+
+    } catch (Exception $e) {
+        mysqli_rollback($conn);
+        error_log("Ticket activation failed: " . $e->getMessage());
+        throw $e;
+    }
 }
 
 // Function: Sanitize input

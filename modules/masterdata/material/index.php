@@ -5,35 +5,19 @@ check_role(['admin']);
 
 $page_title = "Jenis Material - Master Data";
 
-// Handle actions
-$action = $_GET['action'] ?? '';
+// Material types are hardcoded in the system - no delete functionality needed
 $msg = '';
-
-if ($action == 'delete') {
-    $id = $_GET['id'] ?? '';
-    if (!empty($id) && is_numeric($id)) {
-        // Check if material has transactions
-        $check = mysqli_query($conn, "SELECT COUNT(*) as count FROM transaksi_timbangan WHERE jenis_material = (SELECT jenis_material FROM material_types WHERE id = '$id')");
-        $result = mysqli_fetch_assoc($check);
-
-        if ($result['count'] > 0) {
-            $msg = '<div class="alert alert-danger">Jenis material tidak dapat dihapus karena memiliki transaksi!</div>';
-        } else {
-            $delete = mysqli_query($conn, "DELETE FROM material_types WHERE id = '$id'");
-            if ($delete) {
-                $msg = '<div class="alert alert-success">Jenis material berhasil dihapus!</div>';
-            } else {
-                $msg = '<div class="alert alert-danger">Gagal menghapus jenis material!</div>';
-            }
-        }
-    }
+$action = '';
+if (isset($_GET['action']) && $_GET['action'] == 'delete') {
+    $msg = '<div class="alert alert-warning">Jenis material tidak dapat dihapus karena merupakan data sistem yang telah ditentukan.</div>';
 }
 
 // Get material types (using static data since no material_types table exists)
 $materials = [
-    ['jenis_material' => 'TBS', 'nama_material' => 'TBS (Tandan Buah Segar)', 'deskripsi' => 'Tandan Buah Segar dari kebun sawit'],
-    ['jenis_material' => 'brondolan', 'nama_material' => 'Brondolan', 'deskripsi' => 'Buah sawit yang jatuh/terlepas']
-   
+    ['jenis_material' => 'tbs', 'nama_material' => 'TBS (Tandan Buah Segar)', 'deskripsi' => 'Tandan Buah Segar dari kebun sawit'],
+    ['jenis_material' => 'brondolan', 'nama_material' => 'Brondolan', 'deskripsi' => 'Buah sawit yang jatuh/terlepas dari tandan'],
+    ['jenis_material' => 'cpo', 'nama_material' => 'CPO (Crude Palm Oil)', 'deskripsi' => 'Minyak kelapa sawit mentah'],
+    ['jenis_material' => 'kernel', 'nama_material' => 'Kernel', 'deskripsi' => 'Inti sawit yang telah dipisahkan']
 ];
 
 include '../../../includes/header.php';
@@ -482,9 +466,9 @@ include '../../../includes/header.php';
     <?php endif; ?>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/sweetalert2.min.js"></script>
 
 <script>
 function confirmDelete(id, name) {

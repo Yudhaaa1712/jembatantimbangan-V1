@@ -1,15 +1,16 @@
 </div> <!-- Close main-container -->
 
     <!-- Critical JS - Load First -->
-    <script src="https://cdn.jsdelivr.net/npm/jquery-3.7.1.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js" defer></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/bootstrap.bundle.min.js" defer></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/sweetalert2.min.js" defer></script>
 
     <!-- Non-Critical JS - Load Later -->
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js" async></script>
-    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js" async></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" async></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" async></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/jquery.dataTables.min.js"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/dataTables.bootstrap5.min.js"></script>
+    <script src="<?php echo BASE_URL; ?>assets/js/select2.min.js"></script>
+    <!-- Chart.js - skip for now to avoid import errors -->
+    <!-- <script src="<?php echo BASE_URL; ?>assets/js/chart.min.js"></script> -->
     
     <!-- Custom JS -->
     <script>
@@ -134,6 +135,109 @@
         if (window.history.replaceState) {
             window.history.replaceState(null, null, window.location.href);
         }
+    </script>
+
+    <!-- Global Rupiah Formatting Functions -->
+    <script>
+        // Fungsi format Rupiah untuk display (dengan "Rp ")
+        function formatRupiah(amount) {
+            if (amount === 0 || !amount) return 'Rp 0';
+
+            const num = parseFloat(amount);
+            if (isNaN(num)) return 'Rp 0';
+
+            // Format manual untuk memastikan titik sebagai pemisah ribuan
+            const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+            return 'Rp ' + formatted;
+        }
+
+        // Fungsi format Rupiah untuk input (tanpa "Rp ")
+        function formatRupiahInput(amount) {
+            if (amount === 0 || !amount) return '0';
+
+            const num = parseFloat(amount);
+            if (isNaN(num)) return '0';
+
+            // Format manual untuk memastikan titik sebagai pemisah ribuan
+            const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+            return formatted;
+        }
+
+        // Fungsi parse Rupiah dari input (hilangkan "Rp " dan titik)
+        function parseRupiah(rupiahString) {
+            if (!rupiahString) return 0;
+
+            // Hilangkan "Rp " dan titik, ganti dengan kosong
+            const cleanString = rupiahString.toString().replace(/[^0-9]/g, '');
+            return parseFloat(cleanString) || 0;
+        }
+
+        // Fungsi untuk format input saat user mengetik
+        function formatRupiahInputOnChange(input) {
+            let value = input.value;
+
+            // Parse current value
+            let numValue = parseRupiah(value);
+
+            // Format kembali
+            if (numValue > 0) {
+                input.value = formatRupiahInput(numValue);
+                // Update hidden field jika ada
+                const hiddenField = document.getElementById(input.id.replace('Input', 'Hidden'));
+                if (hiddenField) {
+                    hiddenField.value = numValue;
+                }
+            } else {
+                input.value = '';
+                const hiddenField = document.getElementById(input.id.replace('Input', 'Hidden'));
+                if (hiddenField) {
+                    hiddenField.value = 0;
+                }
+            }
+        }
+
+        // Fungsi untuk mengaplikasikan format Rupiah ke semua input dengan class 'rupiah-input'
+        function applyRupiahFormat() {
+            const rupiahInputs = document.querySelectorAll('.rupiah-input');
+            rupiahInputs.forEach(input => {
+                // Format initial value
+                if (input.value) {
+                    const numValue = parseRupiah(input.value);
+                    if (numValue > 0) {
+                        input.value = formatRupiahInput(numValue);
+                    }
+                }
+
+                // Add event listeners
+                input.addEventListener('input', function() {
+                    formatRupiahInputOnChange(this);
+                });
+
+                input.addEventListener('blur', function() {
+                    const numValue = parseRupiah(this.value);
+                    if (numValue > 0) {
+                        this.value = formatRupiahInput(numValue);
+                    } else {
+                        this.value = '';
+                    }
+                });
+
+                input.addEventListener('focus', function() {
+                    // Remove formatting on focus for easier editing
+                    const numValue = parseRupiah(this.value);
+                    if (numValue > 0) {
+                        this.value = numValue;
+                    }
+                });
+            });
+        }
+
+        // Apply format when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            applyRupiahFormat();
+        });
     </script>
 </body>
 </html>

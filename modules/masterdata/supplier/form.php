@@ -16,6 +16,7 @@ $supplier = [
     'email' => '',
     'npwp' => '',
     'kontak_person' => '',
+    'total_hutang' => 0,
     'status' => 'active',
     'keterangan' => ''
 ];
@@ -40,8 +41,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $npwp = mysqli_real_escape_string($conn, $_POST['npwp']);
     $kontak_person = mysqli_real_escape_string($conn, $_POST['kontak_person']);
+    // Ambil dari hidden field dulu, jika kosong coba parse dari field biasa
+    $total_hutang_hidden = $_POST['total_hutang_hidden'] ?? 0;
+    $total_hutang_text = $_POST['total_hutang'] ?? 0;
+
+    if (!empty($total_hutang_hidden)) {
+        $total_hutang = floatval($total_hutang_hidden);
+    } else {
+        // Parse manual jika hidden field kosong
+        $clean_hutang = preg_replace('/[^0-9]/', '', $total_hutang_text);
+        $total_hutang = floatval($clean_hutang);
+    }
+
+    // Debug: Log nilai hutang
+    error_log("Debug Supplier Form: total_hutang_hidden = " . $total_hutang_hidden);
+    error_log("Debug Supplier Form: total_hutang_text = " . $total_hutang_text);
+    error_log("Debug Supplier Form: clean_hutang = " . preg_replace('/[^0-9]/', '', $total_hutang_text));
+    error_log("Debug Supplier Form: total_hutang final = " . $total_hutang);
     $status = mysqli_real_escape_string($conn, $_POST['status']);
-    $keterangan = mysqli_real_escape_string($conn, $_POST['keterangan']);
 
     // Validasi
     if (empty($kode_supplier) || empty($nama_supplier)) {
@@ -55,11 +72,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($result['count'] > 0) {
                 $msg = '<div class="alert alert-danger">Kode supplier sudah ada!</div>';
             } else {
-                $query = "INSERT INTO supplier (kode_supplier, nama_supplier, alamat, no_telepon, email, npwp, kontak_person, status, keterangan)
-                         VALUES ('$kode_supplier', '$nama_supplier', '$alamat', '$no_telepon', '$email', '$npwp', '$kontak_person', '$status', '$keterangan')";
+                $query = "INSERT INTO supplier (kode_supplier, nama_supplier, alamat, no_telepon, email, npwp, kontak_person, total_hutang, status)
+                         VALUES ('$kode_supplier', '$nama_supplier', '$alamat', '$no_telepon', '$email', '$npwp', '$kontak_person', '$total_hutang', '$status')";
 
                 if (mysqli_query($conn, $query)) {
-                    $msg = '<div class="alert alert-success">Supplier berhasil ditambahkan!</div>';
+                    $msg = '<div class="alert alert-success">Supplier berhasil ditambahkan! Data supplier tersedia di form timbangan.</div>';
+
+                    // Clear cache untuk force update
+                    require_once '../../../includes/cache_manager.php';
+                    $cache_key = 'supplier_list_' . date('Y-m-d-H');
+                    cache_delete($cache_key);
+
                     // Reset form
                     $supplier = [
                         'kode_supplier' => '',
@@ -92,8 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                          email = '$email',
                          npwp = '$npwp',
                          kontak_person = '$kontak_person',
-                         status = '$status',
-                         keterangan = '$keterangan'
+                         total_hutang = '$total_hutang',
+                         status = '$status'
                          WHERE id = '$id'";
 
                 if (mysqli_query($conn, $query)) {
@@ -363,6 +386,15 @@ include '../../../includes/header.php';
                     <input type="text" name="kontak_person" class="form-input" value="<?php echo $supplier['kontak_person']; ?>" maxlength="50" placeholder="Nama kontak person">
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Total Hutang</label>
+                    <input type="text" name="total_hutang" class="form-input" id="totalHutangInput"
+                           value="<?php echo isset($supplier['total_hutang']) && $supplier['total_hutang'] > 0 ? number_format($supplier['total_hutang'], 0, '.', '.') : ''; ?>"
+                           placeholder="Ketik angka, akan auto-format: 1000000 → 1.000.000" style="text-align: right;">
+                    <input type="hidden" name="total_hutang_hidden" id="totalHutangHidden"
+                           value="<?php echo $supplier['total_hutang'] ?? 0; ?>">
+                    <small class="form-help">Total hutang supplier (format: 1.000.000)</small>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Status</label>
                     <div class="radio-group">
                         <div class="radio-option">
@@ -414,20 +446,7 @@ include '../../../includes/header.php';
             </div>
         </div>
 
-        <!-- Keterangan -->
-        <div class="form-section">
-            <h3 class="section-title">
-                <i class="fas fa-sticky-note"></i>
-                Keterangan
-            </h3>
-            <div class="form-grid">
-                <div class="form-group full-width">
-                    <label class="form-label">Catatan Tambahan</label>
-                    <textarea name="keterangan" class="form-textarea" placeholder="Masukkan catatan atau keterangan tambahan" rows="3"><?php echo $supplier['keterangan']; ?></textarea>
-                </div>
-            </div>
-        </div>
-
+        
         <!-- Form Actions -->
         <div class="form-actions">
             <a href="index.php" class="btn-secondary">
@@ -480,6 +499,90 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Format currency input - Manual handling untuk field hutang
+    document.addEventListener('DOMContentLoaded', function() {
+        const hutangInput = document.getElementById('totalHutangInput');
+        const hutangHidden = document.getElementById('totalHutangHidden');
+
+    // Format initial value dan event listeners
+    if (hutangInput && hutangHidden) {
+        // Format initial value
+        const currentValue = parseFloat(hutangHidden.value) || 0;
+        if (currentValue > 0) {
+            hutangInput.value = formatRupiahInput(currentValue);
+        }
+
+        // Add event listener untuk auto-format real-time dengan debounce
+        let debounceTimer;
+        hutangInput.addEventListener('input', function(e) {
+            clearTimeout(debounceTimer);
+            let currentValue = this.value;
+
+            debounceTimer = setTimeout(() => {
+                // Parse current value (remove titik dan non-digit)
+                let cleanValue = currentValue.replace(/[^0-9]/g, '');
+                let numValue = parseFloat(cleanValue) || 0;
+
+                // Update hidden field
+                hutangHidden.value = numValue;
+
+                // Format tampilan real-time
+                if (numValue > 0) {
+                    this.value = formatRupiahInput(numValue);
+                } else {
+                    this.value = '';
+                }
+
+                // Debug: Log ke console
+                console.log('Input:', currentValue, '=> Clean:', cleanValue, '=> Format:', this.value, '=> Hidden:', numValue);
+            }, 100); // 100ms delay untuk performance
+        });
+
+        // Event listener untuk keydown (prevent non-numeric keys except backspace, delete, tab, etc)
+        hutangInput.addEventListener('keydown', function(e) {
+            // Allow: backspace, delete, tab, escape, enter, numbers, numpad
+            let allowedKeys = [8, 9, 13, 27, 46, 110, 190];
+            // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+            if ([17, 67, 86, 88, 65].includes(e.keyCode) && (e.ctrlKey || e.metaKey)) {
+                return;
+            }
+            // Ensure that it's a number or stop the keypress
+            if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105) && !allowedKeys.includes(e.keyCode)) {
+                e.preventDefault();
+            }
+        });
+
+        // Event listener untuk paste (format pasted content)
+        hutangInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            let pastedData = (e.clipboardData || window.clipboardData).getData('text');
+            let cleanData = pastedData.replace(/[^0-9]/g, '');
+            let numValue = parseFloat(cleanData) || 0;
+
+            if (numValue > 0) {
+                this.value = formatRupiahInput(numValue);
+                hutangHidden.value = numValue;
+            } else {
+                this.value = '';
+                hutangHidden.value = 0;
+            }
+
+            console.log('Paste - Pasted:', pastedData, '=> Clean:', cleanData, '=> Formatted:', this.value);
+        });
+
+        // Format kembali saat blur (lose focus) untuk final formatting
+        hutangInput.addEventListener('blur', function() {
+            const numValue = parseFloat(hutangHidden.value) || 0;
+            if (numValue > 0) {
+                this.value = formatRupiahInput(numValue);
+            } else {
+                this.value = '';
+            }
+            console.log('Blur - Final value:', this.value, 'Hidden:', hutangHidden.value);
+        });
+    }
+    }); // Close DOMContentLoaded
 
     // Auto-hide alerts
     const alerts = document.querySelectorAll('.alert');

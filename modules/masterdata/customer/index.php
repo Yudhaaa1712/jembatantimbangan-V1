@@ -10,22 +10,32 @@ $action = $_GET['action'] ?? '';
 $msg = '';
 
 if ($action == 'delete') {
-    $id = $_GET['id'] ?? '';
-    if (!empty($id) && is_numeric($id)) {
-        // Check if customer has transactions
-        $check = mysqli_query($conn, "SELECT COUNT(*) as count FROM transaksi_timbangan WHERE id_customer = '$id'");
-        $result = mysqli_fetch_assoc($check);
+    $id = filter_var($_GET['id'] ?? 0, FILTER_VALIDATE_INT);
+    if ($id > 0) {
+        // Check if customer has transactions - using prepared statement
+        $check_query = "SELECT COUNT(*) as count FROM transaksi_timbangan WHERE id_customer = ?";
+        $check_stmt = mysqli_prepare($conn, $check_query);
+        mysqli_stmt_bind_param($check_stmt, 'i', $id);
+        mysqli_stmt_execute($check_stmt);
+        $check_result = mysqli_stmt_get_result($check_stmt);
+        $result = mysqli_fetch_assoc($check_result);
 
         if ($result['count'] > 0) {
             $msg = '<div class="alert alert-danger">Customer tidak dapat dihapus karena memiliki transaksi!</div>';
         } else {
-            $delete = mysqli_query($conn, "DELETE FROM customer WHERE id = '$id'");
-            if ($delete) {
+            // Delete using prepared statement
+            $delete_query = "DELETE FROM customer WHERE id = ?";
+            $delete_stmt = mysqli_prepare($conn, $delete_query);
+            mysqli_stmt_bind_param($delete_stmt, 'i', $id);
+
+            if (mysqli_stmt_execute($delete_stmt)) {
                 $msg = '<div class="alert alert-success">Customer berhasil dihapus!</div>';
             } else {
-                $msg = '<div class="alert alert-danger">Gagal menghapus customer!</div>';
+                $msg = '<div class="alert alert-danger">Gagal menghapus customer: ' . mysqli_error($conn) . '</div>';
             }
+            mysqli_stmt_close($delete_stmt);
         }
+        mysqli_stmt_close($check_stmt);
     }
 }
 
@@ -445,9 +455,9 @@ include '../../../includes/header.php';
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/sweetalert2.min.js"></script>
 
 <script>
 function confirmDelete(id, name) {

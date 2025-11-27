@@ -390,7 +390,7 @@ include '../../includes/header.php';
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="main-title"><i class="fas fa-users"></i> Manajemen Pengguna</h2>
+                <h2 class="main-title"> Manajemen Pengguna</h2>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
                     <i class="fas fa-plus"></i> Tambah User
                 </button>
@@ -452,20 +452,20 @@ include '../../includes/header.php';
                                                         data-nama="<?= htmlspecialchars($user['nama_lengkap']) ?>"
                                                         data-role="<?= $user['role'] ?>"
                                                         data-status="<?= $user['status'] ?>">
-                                                    <i class="fas fa-edit"></i>
+                                                   ✎ EDIT
                                                 </button>
 
                                                 <?php if ($user['id'] != $_SESSION['user_id']): ?>
                                                     <button type="button" class="btn btn-sm btn-<?= $user['status'] == 'active' ? 'warning' : 'success' ?> toggle-status"
                                                             data-user-id="<?= $user['id'] ?>"
                                                             data-new-status="<?= $user['status'] == 'active' ? 'inactive' : 'active' ?>">
-                                                        <i class="fas fa-<?= $user['status'] == 'active' ? 'ban' : 'check' ?>"></i>
+                                                    ✎ EDIT STATUS
                                                     </button>
 
                                                     <button type="button" class="btn btn-sm btn-danger delete-user"
                                                             data-user-id="<?= $user['id'] ?>"
                                                             data-username="<?= htmlspecialchars($user['username']) ?>">
-                                                        <i class="fas fa-trash"></i>
+                                                    HAPUS
                                                     </button>
                                                 <?php endif; ?>
                                             </div>
@@ -486,7 +486,7 @@ include '../../includes/header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-user-plus"></i> Tambah User Baru</h5>
+                <h5 class="modal-title"> Tambah User Baru</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
@@ -514,17 +514,16 @@ include '../../includes/header.php';
                         <select class="form-select" id="role" name="role" required>
                             <option value="">Pilih Role</option>
                             <option value="operator">Operator (Timbang 1 & 2, Transaksi)</option>
-                            <option value="viewer">Viewer (Hanya melihat)</option>
                             <option value="admin">Admin (Akses penuh)</option>
                         </select>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times"></i> Batal
+                        Batal
                     </button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Simpan
+                       Simpan
                     </button>
                 </div>
             </form>
@@ -537,7 +536,7 @@ include '../../includes/header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-user-edit"></i> Edit User</h5>
+                <h5 class="modal-title">✎ Edit User</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
@@ -581,10 +580,10 @@ include '../../includes/header.php';
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times"></i> Batal
+                         Batal
                     </button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Update
+                        Update
                     </button>
                 </div>
             </form>
@@ -661,8 +660,8 @@ include '../../includes/header.php';
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/bootstrap.bundle.min.js"></script>
 <script>
 $(document).ready(function() {
     // Edit user

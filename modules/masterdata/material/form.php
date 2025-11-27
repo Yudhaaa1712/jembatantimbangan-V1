@@ -10,19 +10,17 @@ $id = $_GET['id'] ?? '';
 
 $material = [
     'kode_material' => '',
-    'jenis_material' => '',
+    'nama_material' => '',
     'deskripsi' => '',
-    'kategori' => 'umum',
+    'icon' => 'fa-cube',
     'satuan' => 'Kg',
-    'harga_per_kg' => '',
-    'status' => 'active',
-    'keterangan' => ''
+    'status' => 'active'
 ];
 
 $msg = '';
 
 if ($action == 'edit' && !empty($id)) {
-    $query = "SELECT * FROM material_types WHERE id = '$id'";
+    $query = "SELECT * FROM materials WHERE id = '$id'";
     $result = mysqli_query($conn, $query);
     if (mysqli_num_rows($result) > 0) {
         $material = mysqli_fetch_assoc($result);
@@ -33,41 +31,47 @@ if ($action == 'edit' && !empty($id)) {
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $kode_material = mysqli_real_escape_string($conn, $_POST['kode_material']);
-    $jenis_material = mysqli_real_escape_string($conn, strtolower($_POST['jenis_material']));
+    $nama_material = mysqli_real_escape_string($conn, $_POST['nama_material']);
     $deskripsi = mysqli_real_escape_string($conn, $_POST['deskripsi']);
-    $kategori = mysqli_real_escape_string($conn, strtolower($_POST['kategori']));
+    $icon = mysqli_real_escape_string($conn, $_POST['icon']);
     $satuan = mysqli_real_escape_string($conn, $_POST['satuan']);
-    $harga_per_kg = mysqli_real_escape_string($conn, $_POST['harga_per_kg']);
     $status = mysqli_real_escape_string($conn, $_POST['status']);
-    $keterangan = mysqli_real_escape_string($conn, $_POST['keterangan']);
 
     // Validasi
-    if (empty($jenis_material)) {
-        $msg = '<div class="alert alert-danger">Jenis material wajib diisi!</div>';
+    if (empty($nama_material)) {
+        $msg = '<div class="alert alert-danger">Nama material wajib diisi!</div>';
     } else {
         if ($action == 'add') {
-            // Check duplicate jenis_material
-            $check = mysqli_query($conn, "SELECT COUNT(*) as count FROM material_types WHERE jenis_material = '$jenis_material'");
+            // Check duplicate kode_material
+            $check = mysqli_query($conn, "SELECT COUNT(*) as count FROM materials WHERE kode_material = '$kode_material'");
             $result = mysqli_fetch_assoc($check);
 
             if ($result['count'] > 0) {
-                $msg = '<div class="alert alert-danger">Jenis material sudah ada!</div>';
+                $msg = '<div class="alert alert-danger">Kode material sudah ada!</div>';
             } else {
-                $query = "INSERT INTO material_types (kode_material, jenis_material, deskripsi, kategori, satuan, harga_per_kg, status, keterangan)
-                         VALUES ('$kode_material', '$jenis_material', '$deskripsi', '$kategori', '$satuan', '$harga_per_kg', '$status', '$keterangan')";
+                $query = "INSERT INTO materials (kode_material, nama_material, deskripsi, icon, satuan, status)
+                         VALUES ('$kode_material', '$nama_material', '$deskripsi', '$icon', '$satuan', '$status')";
 
                 if (mysqli_query($conn, $query)) {
                     $msg = '<div class="alert alert-success">Material berhasil ditambahkan!</div>';
+
+                    // Clear cache untuk material list
+                    require_once '../../../includes/cache_manager.php';
+                    // Clear all material cache keys
+                    for ($i = 0; $i < 24; $i++) {
+                        $hour = str_pad($i, 2, '0', STR_PAD_LEFT);
+                        $cache_key = 'material_list_' . date('Y-m-d') . '-' . $hour;
+                        cache_delete($cache_key);
+                    }
+
                     // Reset form
                     $material = [
                         'kode_material' => '',
-                        'jenis_material' => '',
+                        'nama_material' => '',
                         'deskripsi' => '',
-                        'kategori' => 'umum',
+                        'icon' => 'fa-cube',
                         'satuan' => 'Kg',
-                        'harga_per_kg' => '',
-                        'status' => 'active',
-                        'keterangan' => ''
+                        'status' => 'active'
                     ];
                 } else {
                     $msg = '<div class="alert alert-danger">Gagal menambahkan material!</div>';
@@ -75,27 +79,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         } else {
             // Update
-            $check = mysqli_query($conn, "SELECT COUNT(*) as count FROM material_types WHERE jenis_material = '$jenis_material' AND id != '$id'");
+            $check = mysqli_query($conn, "SELECT COUNT(*) as count FROM materials WHERE kode_material = '$kode_material' AND id != '$id'");
             $result = mysqli_fetch_assoc($check);
 
             if ($result['count'] > 0) {
-                $msg = '<div class="alert alert-danger">Jenis material sudah ada!</div>';
+                $msg = '<div class="alert alert-danger">Kode material sudah ada!</div>';
             } else {
-                $query = "UPDATE material_types SET
+                $query = "UPDATE materials SET
                          kode_material = '$kode_material',
-                         jenis_material = '$jenis_material',
+                         nama_material = '$nama_material',
                          deskripsi = '$deskripsi',
-                         kategori = '$kategori',
+                         icon = '$icon',
                          satuan = '$satuan',
-                         harga_per_kg = '$harga_per_kg',
-                         status = '$status',
-                         keterangan = '$keterangan'
+                         status = '$status'
                          WHERE id = '$id'";
 
                 if (mysqli_query($conn, $query)) {
                     $msg = '<div class="alert alert-success">Material berhasil diperbarui!</div>';
+
+                    // Clear cache untuk material list
+                    require_once '../../../includes/cache_manager.php';
+                    // Clear all material cache keys
+                    for ($i = 0; $i < 24; $i++) {
+                        $hour = str_pad($i, 2, '0', STR_PAD_LEFT);
+                        $cache_key = 'material_list_' . date('Y-m-d') . '-' . $hour;
+                        cache_delete($cache_key);
+                    }
+
                     // Refresh data
-                    $result = mysqli_query($conn, "SELECT * FROM material_types WHERE id = '$id'");
+                    $result = mysqli_query($conn, "SELECT * FROM materials WHERE id = '$id'");
                     $material = mysqli_fetch_assoc($result);
                 } else {
                     $msg = '<div class="alert alert-danger">Gagal memperbarui material!</div>';
@@ -405,17 +417,21 @@ include '../../../includes/header.php';
                 </div>
                 <div class="form-group">
                     <label class="form-label">
-                        Jenis Material <span class="required">*</span>
+                        Nama Material <span class="required">*</span>
                     </label>
-                    <input type="text" name="jenis_material" class="form-input lowercase" value="<?php echo $material['jenis_material']; ?>" required maxlength="50" placeholder="tbs, cpo, kernel">
+                    <input type="text" name="nama_material" class="form-input" value="<?php echo $material['nama_material']; ?>" required maxlength="100" placeholder="Tandan Buah Segar">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Kategori</label>
-                    <select name="kategori" class="form-select">
-                        <option value="umum" <?php echo $material['kategori'] == 'umum' ? 'selected' : ''; ?>>Umum</option>
-                        <option value="bahan_baku" <?php echo $material['kategori'] == 'bahan_baku' ? 'selected' : ''; ?>>Bahan Baku</option>
-                        <option value="produksi" <?php echo $material['kategori'] == 'produksi' ? 'selected' : ''; ?>>Produksi</option>
-                        <option value="limbah" <?php echo $material['kategori'] == 'limbah' ? 'selected' : ''; ?>>Limbah</option>
+                    <label class="form-label">Icon</label>
+                    <select name="icon" class="form-select">
+                        <option value="fa-cube" <?php echo $material['icon'] == 'fa-cube' ? 'selected' : ''; ?>>Kotak</option>
+                        <option value="fa-apple-alt" <?php echo $material['icon'] == 'fa-apple-alt' ? 'selected' : ''; ?>>Apel</option>
+                        <option value="fa-oil-can" <?php echo $material['icon'] == 'fa-oil-can' ? 'selected' : ''; ?>>Minyak</option>
+                        <option value="fa-seedling" <?php echo $material['icon'] == 'fa-seedling' ? 'selected' : ''; ?>>Tanaman</option>
+                        <option value="fa-leaf" <?php echo $material['icon'] == 'fa-leaf' ? 'selected' : ''; ?>>Daun</option>
+                        <option value="fa-box" <?php echo $material['icon'] == 'fa-box' ? 'selected' : ''; ?>>Kardus</option>
+                        <option value="fa-truck" <?php echo $material['icon'] == 'fa-truck' ? 'selected' : ''; ?>>Truk</option>
+                        <option value="fa-trash" <?php echo $material['icon'] == 'fa-trash' ? 'selected' : ''; ?>>Sampah</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -434,26 +450,20 @@ include '../../../includes/header.php';
             </div>
         </div>
 
-        <!-- Harga dan Satuan -->
+        <!-- Satuan -->
         <div class="form-section">
             <h3 class="section-title">
-                <i class="fas fa-dollar-sign"></i>
-                Harga dan Satuan
+                <i class="fas fa-balance-scale"></i>
+                Satuan
             </h3>
             <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Harga per Kg</label>
-                    <div class="input-group">
-                        <input type="number" name="harga_per_kg" class="form-input" value="<?php echo $material['harga_per_kg']; ?>" min="0" step="100" placeholder="2000">
-                        <span class="input-group-text">Rp/Kg</span>
-                    </div>
-                </div>
                 <div class="form-group">
                     <label class="form-label">Satuan</label>
                     <select name="satuan" class="form-select">
                         <option value="Kg" <?php echo $material['satuan'] == 'Kg' ? 'selected' : ''; ?>>Kilogram (Kg)</option>
                         <option value="Ton" <?php echo $material['satuan'] == 'Ton' ? 'selected' : ''; ?>>Ton</option>
                         <option value="Kwintal" <?php echo $material['satuan'] == 'Kwintal' ? 'selected' : ''; ?>>Kwintal</option>
+                        <option value="Liter" <?php echo $material['satuan'] == 'Liter' ? 'selected' : ''; ?>>Liter</option>
                     </select>
                 </div>
             </div>
@@ -473,33 +483,7 @@ include '../../../includes/header.php';
             </div>
         </div>
 
-        <!-- Keterangan -->
-        <div class="form-section">
-            <h3 class="section-title">
-                <i class="fas fa-sticky-note"></i>
-                Keterangan
-            </h3>
-            <div class="form-grid">
-                <div class="form-group full-width">
-                    <label class="form-label">Catatan Tambahan</label>
-                    <textarea name="keterangan" class="form-textarea" placeholder="Masukkan catatan atau keterangan tambahan" rows="3"><?php echo $material['keterangan']; ?></textarea>
-                </div>
-            </div>
-        </div>
-
-        <!-- Preview -->
-        <div class="preview-card">
-            <h4 class="preview-title">Preview Material</h4>
-            <div class="material-icon-preview">
-                <i class="fas fa-cube" id="previewIcon"></i>
-            </div>
-            <div class="preview-content">
-                <strong id="previewName"><?php echo $material['jenis_material'] ? ucfirst($material['jenis_material']) : 'Nama Material'; ?></strong><br>
-                <span id="previewDesc"><?php echo $material['deskripsi'] ?: 'Deskripsi material akan muncul di sini'; ?></span><br>
-                <span style="color: #22c55e; font-weight: 700;" id="previewPrice">Rp <?php echo number_format($material['harga_per_kg'] ?? 0, 0, ',', '.'); ?>/Kg</span>
-            </div>
-        </div>
-
+    
         <!-- Form Actions -->
         <div class="form-actions">
             <a href="index.php" class="btn-secondary">
@@ -514,56 +498,27 @@ include '../../../includes/header.php';
     </form>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/bootstrap.bundle.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('materialForm');
-    const jenisMaterialInput = form.querySelector('input[name="jenis_material"]');
+    const namaMaterialInput = form.querySelector('input[name="nama_material"]');
     const deskripsiInput = form.querySelector('textarea[name="deskripsi"]');
-    const hargaInput = form.querySelector('input[name="harga_per_kg"]');
 
-    // Update preview in real-time
-    function updatePreview() {
-        const materialType = jenisMaterialInput.value.toLowerCase();
-        const deskripsi = deskripsiInput.value;
-        const harga = hargaInput.value;
-
-        // Update name
-        document.getElementById('previewName').textContent = materialType ? materialType.charAt(0).toUpperCase() + materialType.slice(1) : 'Nama Material';
-
-        // Update description
-        document.getElementById('previewDesc').textContent = deskripsi || 'Deskripsi material akan muncul di sini';
-
-        // Update price
-        const formattedPrice = new Intl.NumberFormat('id-ID').format(parseInt(harga) || 0);
-        document.getElementById('previewPrice').textContent = 'Rp ' + formattedPrice + '/Kg';
-
-        // Update icon based on material type
-        const iconMap = {
-            'tbs': 'fa-apple-alt',
-            'cpo': 'fa-oil-can',
-            'kernel': 'fa-seedling',
-            'brondolan': 'fa-leaf',
-            'limbah': 'fa-trash'
-        };
-
-        let iconClass = 'fa-cube'; // default
-        for (const [key, value] of Object.entries(iconMap)) {
-            if (materialType.includes(key)) {
-                iconClass = value;
-                break;
+    // Auto-generate kode material from nama material
+    namaMaterialInput.addEventListener('input', function() {
+        const kodeInput = form.querySelector('input[name="kode_material"]');
+        if (!kodeInput.value) {
+            const name = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (name.length >= 3) {
+                const prefix = name.substring(0, 3);
+                const randomNum = Math.floor(Math.random() * 900) + 100;
+                kodeInput.value = prefix + randomNum;
             }
         }
-
-        const iconElement = document.getElementById('previewIcon');
-        iconElement.className = 'fas ' + iconClass;
-    }
-
-    jenisMaterialInput.addEventListener('input', updatePreview);
-    deskripsiInput.addEventListener('input', updatePreview);
-    hargaInput.addEventListener('input', updatePreview);
+    });
 
     // Auto-hide alerts
     const alerts = document.querySelectorAll('.alert');
@@ -574,9 +529,6 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => alert.remove(), 500);
         }, 5000);
     });
-
-    // Initialize preview
-    updatePreview();
 });
 </script>
 

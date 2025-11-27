@@ -143,9 +143,7 @@ include '../../includes/header.php';
                         <button type="button" class="btn btn-success" onclick="exportExcel()">
                             <i class="fas fa-file-excel"></i> Export Excel
                         </button>
-                        <button type="button" class="btn btn-danger" onclick="exportPDF()">
-                            <i class="fas fa-file-pdf"></i> Export PDF
-                        </button>
+                       
                         <?php endif; ?>
                     </div>
                 </div>
@@ -265,7 +263,7 @@ include '../../includes/header.php';
     $(document).ready(function() {
         $('#tableLaporan').DataTable({
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
+                url: '<?php echo BASE_URL; ?>assets/id.json'
             },
             pageLength: 50,
             order: [[1, 'desc']],

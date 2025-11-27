@@ -9,247 +9,278 @@ include 'config/database.php';
 $koneksi = $conn;
 
 $page_title = "Dashboard - Jembatan Timbangan";
+require_once 'includes/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?></title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-        }
+        <div class="container-fluid vh-100 py-2" style="max-height: 100vh; overflow: hidden;">
+    <div class="row h-100">
+        <div class="col-12">
+            <div class="card border-0 bg-dark text-light shadow-lg h-100">
+                <div class="card-header bg-gradient border-0 py-2">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h4 class="mb-0 text-white">
+                               DASHBOARD
+                            </h4>
+                            <small class="text-light opacity-75">Sistem Jembatan Timbangan</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-white">
+                                <i class="fas fa-user me-2"></i><?php echo htmlspecialchars($_SESSION['username']); ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
+                <div class="card-body p-3" style="overflow-y: auto; max-height: calc(100vh - 80px);">
+                    <div class="row g-3">
+                        <!-- Module Timbangan -->
+                        <div class="col-lg-4 col-md-6">
+                            <a href="modules/timbangan/timbangan1.php" class="text-decoration-none">
+                                <div class="card bg-gradient border-0 text-white h-100 dashboard-card-hover">
+                                    <div class="card-body p-4 text-center">
+                                        <div class="mb-3">
+                                            <i class="fas fa-weight fa-3x"></i>
+                                        </div>
+                                        <h5 class="card-title">Timbangan 1</h5>
+                                        <p class="card-text opacity-75">Input data awal timbangan (BRUTO)</p>
+                                        <div class="mt-3">
+                                            <span class="badge bg-light text-dark px-3 py-2">
+                                                <i class="fas fa-plus me-2"></i>Mulai Timbang
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
 
-        .header {
-            background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-            position: relative;
-        }
+                        <div class="col-lg-4 col-md-6">
+                            <a href="modules/timbangan/timbangan2.php" class="text-decoration-none">
+                                <div class="card bg-gradient border-0 text-white h-100 dashboard-card-hover">
+                                    <div class="card-body p-4 text-center">
+                                        <div class="mb-3">
+                                            <i class="fas fa-balance-scale fa-3x"></i>
+                                        </div>
+                                        <h5 class="card-title">Timbangan 2</h5>
+                                        <p class="card-text opacity-75">Proses akhir timbangan (TARA)</p>
+                                        <div class="mt-3">
+                                            <span class="badge bg-light text-dark px-3 py-2">
+                                                <i class="fas fa-check me-2"></i>Selesaikan Timbang
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
 
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
+                        <!-- Module Transaksi -->
+                        <div class="col-lg-4 col-md-6">
+                            <a href="modules/transaksi/index.php" class="text-decoration-none">
+                                <div class="card bg-gradient-success border-0 text-white h-100 dashboard-card-hover">
+                                    <div class="card-body p-4 text-center">
+                                        <div class="mb-3">
+                                            <i class="fas fa-list-alt fa-3x"></i>
+                                        </div>
+                                        <h5 class="card-title">Transaksi</h5>
+                                        <p class="card-text opacity-75">Lihat semua data transaksi</p>
+                                        <div class="mt-3">
+                                            <span class="badge bg-light text-dark px-3 py-2">
+                                                <i class="fas fa-eye me-2"></i>Lihat Data
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
 
-        .user-info {
-            position: absolute;
-            right: 30px;
-            top: 30px;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 10px 15px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-        }
+                        <!-- Module Master Data -->
+                        <div class="col-lg-4 col-md-6">
+                            <a href="modules/masterdata/index.php" class="text-decoration-none">
+                                <div class="card bg-gradient-info border-0 text-white h-100 dashboard-card-hover">
+                                    <div class="card-body p-4 text-center">
+                                        <div class="mb-3">
+                                            <i class="fas fa-database fa-3x"></i>
+                                        </div>
+                                        <h5 class="card-title">Master Data</h5>
+                                        <p class="card-text opacity-75">Kelola data master</p>
+                                        <div class="mt-3">
+                                            <span class="badge bg-light text-dark px-3 py-2">
+                                                <i class="fas fa-cog me-2"></i>Kelola Data
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
 
-        .main-content {
-            padding: 40px;
-        }
+                        <!-- Module Laporan -->
+                        <div class="col-lg-4 col-md-6">
+                            <a href="modules/laporan/index.php" class="text-decoration-none">
+                                <div class="card bg-gradient-warning border-0 text-white h-100 dashboard-card-hover">
+                                    <div class="card-body p-4 text-center">
+                                        <div class="mb-3">
+                                            <i class="fas fa-file-chart-line fa-3x"></i>
+                                        </div>
+                                        <h5 class="card-title">Laporan</h5>
+                                        <p class="card-text opacity-75">Generate laporan</p>
+                                        <div class="mt-3">
+                                            <span class="badge bg-light text-dark px-3 py-2">
+                                                <i class="fas fa-chart-bar me-2"></i>Buat Laporan
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
 
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
-        }
+                        <!-- Module Users -->
+                        <div class="col-lg-4 col-md-6">
+                            <a href="modules/users/index.php" class="text-decoration-none">
+                                <div class="card bg-gradient-secondary border-0 text-white h-100 dashboard-card-hover">
+                                    <div class="card-body p-4 text-center">
+                                        <div class="mb-3">
+                                            <i class="fas fa-users fa-3x"></i>
+                                        </div>
+                                        <h5 class="card-title">Users</h5>
+                                        <p class="card-text opacity-75">Manajemen pengguna</p>
+                                        <div class="mt-3">
+                                            <span class="badge bg-light text-dark px-3 py-2">
+                                                <i class="fas fa-user-cog me-2"></i>Kelola User
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
 
-        .dashboard-card {
-            background: #f8f9fc;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            text-align: center;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .dashboard-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .card-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-        }
-
-        .card-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #5a5c69;
-            margin-bottom: 10px;
-        }
-
-        .card-description {
-            color: #858796;
-            font-size: 0.95rem;
-        }
-
-        .btn {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-primary {
-            background: #4e73df;
-            color: white;
-        }
-
-        .btn-success {
-            background: #1cc88a;
-            color: white;
-        }
-
-        .btn-warning {
-            background: #f6c23e;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #e74a3b;
-            color: white;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            text-decoration: none;
-            color: white;
-        }
-
-        .logout {
-            background: rgba(231, 74, 59, 0.2);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 8px;
-            text-decoration: none;
-            margin-left: 15px;
-        }
-
-        .logout:hover {
-            background: rgba(231, 74, 59, 0.3);
-            color: white;
-            text-decoration: none;
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .main-content {
-                padding: 20px;
-            }
-
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .user-info {
-                position: static;
-                margin-top: 15px;
-                width: 100%;
-                text-align: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🏭 Dashboard Jembatan Timbangan</h1>
-            <p>Sistem Manajemen Timbangan Digital</p>
-            <div class="user-info">
-                <span>👤 <?php echo htmlspecialchars($_SESSION['username']); ?></span>
-                <a href="modules/auth/logout.php" class="logout">🚪 Keluar</a>
-            </div>
-        </div>
-
-        <div class="main-content">
-            <div class="dashboard-grid">
-                <a href="modules/timbangan/timbangan_kompak.php" class="dashboard-card">
-                    <div class="card-icon">🎯</div>
-                    <div class="card-title">Timbangan Kompak</div>
-                    <div class="card-description">All-in-One - 2 timbangan dalam 1 layar tanpa scroll</div>
-                </a>
-
-                <a href="modules/timbangan/timbangan1.php" class="dashboard-card">
-                    <div class="card-icon">⚖️</div>
-                    <div class="card-title">Timbangan 1</div>
-                    <div class="card-description">Timbangan Masuk - Input data awal kendaraan</div>
-                </a>
-
-                <a href="modules/timbangan/timbangan2.php" class="dashboard-card">
-                    <div class="card-icon">🚛</div>
-                    <div class="card-title">Timbangan 2</div>
-                    <div class="card-description">Timbangan Keluar - Proses penimbangan akhir</div>
-                </a>
-
-                <a href="multi_display_timbangan.html" class="dashboard-card">
-                    <div class="card-icon">🖥️</div>
-                    <div class="card-title">Multi Display</div>
-                    <div class="card-description">Monitor 3 timbangan secara real-time dalam satu layar</div>
-                </a>
-
-                <a href="modules/timbangan/view_data.php" class="dashboard-card">
-                    <div class="card-icon">📊</div>
-                    <div class="card-title">Lihat Data</div>
-                    <div class="card-description">Lihat semua data timbangan</div>
-                </a>
-
-                <a href="modules/kendaraan/" class="dashboard-card">
-                    <div class="card-icon">🚗</div>
-                    <div class="card-title">Manajemen Kendaraan</div>
-                    <div class="card-description">Kelola data kendaraan</div>
-                </a>
-
-                <a href="modules/supplier/" class="dashboard-card">
-                    <div class="card-icon">🏢</div>
-                    <div class="card-title">Manajemen Supplier</div>
-                    <div class="card-description">Kelola data supplier</div>
-                </a>
-
-                <a href="modules/material/" class="dashboard-card">
-                    <div class="card-icon">📦</div>
-                    <div class="card-title">Manajemen Material</div>
-                    <div class="card-description">Kelola data material</div>
-                </a>
-            </div>
-
-            <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #858796;">
-                    Sistem Jembatan Timbangan Digital v1.0<br>
-                    © 2024 - All Rights Reserved
-                </p>
+                        <!-- Quick Actions -->
+                        <div class="col-12">
+                            <div class="card bg-dark border-secondary">
+                                <div class="card-header bg-secondary border-secondary">
+                                    <h6 class="text-white mb-0">
+                                        <i class="fas fa-rocket me-2"></i>Quick Actions
+                                    </h6>
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="row g-2">
+                                        <div class="col-md-3 col-6">
+                                            <a href="modules/timbangan/timbangan1.php" class="btn btn-primary btn-sm w-100">
+                                                <i class="fas fa-plus me-2"></i>Timbangan Baru
+                                            </a>
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <a href="modules/transaksi/index.php" class="btn btn-success btn-sm w-100">
+                                                <i class="fas fa-eye me-2"></i>Lihat Transaksi
+                                            </a>
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <a href="modules/laporan/index.php" class="btn btn-warning btn-sm w-100">
+                                                <i class="fas fa-chart-line me-2"></i>Laporan Hari Ini
+                                            </a>
+                                        </div>
+                                        <div class="col-md-3 col-6">
+                                            <a href="modules/auth/logout.php" class="btn btn-danger btn-sm w-100">
+                                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+
+<style>
+.bg-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%) !important;
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #36b9cc 0%, #258391 100%) !important;
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #f6c23e 0%, #dda20a 100%) !important;
+}
+
+.bg-gradient-secondary {
+    background: linear-gradient(135deg, #858796 0%, #60616f 100%) !important;
+}
+
+.dashboard-card-hover {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.dashboard-card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dashboard-card-hover .badge {
+    transition: all 0.3s ease;
+}
+
+.dashboard-card-hover:hover .badge {
+    background-color: #28a745 !important;
+    transform: scale(1.05);
+}
+
+/* Compact badge styling */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.5em 1em;
+    border-radius: 50px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container-fluid.vh-100 {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .card-body {
+        padding: 2rem 1.5rem !important;
+    }
+
+    .fa-3x {
+        font-size: 2.5rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .card-body {
+        padding: 1.5rem 1rem !important;
+    }
+
+    .fa-3x {
+        font-size: 2rem !important;
+    }
+
+    .badge {
+        font-size: 0.65rem;
+        padding: 0.4em 0.8em;
+    }
+}
+
+/* Ensure no scrollbars */
+html, body {
+    overflow: hidden;
+}
+
+.container-fluid.vh-100 {
+    max-height: 100vh;
+    overflow: hidden;
+}
+</style>
+
+<?php require_once 'includes/footer.php'; ?>

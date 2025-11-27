@@ -11,31 +11,31 @@ $custom_date = $_GET['custom_date'] ?? date('Y-m-d');
 $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? date('m');
 
-// Build date condition
+// Build date condition - Gunakan created_at untuk lebih akurat
 switch($date_filter) {
     case 'today':
-        $date_condition = "tanggal = CURDATE()";
+        $date_condition = "DATE(tt.created_at) = CURDATE()";
         break;
     case 'yesterday':
-        $date_condition = "tanggal = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+        $date_condition = "DATE(tt.created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
         break;
     case 'week':
-        $date_condition = "tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        $date_condition = "DATE(tt.created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
         break;
     case 'month':
-        $date_condition = "MONTH(tanggal) = MONTH(CURDATE()) AND YEAR(tanggal) = YEAR(CURDATE())";
+        $date_condition = "MONTH(tt.created_at) = MONTH(CURDATE()) AND YEAR(tt.created_at) = YEAR(CURDATE())";
         break;
     case 'year':
-        $date_condition = "YEAR(tanggal) = YEAR(CURDATE())";
+        $date_condition = "YEAR(tt.created_at) = YEAR(CURDATE())";
         break;
     case 'custom':
-        $date_condition = "tanggal = '$custom_date'";
+        $date_condition = "DATE(tt.created_at) = '$custom_date'";
         break;
     case 'custom_month':
-        $date_condition = "MONTH(tanggal) = '$month' AND YEAR(tanggal) = '$year'";
+        $date_condition = "MONTH(tt.created_at) = '$month' AND YEAR(tt.created_at) = '$year'";
         break;
     default:
-        $date_condition = "tanggal = CURDATE()";
+        $date_condition = "DATE(tt.created_at) = CURDATE()";
 }
 
 // Get transactions - hanya yang sudah selesai dari timbangan 2 dengan perhitungan JavaScript
@@ -80,30 +80,30 @@ $result = mysqli_query($conn, $query);
 // Check for query errors
 if (!$result) {
     error_log("Error in transaction query: " . mysqli_error($conn));
-    $result = mysqli_query($conn, "SELECT * FROM transaksi_timbangan WHERE $date_condition ORDER BY created_at DESC");
+    $result = mysqli_query($conn, "SELECT * FROM transaksi_timbangan tt WHERE $date_condition ORDER BY tt.created_at DESC");
 }
 
 // Get statistics - dengan perhitungan JavaScript yang sama
 $query_stats = "SELECT
                     COUNT(*) as total_transaksi,
-                    COALESCE(SUM(berat_timbangan1), 0) as total_bruto,
+                    COALESCE(SUM(tt.berat_timbangan1), 0) as total_bruto,
                     COALESCE(SUM(CASE
-                        WHEN (berat_timbangan1 - berat_timbangan2) > 0 AND persen_potongan > 0 THEN
-                            (berat_timbangan1 - berat_timbangan2) - ((persen_potongan / 100) * (berat_timbangan1 - berat_timbangan2))
-                        WHEN berat_timbangan1 > 0 AND berat_timbangan2 > 0 THEN berat_timbangan1 - berat_timbangan2
-                        WHEN berat_netto > 0 THEN berat_netto
+                        WHEN (tt.berat_timbangan1 - tt.berat_timbangan2) > 0 AND tt.persen_potongan > 0 THEN
+                            (tt.berat_timbangan1 - tt.berat_timbangan2) - ((tt.persen_potongan / 100) * (tt.berat_timbangan1 - tt.berat_timbangan2))
+                        WHEN tt.berat_timbangan1 > 0 AND tt.berat_timbangan2 > 0 THEN tt.berat_timbangan1 - tt.berat_timbangan2
+                        WHEN tt.berat_netto > 0 THEN tt.berat_netto
                         ELSE 0
                     END), 0) as total_netto,
                     COALESCE(SUM(CASE
-                        WHEN (berat_timbangan1 - berat_timbangan2) > 0 AND persen_potongan > 0 THEN
-                            ((berat_timbangan1 - berat_timbangan2) - ((persen_potongan / 100) * (berat_timbangan1 - berat_timbangan2))) * harga_per_kg
-                        WHEN harga_per_kg > 0 AND berat_timbangan1 > 0 AND berat_timbangan2 > 0 THEN (berat_timbangan1 - berat_timbangan2) * harga_per_kg
-                        WHEN total_harga > 0 THEN total_harga
+                        WHEN (tt.berat_timbangan1 - tt.berat_timbangan2) > 0 AND tt.persen_potongan > 0 THEN
+                            ((tt.berat_timbangan1 - tt.berat_timbangan2) - ((tt.persen_potongan / 100) * (tt.berat_timbangan1 - tt.berat_timbangan2))) * tt.harga_per_kg
+                        WHEN tt.harga_per_kg > 0 AND tt.berat_timbangan1 > 0 AND tt.berat_timbangan2 > 0 THEN (tt.berat_timbangan1 - tt.berat_timbangan2) * tt.harga_per_kg
+                        WHEN tt.total_harga > 0 THEN tt.total_harga
                         ELSE 0
                     END), 0) as total_harga,
-                    COALESCE(AVG(berat_timbangan1), 0) as rata_bruto
-                FROM transaksi_timbangan
-                WHERE $date_condition AND status = 'selesai' AND timbang2_locked = 1";
+                    COALESCE(AVG(tt.berat_timbangan1), 0) as rata_bruto
+                FROM transaksi_timbangan tt
+                WHERE $date_condition AND tt.status = 'selesai' AND tt.timbang2_locked = 1";
 
 $stats_result = mysqli_query($conn, $query_stats);
 if (!$stats_result) {
@@ -162,7 +162,7 @@ include '../../includes/header.php';
     }
 
     .filter-section {
-        background: rgba(255, 255, 255, 0.02);
+        background: #cae400ff;
         border: 1px solid rgba(220, 38, 38, 0.2);
         border-radius: 12px;
         padding: 20px;
@@ -195,7 +195,7 @@ include '../../includes/header.php';
         border: 2px solid #dc2626;
         border-radius: 8px;
         padding: 10px 14px;
-        color: #fff;
+        color: #00000;
         font-size: 14px;
         transition: all 0.3s ease;
         min-width: 150px;
@@ -440,7 +440,7 @@ include '../../includes/header.php';
 <div class="main-container">
     <div class="page-header">
         <h1 class="page-title">
-            <i class="fas fa-exchange-alt"></i> Data Transaksi
+            Data Transaksi
         </h1>
     </div>
 
@@ -485,7 +485,7 @@ include '../../includes/header.php';
             <?php endif; ?>
 
             <button type="submit" class="btn-filter">
-                <i class="fas fa-filter"></i> Filter
+                 Filter
             </button>
         </form>
     </div>
@@ -494,36 +494,24 @@ include '../../includes/header.php';
     <div class="stats-section">
         <div class="stat-card">
             <div class="stat-icon">
-                <i class="fas fa-shopping-cart"></i>
+                
             </div>
             <div class="stat-value"><?php echo number_format($stats['total_transaksi']); ?></div>
             <div class="stat-label">Total Transaksi</div>
         </div>
        
        
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-money-bill-wave"></i>
-            </div>
-            <div class="stat-value"><?php echo 'Rp ' . number_format($stats['total_harga'] ?? 0, 0, ',', '.'); ?></div>
-            <div class="stat-label">Total Harga</div>
-        </div>
+      
     </div>
 
     <!-- Action Section -->
     <div class="action-section">
         <div class="action-buttons">
             <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'admin'): ?>
-            <button class="btn-action" onclick="exportExcel()">
-                <i class="fas fa-file-excel"></i> Export Excel
+            <button class="btn-action" onclick="exportExcelAdvanced()">
+              EXPORT EXCEL 
             </button>
-            <button class="btn-action" onclick="exportPDF()">
-                <i class="fas fa-file-pdf"></i> Export PDF
-            </button>
-            <?php endif; ?>
-            <button class="btn-action" onclick="printReport()">
-                <i class="fas fa-print"></i> Cetak
-            </button>
+            <?php endif; ?> 
         </div>
         <div class="total-records">
             <span style="color: rgba(255,255,255,0.7);">Total Records: <?php echo mysqli_num_rows($result); ?></span>
@@ -552,6 +540,7 @@ include '../../includes/header.php';
                     <th>Netto 2 (Kg)</th>
                     <th>Harga/Kg</th>
                     <th>Total Harga</th>
+                    <th>Keterangan</th>
                     <th>Operator</th>
                     <th>Aksi</th>
                 </tr>
@@ -578,14 +567,19 @@ include '../../includes/header.php';
                     </td>
                     <td style="text-align: right;"><?php echo number_format($row['persen_potongan'] ?? 0, 1, ',', '.'); ?></td>
                     <td style="text-align: right; font-weight: bold; color: #f59e0b;">
-                        <?php echo number_format($row['potongan_kg_calc'] ?? 0, 2, ',', '.'); ?>
+                        <?php echo number_format($row['potongan_kg_calc'] ?? 0, 1, ',', '.'); ?>
                     </td>
                     <td style="text-align: right; font-weight: bold; background: #00000;">
-                        <?php echo number_format($row['netto2_calc'] ?? 0, 2, ',', '.'); ?>
+                        <?php echo number_format($row['netto2_calc'] ?? 0, 0, ',', '.'); ?>
                     </td>
                     <td style="text-align: right;"><?php echo 'Rp ' . number_format($row['harga_per_kg'] ?? 0, 0, ',', '.'); ?></td>
                     <td style="text-align: right; font-weight: bold; color: #22c55e;">
                         <?php echo 'Rp ' . number_format($row['total_harga_calc'] ?? $row['total_harga'] ?? 0, 0, ',', '.'); ?>
+                    </td>
+                    <td style="text-align: center; max-width: 200px;">
+                        <span style="display: inline-block; max-width: 200px; word-wrap: break-word; font-size: 12px;">
+                            <?php echo !empty($row['keterangan']) ? htmlspecialchars($row['keterangan']) : '<span style="color: #6b7280;">-</span>'; ?>
+                        </span>
                     </td>
                     <td>
                     <?php
@@ -600,7 +594,7 @@ include '../../includes/header.php';
                 </td>
                     <td>
                         <button class="btn-receipt" onclick="printReceipt('<?php echo $row['no_tiket']; ?>')" title="Cetak Struk Continuous Form">
-                            <i class="fas fa-print"></i> Cetak
+                            Cetak
                         </button>
                     </td>
                 </tr>
@@ -609,7 +603,7 @@ include '../../includes/header.php';
                 <?php if(mysqli_num_rows($result) == 0): ?>
                 <tr>
                     <td colspan="18" style="text-align: center; color: rgba(255,255,255,0.5);">
-                        <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px;"></i><br>
+                       <br>
                         Tidak ada data transaksi yang selesai untuk periode ini
                     </td>
                 </tr>
@@ -619,21 +613,165 @@ include '../../includes/header.php';
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/sweetalert2.min.js"></script>
 
 <script>
 function exportExcel() {
-    const params = new URLSearchParams(window.location.search);
-    params.set('export', 'excel');
-    window.open('export.php?' + params.toString(), '_blank');
+    // Get date filter parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateFilter = urlParams.get('date_filter') || 'today';
+    const customDate = urlParams.get('custom_date') || new Date().toISOString().split('T')[0];
+    const year = urlParams.get('year') || new Date().getFullYear();
+    const month = urlParams.get('month') || (new Date().getMonth() + 1);
+
+    // Convert date filter to tanggal_awal and tanggal_akhir
+    let tanggal_awal, tanggal_akhir;
+
+    switch(dateFilter) {
+        case 'today':
+            tanggal_awal = tanggal_akhir = new Date().toISOString().split('T')[0];
+            break;
+        case 'yesterday':
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            tanggal_awal = tanggal_akhir = yesterday.toISOString().split('T')[0];
+            break;
+        case 'week':
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            tanggal_awal = weekAgo.toISOString().split('T')[0];
+            tanggal_akhir = new Date().toISOString().split('T')[0];
+            break;
+        case 'month':
+            const thisMonth = new Date();
+            tanggal_awal = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(thisMonth.getFullYear(), thisMonth.getMonth() + 1, 0).toISOString().split('T')[0];
+            break;
+        case 'year':
+            const thisYear = new Date();
+            tanggal_awal = new Date(thisYear.getFullYear(), 0, 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(thisYear.getFullYear(), 11, 31).toISOString().split('T')[0];
+            break;
+        case 'custom':
+            tanggal_awal = tanggal_akhir = customDate;
+            break;
+        case 'custom_month':
+            const customYear = parseInt(year);
+            const customMonth = parseInt(month);
+            tanggal_awal = new Date(customYear, customMonth - 1, 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(customYear, customMonth, 0).toISOString().split('T')[0];
+            break;
+        default:
+            tanggal_awal = tanggal_akhir = new Date().toISOString().split('T')[0];
+    }
+
+    window.open(`export_excel.php?tanggal_awal=${tanggal_awal}&tanggal_akhir=${tanggal_akhir}&status=selesai`, '_blank');
 }
 
 function exportPDF() {
-    const params = new URLSearchParams(window.location.search);
-    params.set('export', 'pdf');
-    window.open('export.php?' + params.toString(), '_blank');
+    // Get date filter parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateFilter = urlParams.get('date_filter') || 'today';
+    const customDate = urlParams.get('custom_date') || new Date().toISOString().split('T')[0];
+    const year = urlParams.get('year') || new Date().getFullYear();
+    const month = urlParams.get('month') || new Date().getMonth() + 1;
+
+    // Convert date filter to tanggal_awal and tanggal_akhir
+    let tanggal_awal, tanggal_akhir;
+
+    switch(dateFilter) {
+        case 'today':
+            tanggal_awal = tanggal_akhir = new Date().toISOString().split('T')[0];
+            break;
+        case 'yesterday':
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            tanggal_awal = tanggal_akhir = yesterday.toISOString().split('T')[0];
+            break;
+        case 'week':
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            tanggal_awal = weekAgo.toISOString().split('T')[0];
+            tanggal_akhir = new Date().toISOString().split('T')[0];
+            break;
+        case 'month':
+            const thisMonth = new Date();
+            tanggal_awal = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(thisMonth.getFullYear(), thisMonth.getMonth() + 1, 0).toISOString().split('T')[0];
+            break;
+        case 'year':
+            const thisYear = new Date();
+            tanggal_awal = new Date(thisYear.getFullYear(), 0, 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(thisYear.getFullYear(), 11, 31).toISOString().split('T')[0];
+            break;
+        case 'custom':
+            tanggal_awal = tanggal_akhir = customDate;
+            break;
+        case 'custom_month':
+            const customYear = parseInt(year);
+            const customMonth = parseInt(month);
+            tanggal_awal = new Date(customYear, customMonth - 1, 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(customYear, customMonth, 0).toISOString().split('T')[0];
+            break;
+        default:
+            tanggal_awal = tanggal_akhir = new Date().toISOString().split('T')[0];
+    }
+
+    window.open(`export_pdf.php?tanggal_awal=${tanggal_awal}&tanggal_akhir=${tanggal_akhir}&status=selesai`, '_blank');
+}
+
+function exportExcelAdvanced() {
+    // Get date filter parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateFilter = urlParams.get('date_filter') || 'today';
+    const customDate = urlParams.get('custom_date') || new Date().toISOString().split('T')[0];
+    const year = urlParams.get('year') || new Date().getFullYear();
+    const month = urlParams.get('month') || (new Date().getMonth() + 1);
+
+    // Convert date filter to tanggal_awal and tanggal_akhir
+    let tanggal_awal, tanggal_akhir;
+
+    switch(dateFilter) {
+        case 'today':
+            tanggal_awal = tanggal_akhir = new Date().toISOString().split('T')[0];
+            break;
+        case 'yesterday':
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            tanggal_awal = tanggal_akhir = yesterday.toISOString().split('T')[0];
+            break;
+        case 'week':
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            tanggal_awal = weekAgo.toISOString().split('T')[0];
+            tanggal_akhir = new Date().toISOString().split('T')[0];
+            break;
+        case 'month':
+            const thisMonth = new Date();
+            tanggal_awal = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(thisMonth.getFullYear(), thisMonth.getMonth() + 1, 0).toISOString().split('T')[0];
+            break;
+        case 'year':
+            const thisYear = new Date();
+            tanggal_awal = new Date(thisYear.getFullYear(), 0, 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(thisYear.getFullYear(), 11, 31).toISOString().split('T')[0];
+            break;
+        case 'custom':
+            tanggal_awal = tanggal_akhir = customDate;
+            break;
+        case 'custom_month':
+            const customYear = parseInt(year);
+            const customMonth = parseInt(month);
+            tanggal_awal = new Date(customYear, customMonth - 1, 1).toISOString().split('T')[0];
+            tanggal_akhir = new Date(customYear, customMonth, 0).toISOString().split('T')[0];
+            break;
+        default:
+            tanggal_awal = tanggal_akhir = new Date().toISOString().split('T')[0];
+    }
+
+    window.open(`export_excel_advanced.php?tanggal_awal=${tanggal_awal}&tanggal_akhir=${tanggal_akhir}&status=selesai`, '_blank');
 }
 
 function printReport() {

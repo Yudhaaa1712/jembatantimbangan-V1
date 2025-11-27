@@ -102,7 +102,7 @@ class HardwareConfig {
      */
     public static function generateBridgeConfig($com_port = null) {
         if ($com_port === null) {
-            $com_port = self::findSonicA28EPort();
+            $com_port = self::findSonicA28EPort();  
         }
 
         $config = [

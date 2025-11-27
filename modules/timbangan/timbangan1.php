@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $material = clean_input($_POST['material']);
     $harga = clean_input($_POST['harga']);
     $berat = clean_input($_POST['berat']);
+    $keterangan = clean_input($_POST['keterangan'] ?? '');
 
     // DEBUG: Log setelah cleaning
     error_log("After cleaning - Material: '$material', Harga: '$harga', Berat: '$berat'");
@@ -42,15 +43,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Material validation with fallback
     if (empty($material)) {
-        $material = 'TBS'; // Default material
+        $material = 'tbs'; // Default material (lowercase)
         error_log("Material was empty, set to default: '$material'");
     }
 
+    // Normalize material to lowercase
+    $material = strtolower($material);
+
     // Validate material is in allowed list
-    $allowed_materials = ['TBS','brondolan'];
+    $allowed_materials = ['tbs', 'brondolan'];
     if (!in_array($material, $allowed_materials)) {
-        $material = 'TBS'; // Default to valid material
-        error_log("Invalid material '$material', set to default 'TBS'");
+        $material = 'tbs'; // Default to valid material
+        error_log("Invalid material '$material', set to default 'tbs'");
     }
 
     // Harga validation
@@ -70,55 +74,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         error_log("✅ Form validation passed. Proceeding with insert...");
 
-        // Generate nomor tiket
-        $no_tiket = generate_ticket_number($conn);
+        try {
+            // Generate nomor tiket yang aman dengan reserved mechanism
+            $no_tiket = generate_ticket_number($conn);
 
-        // Get supplier ID first
-        $supplier_id = null;
-        $supplier_query = "SELECT id FROM supplier WHERE nama_supplier = ?";
-        $supplier_stmt = mysqli_prepare($conn, $supplier_query);
-        mysqli_stmt_bind_param($supplier_stmt, "s", $nama_suplier);
-        mysqli_stmt_execute($supplier_stmt);
-        $supplier_result = mysqli_stmt_get_result($supplier_stmt);
-        if ($supplier_row = mysqli_fetch_assoc($supplier_result)) {
-            $supplier_id = $supplier_row['id'];
-        } else {
-            $error_message = "Supplier tidak ditemukan: " . $nama_suplier;
-            error_log("❌ Supplier not found: $nama_suplier");
-        }
-        mysqli_stmt_close($supplier_stmt);
-
-        // Only proceed if supplier found
-        if ($supplier_id) {
-            // Insert data ke database
-            $query = "INSERT INTO transaksi_timbangan
-                      (no_tiket, no_polisi, nama_supir, id_supplier, jenis_material, harga_per_kg, berat_bruto, berat_timbangan1, tanggal, created_at, status, timbang1_locked, waktu_timbangan1)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), NOW(), 'timbang_1', 1, NOW())";
-
-            // DEBUG: Log query parameters
-            error_log("=== QUERY DEBUG ===");
-            error_log("Query: " . $query);
-            error_log("Parameters: no_tiket=$no_tiket, no_polisi=$no_kendaraan, nama_supir=$nama_pengemudi, supplier_id=$supplier_id");
-            error_log("Material: '$material', Harga: '$harga', Berat: '$berat'");
-
-            $stmt = mysqli_prepare($conn, $query);
-            mysqli_stmt_bind_param($stmt, "sssisddd", $no_tiket, $no_kendaraan, $nama_pengemudi, $supplier_id, $material, $harga, $berat, $berat);
-
-            if (mysqli_stmt_execute($stmt)) {
-                error_log("✅ INSERT SUCCESS for tiket: $no_tiket");
-                $success_message = "Data timbangan 1 berhasil disimpan dengan nomor tiket: " . $no_tiket;
+            // Get supplier ID first
+            $supplier_id = null;
+            $supplier_query = "SELECT id FROM supplier WHERE nama_supplier = ?";
+            $supplier_stmt = mysqli_prepare($conn, $supplier_query);
+            mysqli_stmt_bind_param($supplier_stmt, "s", $nama_suplier);
+            mysqli_stmt_execute($supplier_stmt);
+            $supplier_result = mysqli_stmt_get_result($supplier_stmt);
+            if ($supplier_row = mysqli_fetch_assoc($supplier_result)) {
+                $supplier_id = $supplier_row['id'];
             } else {
-                $error_msg = mysqli_error($conn);
-                error_log("❌ INSERT FAILED: " . $error_msg);
-                $error_message = "Gagal menyimpan data: " . $error_msg;
+                $error_message = "Supplier tidak ditemukan: " . $nama_suplier;
+                error_log("❌ Supplier not found: $nama_suplier");
             }
-            mysqli_stmt_close($stmt);
+            mysqli_stmt_close($supplier_stmt);
+
+            // Only proceed if supplier found
+            if ($supplier_id) {
+                // Prepare data for activation
+                $data = [
+                    'no_polisi' => $no_kendaraan,
+                    'nama_supir' => $nama_pengemudi,
+                    'id_supplier' => $supplier_id,
+                    'jenis_material' => $material,
+                    'harga_per_kg' => $harga,
+                    'berat_bruto' => $berat,
+                    'berat_timbangan1' => $berat,
+                    'keterangan' => $keterangan,
+                    'operator_id' => $_SESSION['user_id']
+                ];
+
+                // Activate the reserved ticket with actual data
+                if (activate_reserved_ticket($conn, $no_tiket, $data)) {
+                    error_log("✅ TICKET ACTIVATION SUCCESS for tiket: $no_tiket");
+                    $success_message = "Data timbangan 1 berhasil disimpan dengan nomor tiket: " . $no_tiket;
+                } else {
+                    // Fallback ke sistem lama jika activation gagal
+                    error_log("⚠️ TICKET ACTIVATION FAILED, using fallback for tiket: $no_tiket");
+
+                    // Hapus reserved ticket yang gagal
+                    $delete_query = "DELETE FROM transaksi_timbangan WHERE no_tiket = ? AND status = 'reserved'";
+                    $delete_stmt = mysqli_prepare($conn, $delete_query);
+                    mysqli_stmt_bind_param($delete_stmt, "s", $no_tiket);
+                    mysqli_stmt_execute($delete_stmt);
+                    mysqli_stmt_close($delete_stmt);
+
+                    // Gunakan sistem insert langsung sebagai fallback
+                    $fallback_query = "INSERT INTO transaksi_timbangan
+                                      (no_tiket, no_polisi, nama_supir, id_supplier, jenis_material,
+                                       harga_per_kg, berat_bruto, berat_timbangan1, keterangan,
+                                       tanggal, created_at, status, timbang1_locked, waktu_timbangan1, operator_id)
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), NOW(), 'timbang_1', 1, NOW(), ?)";
+
+                    $fallback_stmt = mysqli_prepare($conn, $fallback_query);
+                    mysqli_stmt_bind_param($fallback_stmt, "sssisdddsi",
+                        $no_tiket, $no_kendaraan, $nama_pengemudi, $supplier_id,
+                        $material, $harga, $berat, $berat, $keterangan, $_SESSION['user_id']);
+
+                    if (mysqli_stmt_execute($fallback_stmt)) {
+                        error_log("✅ FALLBACK INSERT SUCCESS for tiket: $no_tiket");
+                        $success_message = "Data timbangan 1 berhasil disimpan dengan nomor tiket: " . $no_tiket . " (fallback mode)";
+                    } else {
+                        $error_message = "Gagal menyimpan data (fallback juga gagal): " . mysqli_error($conn);
+                        error_log("❌ FALLBACK INSERT FAILED for tiket: $no_tiket");
+                    }
+                    mysqli_stmt_close($fallback_stmt);
+                }
+            }
+
+        } catch (Exception $e) {
+            // Fallback ke sistem generate tiket sederhana jika ada error
+            error_log("⚠️ NEW SYSTEM ERROR, using simple fallback: " . $e->getMessage());
+
+            // Generate tiket sederhana tanpa reservation
+            $today = date('Y-m-d');
+            $date_prefix = date('ymd');
+            $simple_query = "SELECT COALESCE(MAX(CAST(SUBSTRING(no_tiket, -3) AS UNSIGNED)), 0) as max_num
+                            FROM transaksi_timbangan
+                            WHERE tanggal = ? AND no_tiket LIKE 'TKT-{$date_prefix}%'";
+
+            $simple_stmt = mysqli_prepare($conn, $simple_query);
+            mysqli_stmt_bind_param($simple_stmt, "s", $today);
+            mysqli_stmt_execute($simple_stmt);
+            $simple_result = mysqli_stmt_get_result($simple_stmt);
+            $simple_row = mysqli_fetch_assoc($simple_result);
+            mysqli_stmt_close($simple_stmt);
+
+            $max_num = intval($simple_row['max_num'] ?? 0);
+            $number = $max_num + 1;
+            $no_tiket = 'TKT-' . $date_prefix . '-' . str_pad($number, 3, '0', STR_PAD_LEFT);
+
+            // Get supplier ID
+            $supplier_id = null;
+            $supplier_query = "SELECT id FROM supplier WHERE nama_supplier = ?";
+            $supplier_stmt = mysqli_prepare($conn, $supplier_query);
+            mysqli_stmt_bind_param($supplier_stmt, "s", $nama_suplier);
+            mysqli_stmt_execute($supplier_stmt);
+            $supplier_result = mysqli_stmt_get_result($supplier_stmt);
+            if ($supplier_row = mysqli_fetch_assoc($supplier_result)) {
+                $supplier_id = $supplier_row['id'];
+            }
+            mysqli_stmt_close($supplier_stmt);
+
+            if ($supplier_id) {
+                $fallback_query = "INSERT INTO transaksi_timbangan
+                                  (no_tiket, no_polisi, nama_supir, id_supplier, jenis_material,
+                                   harga_per_kg, berat_bruto, berat_timbangan1, keterangan,
+                                   tanggal, created_at, status, timbang1_locked, waktu_timbangan1, operator_id)
+                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), NOW(), 'timbang_1', 1, NOW(), ?)";
+
+                $fallback_stmt = mysqli_prepare($conn, $fallback_query);
+                mysqli_stmt_bind_param($fallback_stmt, "sssisdddsi",
+                    $no_tiket, $no_kendaraan, $nama_pengemudi, $supplier_id,
+                    $material, $harga, $berat, $berat, $keterangan, $_SESSION['user_id']);
+
+                if (mysqli_stmt_execute($fallback_stmt)) {
+                    error_log("✅ EMERGENCY FALLBACK SUCCESS for tiket: $no_tiket");
+                    $success_message = "Data timbangan 1 berhasil disimpan dengan nomor tiket: " . $no_tiket . " (emergency mode)";
+                } else {
+                    $error_message = "Gagal menyimpan data: " . mysqli_error($conn);
+                    error_log("❌ EMERGENCY FALLBACK FAILED: " . mysqli_error($conn));
+                }
+                mysqli_stmt_close($fallback_stmt);
+            } else {
+                $error_message = "Supplier tidak ditemukan dan sistem fallback mengalami error: " . $e->getMessage();
+            }
         }
     }
 }
 
-// Get data untuk dropdown suplier - with caching
-$cache_key = 'supplier_list_' . date('Y-m-d');
+// Get data untuk dropdown suplier - with shorter cache time
+$cache_key = 'supplier_list_' . date('Y-m-d-H'); // Cache per jam bukan per hari
 $suplier_list = cache_get($cache_key);
 
 if ($suplier_list === null) {
@@ -128,145 +218,121 @@ if ($suplier_list === null) {
     while ($row = mysqli_fetch_assoc($result)) {
         $suplier_list[] = $row;
     }
-    cache_set($cache_key, $suplier_list, 3600); // Cache for 1 hour
+    cache_set($cache_key, $suplier_list, 300); // Cache for 5 minutes only
 }
 ?>
 
-<div class="container-fluid py-4">
-    <div class="row">
+<div class="container-fluid vh-100 py-2" style="max-height: 100vh; overflow: hidden;">
+    <div class="row h-100">
         <div class="col-12">
-            <div class="card border-0 bg-dark text-light shadow-lg">
-                <div class="card-header bg-gradient border-0 py-3">
+            <div class="card border-0 bg-dark text-light shadow-lg h-100">
+                <div class="card-header bg-gradient border-0 py-2">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h5 class="mb-0 text-white">
-                                <i class="fas fa-weight me-2"></i>TIMBANGAN 1
-                            </h5>
+                            <h4 class="mb-0 text-white">
+                               TIMBANGAN 1
+                            </h4>
                             <small class="text-light opacity-75">Input Data Awal Timbangan</small>
                         </div>
                         <div class="text-end">
-                            <div class="badge bg-danger fs-6" id="currentDateTime"></div>
+                            <div class="badge bg-danger" id="currentDateTime" style="font-size: 0.9rem;"></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card-body p-4">
+                <div class="card-body p-2" style="overflow-y: auto; max-height: calc(100vh - 80px);">
                     <?php if (isset($success_message)): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="fas fa-check-circle me-2"></i><?= $success_message ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <div class="alert alert-success alert-dismissible fade show py-1" role="alert">
+                            <?= $success_message ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" style="font-size: 0.8rem;"></button>
                         </div>
                     <?php endif; ?>
 
                     <?php if (isset($error_message)): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-circle me-2"></i><?= $error_message ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <div class="alert alert-danger alert-dismissible fade show py-1" role="alert">
+                            <?= $error_message ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" style="font-size: 0.8rem;"></button>
                         </div>
                     <?php endif; ?>
 
                     <form method="POST" id="timbangan1Form">
                         <div class="row g-3">
-                            <!-- Nomor Kendaraan -->
-                            <div class="col-md-4">
-                                <label class="form-label text-warning">
-                                    <i class="fas fa-truck me-1"></i>Nomor Kendaraan
-                                </label>
-                                <input type="text" name="no_kendaraan" class="form-control bg-dark text-white border-secondary"
-                                       placeholder="BM" required>
-                            </div>
 
-                            <!-- Nama Pengemudi -->
-                            <div class="col-md-4">
-                                <label class="form-label text-warning">
-                                    <i class="fas fa-user me-1"></i>Nama Pengemudi
-                                </label>
-                                <input type="text" name="nama_pengemudi" class="form-control bg-dark text-white border-secondary"
-                                       placeholder="Masukkan nama pengemudi" required>
-                            </div>
-
-                            <!-- Nama Suplier -->
-                            <div class="col-md-4">
-                                <label class="form-label text-warning">
-                                    <i class="fas fa-building me-1"></i>Nama Suplier
-                                </label>
-                                <select name="nama_suplier" class="form-select bg-dark text-white border-secondary" required>
-                                    <option value="">Pilih Suplier</option>
-                                    <?php foreach ($suplier_list as $suplier): ?>
-                                        <option value="<?= $suplier['nama_supplier'] ?>"><?= $suplier['nama_supplier'] ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <!-- Material -->
-                            <div class="col-md-4">
-                                <label class="form-label text-warning">
-                                    <i class="fas fa-box me-1"></i>Material
-                                </label>
-                                <select name="material" class="form-select bg-dark text-white border-secondary" required>
-                                    <?php echo get_material_options('TBS'); ?>
-                                </select>
-                            </div>
-
-                            <!-- Harga -->
-                            <div class="col-md-4">
-                                <label class="form-label text-warning">
-                                    <i class="fas fa-tag me-1"></i>Harga per Kg
-                                </label>
-                                <input type="text" name="harga_display" class="form-control bg-dark text-white border-secondary"
-                                       id="hargaInput" placeholder="Rp 0" required>
-                                <input type="hidden" name="harga" id="hargaValue" value="0">
-                            </div>
-
-                            <!-- Display Timbangan 1 -->
-                            <div class="col-md-6">
-                                <div class="card bg-secondary border-0">
-                                    <div class="card-body">
-                                        <label class="form-label text-warning fs-5">
-                                            <i class="fas fa-weight me-1"></i>Display Timbangan 1
-                                        </label>
-                                        <div class="display-4 text-danger fw-bold" id="weightDisplay">0 Kg</div>
-                                        <small class="text-light opacity-75" id="weightStatus">Menunggu koneksi ke indikator...</small>
-                                        <div class="mt-2 mb-3">
-                                            <button type="button" class="btn btn-outline-info btn-sm w-100" id="toggleConnection">
-                                                <i class="fas fa-plug me-2"></i>Connect Indicator
-                                            </button>
-                                        </div>
-                                        <div class="mt-3">
-                                            <button type="button" class="btn btn-outline-warning btn-lg w-100" id="captureWeight">
-                                                <i class="fas fa-camera me-2"></i>CAPTURE TIMBANG
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Form Input Hasil Timbang 1 -->
-                            <div class="col-md-6">
-                                <div class="card bg-dark border-0">
-                                    <div class="card-body">
-                                        <label class="form-label text-info fs-5">
-                                            <i class="fas fa-edit me-1"></i>Input Hasil Timbang 1 (BRUTO)
-                                        </label>
-                                        <div class="form-group mb-3">
-                                            <label class="form-label text-light">Berat Timbangan 1 (Kg)</label>
-                                            <input type="number" class="form-control bg-dark text-white border-secondary"
-                                                   name="berat" id="beratInputForm" value="0"
-                                                   placeholder="Masukkan berat dalam Kg" step="1" min="0" readonly>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Tombol Aksi -->
+                            <!-- Timbangan Section -->
                             <div class="col-12">
-                                <div class="d-flex justify-content-between">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
-                                        <i class="fas fa-redo me-2"></i>RESET
-                                    </button>
-                                    <button type="submit" class="btn btn-success btn-lg px-5">
-                                        <i class="fas fa-save me-2"></i>SIMPAN DATA
-                                    </button>
+                                <div class="row g-3">
+                                    <div class="col-md-8">
+                                        <!-- Data Kendaraan -->
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <label class="form-label">No. Kendaraan</label>
+                                                <input type="text" name="no_kendaraan" class="form-control"
+                                                       placeholder="BM 1234" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Pengemudi</label>
+                                                <input type="text" name="nama_pengemudi" class="form-control"
+                                                       placeholder="Nama" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Suplier</label>
+                                                <div class="input-group">
+                                                    <select name="nama_suplier" class="form-select" required>
+                                                        <option value="">Pilih Suplier</option>
+                                                        <?php foreach ($suplier_list as $suplier): ?>
+                                                            <option value="<?= $suplier['nama_supplier'] ?>"><?= $suplier['nama_supplier'] ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                    
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Material</label>
+                                                <select name="material" class="form-select" required>
+                                                    <?php echo get_material_options('tbs'); ?>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- Harga & Keterangan -->
+                                        <div class="row g-3 mt-1">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Harga per Kg</label>
+                                                <input type="text" name="harga_display" class="form-control rupiah-input"
+                                                       id="hargaInput" placeholder="0 (format: 1.000.000)" required>
+                                                <input type="hidden" name="harga" id="hargaHidden" value="0">
+                                            </div>
+                                            <div class="col-md-9">
+                                                <label class="form-label">Keterangan</label>
+                                                <input type="text" class="form-control"
+                                                      name="keterangan" placeholder="Opsional">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <!-- DISPLAY PANEL -->
+                                        <div class="card h-100">
+                                            <label class="form-label">DISPLAY</label>
+                                            <div class="display-panel h-75">
+                                                <div class="display-value" id="weightDisplay">0 KG</div>
+                                                <div class="display-status" id="weightStatus">Menunggu...</div>
+                                                <button type="button" class="btn btn-info w-100 mt-3" id="toggleConnection">CONNECT</button>
+                                            </div>
+
+                                            <!-- INPUT MANUAL BERAT (Seperti Timbangan 2) -->
+                                            <div class="mt-3">
+                                                <label class="form-label" style="color: #28a745; font-weight: bold;">INPUT</label>
+                                                    <input type="number" class="form-control" name="berat" id="beratInputForm" value="0" step="1" min="0"
+                                                        style="background: #28a745; color: #fff; font-size: 24px; font-weight: bold; height: auto;">
+                                                <div class="mt-3 d-grid gap-2">
+                                                    <button type="button" class="btn btn-success" id="captureWeight">CAPTURE</button>
+                                                    <button type="submit" class="btn btn-success">SIMPAN</button>
+                                                    <button type="reset" class="btn btn-outline-light">RESET</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -278,48 +344,202 @@ if ($suplier_list === null) {
 </div>
 
 <style>
+/* Style Sama dengan Timbangan 2 */
+
+/* Container Style */
+.container-fluid {
+    background: #212529;
+    padding: 20px;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+/* Box Style - Sama seperti timbangan 2 */
+.card {
+    background: #000000ff;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
 .card-header.bg-gradient {
     background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
 }
 
+/* Form Controls - Sama seperti timbangan 2 */
 .form-control, .form-select {
+    background: #6c757d;
+    border: none;
+    color: #fff;
     border-radius: 8px;
-    border-width: 2px;
-    transition: all 0.3s ease;
+    font-size: 0.95rem;
+    padding: 0.75rem;
+    width: 100%;
+    transition: all 0.2s ease;
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: #dc2626;
-    box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.25);
-    background-color: #2a2a2a;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+    outline: none;
 }
 
+.form-control::placeholder, .form-select::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.form-control:read-only, .form-select:read-only {
+    opacity: 0.7;
+    background: #495057;
+}
+
+/* Labels - Sama seperti timbangan 2 */
 .form-label {
-    font-weight: 600;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
     text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: block;
 }
 
+/* Buttons - Sama seperti timbangan 2 */
 .btn {
-    border-radius: 8px;
-    font-weight: 600;
+    background: transparent;
+    border: 2px solid #fff;
+    color: #fff;
+    font-size: 11px;
+    padding: 8px 15px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.3s ease;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 6px;
 }
 
+/* Input Group untuk supplier dropdown */
+.input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-group .form-select {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-right: none;
+    flex: 1;
+}
+
+.input-group .btn {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: none;
+    min-width: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-group .btn:hover {
+    z-index: 1;
+}
+
+.btn:hover {
+    background: #fff;
+    color: #343a40;
+}
+
+.btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.btn-success {
+    background: #28a745;
+    border-color: #28a745;
+    color: #fff;
+}
+
+.btn-success:hover {
+    background: #218838;
+    border-color: #1e7e34;
+}
+
+.btn-info {
+    background: #17a2b8;
+    border-color: #17a2b8;
+    color: #fff;
+}
+
+.btn-info:hover {
+    background: #138496;
+    border-color: #117a8b;
+}
+
+.btn-warning {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+    border-color: #d39e00;
+}
+
+.btn-outline-light {
+    background: transparent;
+    border-color: #fff;
+    color: #fff;
+}
+
+.btn-outline-light:hover {
+    background: #fff;
+    color: #343a40;
+}
+
+/* Display Panel - Sama seperti timbangan 2 */
+.display-panel {
+    background: #343a40;
+    border: none;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Weight Display - Sama seperti timbangan 2 */
 #weightDisplay {
-    font-family: 'Courier New', monospace;
-    text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
-    animation: pulse 2s infinite;
+    font-size: 48px;
+    font-weight: 700;
+    color: #dc3545;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    margin: 10px 0;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
 }
 
 #beratInputForm {
-    font-family: 'Courier New', monospace;
+    background: #28a745;
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 24px;
     font-weight: bold;
-    font-size: 1.5rem;
+    height: auto;
     text-align: center;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+#beratInputForm:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+    outline: none;
 }
 
 #beratInputForm::-webkit-outer-spin-button,
@@ -328,22 +548,62 @@ if ($suplier_list === null) {
     margin: 0;
 }
 
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.8; }
-    100% { opacity: 1; }
+/* Card Body */
+.card-body {
+    padding: 1.5rem !important;
 }
 
-.card {
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+/* Alerts - Sama seperti timbangan 2 */
+.alert {
+    background: #343a40 !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .form-control, .form-select {
+        font-size: 0.9rem;
+        padding: 0.6rem;
+    }
+
+    #weightDisplay {
+        font-size: 2rem !important;
+    }
+
+    .btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .col-md-3, .col-md-4, .col-md-8 {
+        margin-bottom: 1rem;
+    }
+
+    #beratInputForm {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* No scrollbars */
+html, body {
+    overflow: hidden;
+}
+
+.container-fluid.vh-100 {
+    max-height: 100vh;
+    overflow: hidden;
 }
 </style>
 
 <!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
 <!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/sweetalert2.min.js"></script>
 <!-- Lazy load serial modules only when needed -->
 <script>
 // Load serial modules dynamically when DOM is ready
@@ -419,17 +679,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Format Rupiah
+// Format Rupiah - menggunakan global functions
 document.getElementById('hargaInput').addEventListener('input', function(e) {
-    let value = e.target.value.replace(/[^\d]/g, '');
-    if (value) {
-        e.target.value = 'Rp ' + parseInt(value).toLocaleString('id-ID');
-        // Update hidden field with numeric value
-        document.getElementById('hargaValue').value = parseInt(value);
+    // Parse current value
+    let numValue = parseRupiah(e.target.value);
+
+    // Update hidden field dengan numeric value
+    document.getElementById('hargaHidden').value = numValue;
+});
+
+document.getElementById('hargaInput').addEventListener('blur', function(e) {
+    let numValue = parseRupiah(e.target.value);
+    if (numValue > 0) {
+        e.target.value = formatRupiahInput(numValue);
     } else {
-        e.target.value = 'Rp 0';
-        // Update hidden field with 0
-        document.getElementById('hargaValue').value = '0';
+        e.target.value = '';
+    }
+    document.getElementById('hargaHidden').value = numValue;
+});
+
+document.getElementById('hargaInput').addEventListener('focus', function(e) {
+    let numValue = parseRupiah(e.target.value);
+    if (numValue > 0) {
+        e.target.value = numValue; // Show numeric value for editing
     }
 });
 
@@ -454,7 +726,6 @@ let timbangan1Indicator = null;
 // Initialize Auto Serial Connector
 async function initializeAutoSerialConnector() {
     if (!window.AutoSerialConnector) {
-        console.warn('AutoSerialConnector not available, will use fallback');
         return false;
     }
 
@@ -464,22 +735,19 @@ async function initializeAutoSerialConnector() {
             maxReconnectAttempts: 10,
             reconnectInterval: 3000,
             onConnect: () => {
-                console.log('✅ Auto Serial Connected');
                 updateConnectionUI(true);
                 showNotification('Terhubung ke indikator Sonic A283', 'success');
             },
             onDisconnect: () => {
-                console.log('❌ Auto Serial Disconnected');
                 updateConnectionUI(false);
             },
             onData: (weight) => {
-                console.log('📈 Auto Serial Weight:', weight);
                 currentWeight = weight;
                 lastWeightUpdate = Date.now();
                 updateWeightDisplayAutoSerial(weight);
             },
             onError: (error) => {
-                console.error('❌ Auto Serial Error:', error);
+                console.error('Serial Connection Error:', error);
                 showNotification('Error koneksi serial: ' + error.message, 'error');
                 updateConnectionUI(false);
             }
@@ -489,12 +757,10 @@ async function initializeAutoSerialConnector() {
     // Try auto-connect first
     const autoConnected = await serialConnector.autoConnect();
     if (autoConnected) {
-        console.log('✅ Auto-connect successful');
         return true;
     }
 
     // If auto-connect fails, wait for manual connection
-    console.log('⏳ Auto-connect failed, waiting for manual connection');
     return false;
 }
 
@@ -543,7 +809,6 @@ function updateWeightDisplayAutoSerial(weight) {
 function initializeEnhancedWebSerialTimbangan1() {
     // Check if Enhanced Web Serial API is available
     if (!window.WeightIndicators) {
-        console.warn('Enhanced Web Serial API not loaded yet for Timbangan 1, using fallback mode');
         document.getElementById('weightStatus').textContent = 'Enhanced Web Serial API tidak tersedia. Menggunakan fallback.';
         document.getElementById('weightStatus').className = 'text-warning opacity-75';
         updateConnectionUI(false);
@@ -559,12 +824,9 @@ function initializeEnhancedWebSerialTimbangan1() {
             throw new Error('Failed to create timbangan1 indicator instance');
         }
 
-        console.log('Setting up Enhanced Web Serial callbacks for Timbangan 1...');
-
         // Set up callbacks using the MultiWeightManager
         window.WeightIndicators.onWeightUpdate(function(indicatorId, weight) {
             if (indicatorId === 'timbangan1') {
-                console.log('📈 [Timbangan1] Weight callback received:', weight);
                 currentWeight = weight;
                 lastWeightUpdate = Date.now();
                 updateWeightDisplayWebSerial(weight);
@@ -573,14 +835,13 @@ function initializeEnhancedWebSerialTimbangan1() {
 
         window.WeightIndicators.onConnectionChange(function(indicatorId, connected) {
             if (indicatorId === 'timbangan1') {
-                console.log('🔌 [Timbangan1] Connection callback received:', connected);
                 updateConnectionUI(connected);
             }
         });
 
         window.WeightIndicators.onError(function(indicatorId, error) {
             if (indicatorId === 'timbangan1') {
-                console.error('❌ [Timbangan1] Serial Error callback received:', error);
+                console.error('Timbangan 1 Error:', error);
                 showNotification('Error Timbangan 1: ' + error, 'error');
                 updateConnectionUI(false);
             }
@@ -589,19 +850,17 @@ function initializeEnhancedWebSerialTimbangan1() {
         // Alternative: Set callbacks directly on indicator
         if (typeof timbangan1Indicator.onWeightUpdate === 'function') {
             timbangan1Indicator.onWeightUpdate(function(weight) {
-                console.log('📈 [Timbangan1] Direct weight callback received:', weight);
                 currentWeight = weight;
                 lastWeightUpdate = Date.now();
                 updateWeightDisplayWebSerial(weight);
             });
 
             timbangan1Indicator.onConnectionChange(function(connected) {
-                console.log('🔌 [Timbangan1] Direct connection callback received:', connected);
                 updateConnectionUI(connected);
             });
 
             timbangan1Indicator.onError(function(error) {
-                console.error('❌ [Timbangan1] Direct serial Error callback received:', error);
+                console.error('Timbangan 1 Direct Error:', error);
                 showNotification('Error Timbangan 1: ' + error, 'error');
                 updateConnectionUI(false);
             });
@@ -609,21 +868,6 @@ function initializeEnhancedWebSerialTimbangan1() {
 
         // Initial UI update
         updateConnectionUI(false);
-        console.log('✅ Enhanced Web Serial API callbacks initialized successfully for Timbangan 1');
-
-        // Test callback setup
-        console.log('🔍 Callbacks test for Timbangan 1:');
-        console.log('- MultiWeightManager available:', !!window.WeightIndicators);
-        console.log('- Timbangan1 indicator created:', !!timbangan1Indicator);
-        console.log('- Browser support:', timbangan1Indicator.isSupported());
-
-        // Add test function for manual weight testing
-        window.testWeightUpdateTimbangan1 = function(testWeight) {
-            console.log('🧪 Testing weight update for Timbangan 1 with:', testWeight);
-            updateWeightDisplayWebSerial(testWeight);
-        };
-
-        console.log('💡 Test function available: testWeightUpdateTimbangan1(weight)');
 
     } catch (error) {
         console.error('Failed to initialize Enhanced Web Serial API for Timbangan 1:', error);
@@ -684,7 +928,6 @@ document.getElementById('toggleConnection').addEventListener('click', async func
         // Check if indicator exists and has isConnected property
         if (!indicator || typeof indicator.isConnected === 'undefined') {
             showNotification('Error: Indicator tidak tersedia. Silakan refresh halaman.', 'error');
-            console.error('Connection error timbangan 1: Indicator not properly initialized');
             return;
         }
 
@@ -765,7 +1008,7 @@ function updateConnectionUI(connected) {
             weightStatus.className = 'text-success opacity-75';
         }
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Disconnect Indicator';
+            toggleBtn.innerHTML = 'Disconnect Indicator';
             toggleBtn.className = 'btn btn-outline-danger btn-sm w-100';
         }
     } else {
@@ -774,7 +1017,7 @@ function updateConnectionUI(connected) {
             weightStatus.className = 'text-danger opacity-75';
         }
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Connect Indicator';
+            toggleBtn.innerHTML = 'Connect Indicator';
             toggleBtn.className = 'btn btn-outline-info btn-sm w-100';
         }
     }
@@ -848,7 +1091,7 @@ function updateWeightDisplay() {
                         }
                     }
                     if (toggleBtn) {
-                        toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Disconnect Indicator';
+                        toggleBtn.innerHTML = 'Disconnect Indicator';
                         toggleBtn.className = 'btn btn-outline-danger btn-sm w-100';
                     }
                 } else {
@@ -857,7 +1100,7 @@ function updateWeightDisplay() {
                         weightStatus.className = 'text-danger opacity-75';
                     }
                     if (toggleBtn) {
-                        toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Connect Indicator';
+                        toggleBtn.innerHTML = 'Connect Indicator';
                         toggleBtn.className = 'btn btn-outline-info btn-sm w-100';
                     }
                 }
@@ -876,12 +1119,6 @@ function updateWeightDisplay() {
                     weightStatus.className = 'text-danger opacity-75';
                 }
             }
-        },
-        error: function(xhr, status, error) {
-            if (weightStatus) {
-                weightStatus.textContent = 'Connection Error: ' + error;
-                weightStatus.className = 'text-danger opacity-75';
-            }
         }
     });
 }
@@ -895,7 +1132,6 @@ function updateWeight() {
 }
 
 // Start initial weight update
-console.log('Starting Timbangan1 weight updates...');
 weightInterval = setInterval(updateWeight, 2000);
 updateWeight(); // Initial call
 
@@ -959,7 +1195,7 @@ document.getElementById('captureWeight').addEventListener('click', function() {
     weightDisplay.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.5)';
 
     // Visual feedback button
-    this.innerHTML = '<i class="fas fa-lock me-2"></i>BERAT TERKUNCI!';
+    this.innerHTML = 'BERAT TERKUNCI!';
     this.classList.remove('btn-outline-warning');
     this.classList.add('btn-success');
     this.disabled = true;
@@ -1005,7 +1241,7 @@ function resetForm() {
         // Reset capture button
         const captureBtn = document.getElementById('captureWeight');
         if (captureBtn) {
-            captureBtn.innerHTML = '<i class="fas fa-camera me-2"></i>CAPTURE TIMBANG';
+            captureBtn.innerHTML = 'CAPTURE TIMBANG';
             captureBtn.classList.remove('btn-success');
             captureBtn.classList.add('btn-outline-warning');
             captureBtn.disabled = false;
@@ -1060,23 +1296,14 @@ document.getElementById('timbangan1Form').addEventListener('submit', function(e)
     const material = formData.get('material');
     const harga = formData.get('harga');
 
-    // DEBUG: Log semua form data
-    console.log('=== FORM SUBMISSION DEBUG ===');
-    console.log('FormData entries:', Array.from(formData.entries()));
-    console.log('Material from form:', material);
-    console.log('Harga from form:', harga);
-    console.log('Material select value:', document.querySelector('select[name="material"]').value);
-
     // Validasi material (dengan fallback ke default)
     if (!material || material === '' || material === null) {
-        console.warn('Material kosong, menggunakan default TBS');
         // Set default material ke select field jika kosong
         const materialSelect = document.querySelector('select[name="material"]');
         if (materialSelect) {
-            materialSelect.value = 'TBS';
+            materialSelect.value = 'tbs';
             // Trigger change event untuk update display
             materialSelect.dispatchEvent(new Event('change'));
-            console.log('Set material to default TBS');
         }
     }
 
@@ -1114,6 +1341,46 @@ document.getElementById('timbangan1Form').addEventListener('submit', function(e)
         }
     });
 });
+
+// Refresh supplier list function
+function refreshSupplierList() {
+    $.ajax({
+        url: 'ajax.php',
+        type: 'POST',
+        data: { action: 'refresh_supplier_list' },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                // Update supplier dropdown
+                const select = document.querySelector('select[name="nama_suplier"]');
+                const currentValue = select.value;
+
+                // Clear existing options except first one
+                select.innerHTML = '<option value="">Pilih Suplier</option>';
+
+                // Add new options
+                response.suppliers.forEach(function(supplier) {
+                    const option = document.createElement('option');
+                    option.value = supplier.nama_supplier;
+                    option.textContent = supplier.nama_supplier;
+                    select.appendChild(option);
+                });
+
+                // Restore previous selection if still exists
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+
+                showNotification('Daftar supplier berhasil diperbarui!', 'success');
+            } else {
+                showNotification('Gagal memperbarui daftar supplier', 'error');
+            }
+        },
+        error: function() {
+            showNotification('Terjadi kesalahan saat memperbarui daftar supplier', 'error');
+        }
+    });
+}
 </script>
 
 <?php require_once '../../includes/footer.php'; ?>

@@ -309,7 +309,7 @@ class SupplierHandler extends MasterDataHandler {
     public function __construct($conn) {
         parent::__construct($conn, [
             'table_name' => 'supplier',
-            'columns' => ['kode_supplier', 'nama_supplier', 'alamat', 'no_telepon', 'email', 'npwp', 'kontak_person', 'status'],
+            'columns' => ['kode_supplier', 'nama_supplier', 'alamat', 'no_telepon', 'email', 'npwp', 'kontak_person', 'total_hutang', 'status'],
             'required_fields' => ['kode_supplier', 'nama_supplier'],
             'searchable_fields' => ['kode_supplier', 'nama_supplier', 'alamat', 'no_telepon', 'email'],
             'validation_rules' => [
@@ -317,6 +317,7 @@ class SupplierHandler extends MasterDataHandler {
                 'nama_supplier' => ['required' => true, 'max_length' => 100],
                 'no_telepon' => ['max_length' => 20],
                 'email' => ['email' => true, 'max_length' => 100],
+                'total_hutang' => ['numeric' => true, 'min' => 0],
                 'status' => ['in' => ['active', 'inactive', 'blacklist']]
             ]
         ]);
@@ -334,6 +335,97 @@ class SupplierHandler extends MasterDataHandler {
         if ($count > 0) {
             throw new Exception("Cannot delete supplier: has $count related transactions");
         }
+    }
+
+    /**
+     * Update hutang supplier
+     */
+    public function updateHutang($supplier_id, $jumlah_bayar, $keterangan = '') {
+        // Get current supplier data
+        $supplier = $this->getById($supplier_id);
+        if (!$supplier) {
+            throw new Exception("Supplier not found");
+        }
+
+        $current_hutang = floatval($supplier['total_hutang'] ?? 0);
+        $jumlah_bayar = floatval($jumlah_bayar);
+
+        if ($jumlah_bayar > $current_hutang) {
+            throw new Exception("Jumlah bayar (Rp " . number_format($jumlah_bayar) . ") melebihi total hutang (Rp " . number_format($current_hutang) . ")");
+        }
+
+        $new_hutang = $current_hutang - $jumlah_bayar;
+
+        // Update hutang in database
+        $query = "UPDATE {$this->table_name}
+                  SET total_hutang = ?, hutang_terakhir_update = NOW()
+                  WHERE {$this->primary_key} = ?";
+        $stmt = mysqli_prepare($this->conn, $query);
+        mysqli_stmt_bind_param($stmt, 'di', $new_hutang, $supplier_id);
+
+        if (!mysqli_stmt_execute($stmt)) {
+            throw new Exception("Failed to update hutang: " . mysqli_error($this->conn));
+        }
+
+        // Log hutang transaction (if needed)
+        $this->logHutangTransaction($supplier_id, $current_hutang, $jumlah_bayar, $new_hutang, $keterangan);
+
+        return [
+            'success' => true,
+            'previous_hutang' => $current_hutang,
+            'jumlah_bayar' => $jumlah_bayar,
+            'new_hutang' => $new_hutang
+        ];
+    }
+
+    /**
+     * Add hutang to supplier
+     */
+    public function addHutang($supplier_id, $jumlah_hutang, $keterangan = '') {
+        // Get current supplier data
+        $supplier = $this->getById($supplier_id);
+        if (!$supplier) {
+            throw new Exception("Supplier not found");
+        }
+
+        $current_hutang = floatval($supplier['total_hutang'] ?? 0);
+        $jumlah_hutang = floatval($jumlah_hutang);
+
+        if ($jumlah_hutang <= 0) {
+            throw new Exception("Jumlah hutang harus lebih dari 0");
+        }
+
+        $new_hutang = $current_hutang + $jumlah_hutang;
+
+        // Update hutang in database
+        $query = "UPDATE {$this->table_name}
+                  SET total_hutang = ?, hutang_terakhir_update = NOW()
+                  WHERE {$this->primary_key} = ?";
+        $stmt = mysqli_prepare($this->conn, $query);
+        mysqli_stmt_bind_param($stmt, 'di', $new_hutang, $supplier_id);
+
+        if (!mysqli_stmt_execute($stmt)) {
+            throw new Exception("Failed to update hutang: " . mysqli_error($this->conn));
+        }
+
+        // Log hutang transaction (if needed)
+        $this->logHutangTransaction($supplier_id, $current_hutang, -$jumlah_hutang, $new_hutang, $keterangan);
+
+        return [
+            'success' => true,
+            'previous_hutang' => $current_hutang,
+            'jumlah_hutang' => $jumlah_hutang,
+            'new_hutang' => $new_hutang
+        ];
+    }
+
+    /**
+     * Log hutang transaction (placeholder for future implementation)
+     */
+    private function logHutangTransaction($supplier_id, $previous_hutang, $perubahan, $new_hutang, $keterangan) {
+        // TODO: Implement logging to hutang_transactions table
+        // For now, we could log to general activity logs
+        error_log("HUTANG UPDATE: Supplier ID: $supplier_id, From: $previous_hutang, Change: $perubahan, To: $new_hutang, Note: $keterangan");
     }
 }
 

@@ -270,10 +270,9 @@ include '../../includes/header.php';
 <div class="main-container">
     <div class="page-header">
         <h1 class="page-title">
-            <i class="fas fa-database"></i>
+           🗂️
             Master Data
         </h1>
-        <p class="page-subtitle">Kelola data referensi dan konfigurasi sistem jembatan timbangan</p>
     </div>
 
     <!-- Quick Statistics -->
@@ -298,37 +297,7 @@ include '../../includes/header.php';
         $stats['materials'] = 5; // Fixed for now, can be made dynamic
         ?>
 
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-truck"></i>
-            </div>
-            <div class="stat-value"><?php echo number_format($stats['suppliers']); ?></div>
-            <div class="stat-label">Supplier</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-car"></i>
-            </div>
-            <div class="stat-value"><?php echo number_format($stats['vehicles']); ?></div>
-            <div class="stat-label">Kendaraan</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-users"></i>
-            </div>
-            <div class="stat-value"><?php echo number_format($stats['users']); ?></div>
-            <div class="stat-label">Pengguna</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-cube"></i>
-            </div>
-            <div class="stat-value"><?php echo number_format($stats['materials']); ?></div>
-            <div class="stat-label">Jenis Material</div>
-        </div>
+        
     </div>
 
     <!-- Master Data Categories -->
@@ -337,276 +306,57 @@ include '../../includes/header.php';
         <div class="masterdata-category">
             <div class="category-header">
                 <div class="category-icon">
-                    <i class="fas fa-building"></i>
+                📊
                 </div>
                 <div class="category-title">Data Master Utama</div>
             </div>
-            <p class="category-description">
-                Kelola data utama sistem jembatan timbangan yang menjadi dasar dari seluruh transaksi.
-            </p>
             <ul class="masterdata-list">
                 <li class="masterdata-item">
                     <a href="supplier/" class="masterdata-link">
                         <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-truck-loading"></i></span>
+                            <span class="item-icon">🚚</span>
                             <div class="item-text">
                                 <div class="item-title">Supplier</div>
-                                <div class="item-description">Data pemasok material</div>
                             </div>
                         </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="kendaraan/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-truck"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Kendaraan</div>
-                                <div class="item-description">Data kendaraan pengangkut</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="customer/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-handshake"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Customer</div>
-                                <div class="item-description">Data pembeli produk</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
+                        <span class="item-arrow"></span>
                     </a>
                 </li>
             </ul>
         </div>
 
-        <!-- Data Referensi -->
-        <div class="masterdata-category">
-            <div class="category-header">
-                <div class="category-icon">
-                    <i class="fas fa-list"></i>
-                </div>
-                <div class="category-title">Data Referensi</div>
-            </div>
-            <p class="category-description">
-                Kelola data referensi dan konfigurasi yang digunakan dalam transaksi harian.
-            </p>
-            <ul class="masterdata-list">
-                <li class="masterdata-item">
-                    <a href="material/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-cube"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Jenis Material</div>
-                                <div class="item-description">Tipe material & harga</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="jenis_kendaraan/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-tags"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Jenis Kendaraan</div>
-                                <div class="item-description">Kategori kendaraan</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="settings/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-cog"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Pengaturan Sistem</div>
-                                <div class="item-description">Konfigurasi global</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-            </ul>
-        </div>
 
         <!-- Manajemen Pengguna -->
         <div class="masterdata-category">
             <div class="category-header">
                 <div class="category-icon">
-                    <i class="fas fa-users-cog"></i>
+                   🔑
                 </div>
                 <div class="category-title">Manajemen Pengguna</div>
             </div>
-            <p class="category-description">
-                Kelola akun pengguna dan hak akses sistem.
-            </p>
             <ul class="masterdata-list">
                 <li class="masterdata-item">
                     <a href="../users/" class="masterdata-link">
                         <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-user"></i></span>
+                            <span class="item-icon">👤</span>
                             <div class="item-text">
                                 <div class="item-title">Data Pengguna</div>
-                                <div class="item-description">Kelola akun pengguna</div>
                             </div>
                         </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="roles/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-user-shield"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Hak Akses</div>
-                                <div class="item-description">Role & permissions</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
+                        <span class="item-arrow"></span>
                     </a>
                 </li>
             </ul>
         </div>
 
-        <!-- Data Operasional -->
-        <div class="masterdata-category">
-            <div class="category-header">
-                <div class="category-icon">
-                    <i class="fas fa-cogs"></i>
-                </div>
-                <div class="category-title">Data Operasional</div>
-            </div>
-            <p class="category-description">
-                Kelola data pendukung operasional timbangan.
-            </p>
-            <ul class="masterdata-list">
-                <li class="masterdata-item">
-                    <a href="pricing/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-dollar-sign"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Harga Material</div>
-                                <div class="item-description">Manajemen harga</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="kalibrasi/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-balance-scale"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Kalibrasi Timbangan</div>
-                                <div class="item-description">Record kalibrasi</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="rfid/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-wifi"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">RFID Tags</div>
-                                <div class="item-description">Manajemen tag RFID</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-            </ul>
-        </div>
+       
 
-        <!-- Data Audit & Laporan -->
-        <div class="masterdata-category">
-            <div class="category-header">
-                <div class="category-icon">
-                    <i class="fas fa-clipboard-check"></i>
-                </div>
-                <div class="category-title">Audit & Laporan</div>
-            </div>
-            <p class="category-description">
-                Pantau aktivitas sistem dan histori perubahan data.
-            </p>
-            <ul class="masterdata-list">
-                <li class="masterdata-item">
-                    <a href="activity_logs/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-history"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Log Aktivitas</div>
-                                <div class="item-description">Histori sistem</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="backup/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-database"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Backup Data</div>
-                                <div class="item-description">Cadangkan data</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-
-        <!-- Data Maintenance -->
-        <div class="masterdata-category">
-            <div class="category-header">
-                <div class="category-icon">
-                    <i class="fas fa-tools"></i>
-                </div>
-                <div class="category-title">Maintenance</div>
-            </div>
-            <p class="category-description">
-                Kelola perawatan dan maintenance sistem.
-            </p>
-            <ul class="masterdata-list">
-                <li class="masterdata-item">
-                    <a href="maintenance/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-wrench"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Jadwal Maintenance</div>
-                                <div class="item-description">Perawatan sistem</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-                <li class="masterdata-item">
-                    <a href="system_info/" class="masterdata-link">
-                        <div class="masterdata-link-content">
-                            <span class="item-icon"><i class="fas fa-info-circle"></i></span>
-                            <div class="item-text">
-                                <div class="item-title">Informasi Sistem</div>
-                                <div class="item-description">Status & versi</div>
-                            </div>
-                        </div>
-                        <span class="item-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </a>
-                </li>
-            </ul>
-        </div>
+       
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/bootstrap.bundle.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

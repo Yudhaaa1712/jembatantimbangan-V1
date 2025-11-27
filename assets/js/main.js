@@ -159,7 +159,6 @@ window.Timbangan.utils = {
                 return response.json();
             })
             .catch(error => {
-                console.error('AJAX Error:', error);
                 this.showNotification('Terjadi kesalahan koneksi. Silakan coba lagi.', 'danger');
                 throw error;
             });
@@ -224,7 +223,7 @@ window.Timbangan.weight = {
             }
         })
         .catch(error => {
-            console.error('Weight update failed:', error);
+            // Silently handle weight update errors
         });
     },
 
@@ -447,17 +446,13 @@ window.Timbangan.init = function() {
 
     // Add global error handler
     window.addEventListener('error', function(e) {
-        console.error('Global error:', e.error);
         Timbangan.utils.showNotification('Terjadi kesalahan pada sistem.', 'danger');
     });
 
     // Add unhandled promise rejection handler
     window.addEventListener('unhandledrejection', function(e) {
-        console.error('Unhandled promise rejection:', e.reason);
         Timbangan.utils.showNotification('Terjadi kesalahan pada sistem.', 'danger');
     });
-
-    console.log('Jembatan Timbangan initialized');
 };
 
 // Auto-initialize when DOM is ready

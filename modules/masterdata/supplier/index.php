@@ -327,7 +327,7 @@ include '../../../includes/header.php';
 <div class="page-container">
     <div class="page-header">
         <h1 class="page-title">
-            <i class="fas fa-truck-loading"></i>
+           
             Data Supplier
         </h1>
         <a href="form.php?action=add" class="btn-primary">
@@ -354,7 +354,7 @@ include '../../../includes/header.php';
                 </select>
             </div>
             <button type="submit" class="btn-primary">
-                <i class="fas fa-search"></i>
+               
                 Cari
             </button>
         </form>
@@ -370,6 +370,7 @@ include '../../../includes/header.php';
                     <th>Nama Supplier</th>
                     <th>Kontak Person</th>
                     <th>Telepon</th>
+                    <th>Total Hutang</th>
                     <th>Alamat</th>
                     <th>Status</th>
                     <th>Aksi</th>
@@ -388,6 +389,16 @@ include '../../../includes/header.php';
                     <td><?php echo SecurityUtils::escapeOutput($row['nama_supplier']); ?></td>
                     <td><?php echo SecurityUtils::escapeOutput($row['kontak_person'] ?? '-'); ?></td>
                     <td><?php echo SecurityUtils::escapeOutput($row['no_telepon'] ?? '-'); ?></td>
+                    <td>
+                        <?php
+                        $hutang = floatval($row['total_hutang'] ?? 0);
+                        if ($hutang > 0) {
+                            echo '<span style="color: #ef4444; font-weight: bold;">Rp ' . number_format($hutang, 0, ',', '.') . '</span>';
+                        } else {
+                            echo '<span style="color: #10b981;">Rp 0</span>';
+                        }
+                        ?>
+                    </td>
                     <td><?php echo SecurityUtils::escapeOutput(substr($row['alamat'] ?? '-', 0, 30) . (strlen($row['alamat'] ?? '') > 30 ? '...' : '')); ?></td>
                     <td>
                         <span class="status-badge <?php echo $row['status'] == 'active' ? 'status-active' : 'status-inactive'; ?>">
@@ -397,11 +408,17 @@ include '../../../includes/header.php';
                     <td>
                         <div class="action-buttons">
                             <a href="form.php?action=edit&id=<?php echo $row['id']; ?>" class="btn-action btn-edit">
-                                <i class="fas fa-edit"></i>
+                                
                                 Edit
                             </a>
+                            <?php if ($hutang > 0): ?>
+                            <a href="javascript:void(0)" onclick="kelolaHutang(<?php echo $row['id']; ?>, '<?php echo SecurityUtils::escapeOutput($row['nama_supplier']); ?>', <?php echo $hutang; ?>)" class="btn-action btn-warning" style="background: #f59e0b; color: #fff;">
+                               
+                               Edit Hutang
+                            </a>
+                            <?php endif; ?>
                             <a href="javascript:void(0)" onclick="confirmDelete(<?php echo $row['id']; ?>, '<?php echo SecurityUtils::escapeOutput($row['nama_supplier']); ?>')" class="btn-action btn-delete">
-                                <i class="fas fa-trash"></i>
+                                
                                 Hapus
                             </a>
                         </div>
@@ -450,9 +467,9 @@ include '../../../includes/header.php';
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/bootstrap.bundle.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/sweetalert2.min.js"></script>
 
 <script>
 function confirmDelete(id, name) {
@@ -483,6 +500,145 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     });
 });
+
+// Function untuk kelola hutang
+function kelolaHutang(supplierId, supplierName, currentHutang) {
+    Swal.fire({
+        title: 'Kelola Hutang Supplier',
+        html: `
+            <div style="text-align: left;">
+                <p><strong>Supplier:</strong> ${supplierName}</p>
+                <p><strong>Hutang Saat Ini:</strong> Rp ${currentHutang.toLocaleString('id-ID')}</p>
+                <div class="form-group mt-3">
+                    <label for="jumlahBayar">Jumlah Pembayaran:</label>
+                    <input type="text" id="jumlahBayar" class="swal2-input" placeholder="0" style="text-align: right;">
+                    <small style="color: #666;">Format: 1.000.000 (gunakan titik sebagai pemisah ribuan)</small>
+                </div>
+                <div class="form-group mt-3">
+                    <label for="keteranganBayar">Keterangan:</label>
+                    <textarea id="keteranganBayar" class="swal2-textarea" placeholder="Opsional"></textarea>
+                </div>
+                <div id="errorBayar" style="color: #dc3545; font-size: 14px; margin-top: 10px; display: none;"></div>
+            </div>
+        `,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Bayar Hutang',
+        cancelButtonText: 'Batal',
+        width: '500px',
+        preConfirm: () => {
+            const bayarText = document.getElementById('jumlahBayar').value;
+            const keterangan = document.getElementById('keteranganBayar').value;
+            const errorDiv = document.getElementById('errorBayar');
+
+            // Parse pembayaran
+            const jumlahBayar = parseFloat(bayarText.replace(/[^\d]/g, '')) || 0;
+
+            // Validasi
+            if (jumlahBayar <= 0) {
+                errorDiv.textContent = 'Jumlah pembayaran harus lebih dari 0!';
+                errorDiv.style.display = 'block';
+                return false;
+            }
+
+            if (jumlahBayar > currentHutang) {
+                errorDiv.textContent = `Pembayaran (Rp ${jumlahBayar.toLocaleString('id-ID')}) melebihi hutang (Rp ${currentHutang.toLocaleString('id-ID')})!`;
+                errorDiv.style.display = 'block';
+                return false;
+            }
+
+            errorDiv.style.display = 'none';
+
+            return {
+                supplier_id: supplierId,
+                jumlah_bayar: jumlahBayar,
+                keterangan: keterangan
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            // Show loading
+            Swal.fire({
+                title: 'Memproses...',
+                html: 'Sedang memperbarui data hutang...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // AJAX request to update hutang
+            $.ajax({
+                url: 'hutang_ajax.php',
+                type: 'POST',
+                data: {
+                    action: 'update_hutang',
+                    supplier_id: result.value.supplier_id,
+                    jumlah_bayar: result.value.jumlah_bayar,
+                    keterangan: result.value.keterangan
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            html: `
+                                <div style="text-align: left;">
+                                    <p>Hutang berhasil diperbarui!</p>
+                                    <hr>
+                                    <p><strong>Hutang Sebelumnya:</strong> Rp ${response.data.previous_hutang.toLocaleString('id-ID')}</p>
+                                    <p><strong>Jumlah Bayar:</strong> Rp ${response.data.jumlah_bayar.toLocaleString('id-ID')}</p>
+                                    <p><strong>Sisa Hutang:</strong> Rp ${response.data.new_hutang.toLocaleString('id-ID')}</p>
+                                </div>
+                            `,
+                            confirmButtonColor: '#28a745',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            // Reload page untuk update data
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal!',
+                            text: response.message,
+                            confirmButtonColor: '#dc3545'
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Terjadi kesalahan saat menghubungi server. Silakan coba lagi.',
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            });
+        }
+    });
+
+    // Format currency input
+    setTimeout(() => {
+        const bayarInput = document.getElementById('jumlahBayar');
+        if (bayarInput) {
+            bayarInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^\d]/g, '');
+                if (value) {
+                    value = parseInt(value).toLocaleString('id-ID');
+                    e.target.value = value;
+                }
+            });
+
+            bayarInput.addEventListener('focus', function(e) {
+                e.target.select();
+            });
+        }
+    }, 100);
+}
 </script>
 
 </body>

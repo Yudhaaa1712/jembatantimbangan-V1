@@ -4,6 +4,12 @@ require_once '../../config/database.php';
 require_once '../../includes/material_functions.php';
 require_once '../../includes/cache_manager.php';
 
+// Fungsi format Rupiah PHP yang benar (1.000.000, 500.000, 100.000)
+function formatRupiah($amount) {
+    if ($amount === 0 || !$amount) return 'Rp 0';
+    return 'Rp ' . number_format($amount, 0, '.', '.');
+}
+
 $page_title = 'Timbangan 2';
 require_once '../../includes/header.php';
 
@@ -12,6 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $no_tiket1 = clean_input($_POST['no_tiket1']);
     $persen_potongan = floatval(str_replace(',', '.', clean_input($_POST['persen_potongan'])));
     $berat2 = floatval(clean_input($_POST['berat2']));
+    $keterangan = clean_input($_POST['keterangan'] ?? '');
+    $potong_hutang = floatval(clean_input($_POST['potong_hutang_hidden'] ?? 0));
+    $sisa_hutang = floatval(clean_input($_POST['sisa_hutang'] ?? 0));
+    $total_akhir2 = floatval(clean_input($_POST['total_akhir2'] ?? 0));
 
     // Get data dari timbangan 1
     $query = "SELECT tt.*, s.nama_supplier FROM transaksi_timbangan tt LEFT JOIN supplier s ON tt.id_supplier = s.id WHERE tt.no_tiket = ? AND tt.status = 'timbang_1' AND tt.timbang1_locked = 1";
@@ -49,50 +59,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kg_potongan = $total_potongan; // potonganKg dari JavaScript
 
         // Update transaksi timbangan dengan data lengkap dan hasil perhitungan yang SAMA PERSIS dengan JavaScript
-        // berat_netto akan diisi dengan netto_akhir (hasil akhir setelah potongan) agar sama dengan HASIL PERHITUNGAN OTOMATIS
-        // JANGAN UBAH DATA PERHITUNGAN DI DATABASE!
-        // Update hanya data dasar, biarkan perhitungan lama tetap ada
+        // Simpan semua hasil perhitungan ke database agar konsisten (hanya field yang ada di tabel)
         $update_query = "UPDATE transaksi_timbangan SET
                         berat_tara = ?,
                         berat_timbangan2 = ?,
                         persen_potongan = ?,
+                        keterangan = ?,
+                        potong_hutang = ?,
                         timbang2_locked = 1,
                         waktu_timbangan2 = NOW(),
                         waktu_keluar = NOW(),
-                        status = 'selesai'
+                        status = 'selesai',
+                        berat_netto = ?,
+                        kg_potongan = ?,
+                        total_harga = ?
                         WHERE no_tiket = ? AND timbang1_locked = 1 AND status = 'timbang_1'";
 
         $update_stmt = mysqli_prepare($conn, $update_query);
-        mysqli_stmt_bind_param($update_stmt, "ddds",
+        mysqli_stmt_bind_param($update_stmt, "dddsdddds",
             $tara,             // berat_tara
             $tara,             // berat_timbangan2
             $persenPotongan,   // persen_potongan
+            $keterangan,       // keterangan
+            $potong_hutang,    // potong_hutang
+            $berat_netto,      // berat_netto
+            $kg_potongan,      // kg_potongan
+            $total_harga,      // total_harga
             $no_tiket1         // no_tiket
         );
 
         if (mysqli_stmt_execute($update_stmt)) {
             // Check if update was successful
             if (mysqli_stmt_affected_rows($update_stmt) > 0) {
+                // Update hutang supplier jika ada potongan hutang
+                $hutang_message = '';
+                if ($potong_hutang > 0 && isset($data_timbangan1['id_supplier'])) {
+                    $supplier_id = $data_timbangan1['id_supplier'];
+
+                    // Get current hutang
+                    $hutang_query = "SELECT total_hutang FROM supplier WHERE id = ?";
+                    $hutang_stmt = mysqli_prepare($conn, $hutang_query);
+                    mysqli_stmt_bind_param($hutang_stmt, "i", $supplier_id);
+                    mysqli_stmt_execute($hutang_stmt);
+                    $hutang_result = mysqli_stmt_get_result($hutang_stmt);
+                    $supplier_data = mysqli_fetch_assoc($hutang_result);
+                    mysqli_stmt_close($hutang_stmt);
+
+                    if ($supplier_data) {
+                        $current_hutang = floatval($supplier_data['total_hutang'] ?? 0);
+                        $new_hutang = max(0, $current_hutang - $potong_hutang);
+
+                        // Update supplier hutang
+                        $update_hutang_query = "UPDATE supplier SET total_hutang = ?, hutang_terakhir_update = NOW() WHERE id = ?";
+                        $update_hutang_stmt = mysqli_prepare($conn, $update_hutang_query);
+                        mysqli_stmt_bind_param($update_hutang_stmt, "di", $new_hutang, $supplier_id);
+                        mysqli_stmt_execute($update_hutang_stmt);
+                        mysqli_stmt_close($update_hutang_stmt);
+
+                        $hutang_message = "<p>Hutang Supplier: <strong>Rp " . number_format($new_hutang, 0, ',', '.') . "</strong> (Dipotong: Rp " . number_format($potong_hutang, 0, ',', '.') . ")</p>";
+                    }
+                }
+
                 $success_message = "Data timbangan 2 berhasil disimpan untuk tiket: " . htmlspecialchars($no_tiket1);
 
                 // Tampilkan popup untuk cetak struk dengan data yang BENAR (sesuai JavaScript)
                 // Database tidak diubah, tapi popup tampilkan hasil yang benar
+                // Hitung Total Akhir 2 untuk ditampilkan di sukses message
+                $totalHarga2 = max(0, $totalHarga - $potong_hutang);
+
+                // Langsung print struk tanpa konfirmasi
                 echo "<script>
                     setTimeout(function() {
+                        // Tampilkan notifikasi sukses singkat
                         Swal.fire({
-                            title: 'Transaksi Selesai!',
-                            html: '<p>Data transaksi berhasil disimpan.</p><p>No. Tiket: <strong>" . htmlspecialchars($no_tiket1) . "</strong></p><p>Netto Akhir: <strong>" . number_format($nettoAkhir, 2, ',', '.') . " Kg</strong></p><p>Total Harga: <strong>Rp " . number_format($totalHarga, 0, ',', '.') . "</strong></p>',
+                            title: 'Data Tersimpan!',
+                            html: '<p>No. Tiket: <strong>" . htmlspecialchars($no_tiket1) . "</strong></p><p>Netto: " . number_format($nettoAkhir, 0, ',', '.') . " Kg</p><p>Mencetak struk...</p>',
                             icon: 'success',
-                            showCancelButton: true,
-                            confirmButtonColor: '#16a34a',
-                            cancelButtonColor: '#6c757d',
-                            confirmButtonText: 'Cetak Struk',
-                            cancelButtonText: 'Selesai'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.open('print_ticket.php?no_tiket=" . urlencode($no_tiket1) . "', '_blank');
-                            }
+                            timer: 2000,
+                            timerProgressBar: true,
+                            showConfirmButton: false
                         });
+
+                        // Langsung buka print struk
+                        setTimeout(function() {
+                            window.open('print_ticket.php?no_tiket=" . urlencode($no_tiket1) . "', '_blank');
+                        }, 500);
                     }, 500);
                 </script>";
             } else {
@@ -114,7 +165,7 @@ $tiket_list = cache_get($cache_key_tiket);
 
 if ($tiket_list === null) {
     $tiket_list = [];
-    $query = "SELECT tt.no_tiket, tt.no_polisi, tt.nama_supir, s.nama_supplier, tt.jenis_material, tt.berat_bruto, tt.harga_per_kg, tt.tanggal
+    $query = "SELECT tt.no_tiket, tt.no_polisi, tt.nama_supir, tt.id_supplier, s.nama_supplier, tt.jenis_material, tt.berat_bruto, tt.harga_per_kg, tt.tanggal, tt.keterangan
               FROM transaksi_timbangan tt
               LEFT JOIN supplier s ON tt.id_supplier = s.id
               WHERE tt.status = 'timbang_1' AND tt.timbang1_locked = 1
@@ -128,285 +179,576 @@ if ($tiket_list === null) {
 }
 ?>
 
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 bg-dark text-light shadow-lg">
-                <div class="card-header bg-gradient border-0 py-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <h5 class="mb-0 text-white">
-                                <i class="fas fa-weight me-2"></i>TIMBANGAN 2
-                            </h5>
-                            <small class="text-light opacity-75">Proses Akhir Timbangan dan Perhitungan</small>
-                        </div>
-                        <div class="text-end">
-                            <div class="badge bg-danger fs-6" id="currentDateTime"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-body p-4">
-                    <?php if (isset($success_message)): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="fas fa-check-circle me-2"></i><?= $success_message ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if (isset($error_message)): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-circle me-2"></i><?= $error_message ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    <?php endif; ?>
-
-                    <form method="POST" id="timbangan2Form">
-                        <div class="row g-3">
-                            <!-- Pilih Nomor Tiket -->
-                            <div class="col-md-12">
-                                <label class="form-label text-warning">
-                                    <i class="fas fa-ticket-alt me-1"></i>Pilih Nomor Tiket dari Timbangan 1
-                                    <button type="button" class="btn btn-sm btn-outline-info ms-2" id="refreshTiketBtn" title="Refresh Data Tiket">
-                                        <i class="fas fa-sync-alt"></i> Refresh
-                                    </button>
-                                </label>
-                                <select name="no_tiket1" class="form-select bg-dark text-white border-secondary" id="tiketSelector" required>
-                                    <option value="">Pilih Tiket</option>
-                                    <?php foreach ($tiket_list as $tiket): ?>
-                                        <option value="<?= $tiket['no_tiket'] ?>"
-                                                data-kendaraan="<?= $tiket['no_polisi'] ?>"
-                                                data-pengemudi="<?= $tiket['nama_supir'] ?>"
-                                                data-suplier="<?= $tiket['nama_supplier'] ?>"
-                                                data-material="<?= $tiket['jenis_material'] ?>"
-                                                data-harga="<?= $tiket['harga_per_kg'] ?>"
-                                                data-berat="<?= $tiket['berat_bruto'] ?>">
-                                            <?= $tiket['no_tiket'] ?> - <?= $tiket['no_polisi'] ?> - <?= $tiket['nama_supplier'] ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <small class="text-muted d-block mt-1">
-                                    <i class="fas fa-info-circle"></i> Data refresh setiap 5 menit. Klik refresh untuk update langsung.
-                                </small>
-                            </div>
-
-                            <!-- Data dari Timbangan 1 (Readonly) -->
-                            <div class="col-md-4">
-                                <label class="form-label text-info">
-                                    <i class="fas fa-truck me-1"></i>Nomor Kendaraan
-                                </label>
-                                <input type="text" class="form-control bg-secondary text-white" id="displayKendaraan" readonly>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label text-info">
-                                    <i class="fas fa-user me-1"></i>Nama Pengemudi
-                                </label>
-                                <input type="text" class="form-control bg-secondary text-white" id="displayPengemudi" readonly>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label text-info">
-                                    <i class="fas fa-building me-1"></i>Nama Suplier
-                                </label>
-                                <input type="text" class="form-control bg-secondary text-white" id="displaySuplier" readonly>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label text-info">
-                                    <i class="fas fa-box me-1"></i>Material
-                                </label>
-                                <input type="text" class="form-control bg-secondary text-white" id="displayMaterial" readonly>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label text-info">
-                                    <i class="fas fa-tag me-1"></i>Harga per Kg
-                                </label>
-                                <input type="text" class="form-control bg-secondary text-white" id="displayHarga" readonly>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label text-info">
-                                    <i class="fas fa-weight me-1"></i>Berat Timbangan 1
-                                </label>
-                                <input type="text" class="form-control bg-secondary text-white" id="displayBerat1" readonly>
-                            </div>
-
-                            <!-- Input Timbangan 2 -->
-                            <div class="col-md-4">
-                                <label class="form-label text-warning">
-                                    <i class="fas fa-percentage me-1"></i>Persen Potongan (%)
-                                </label>
-                                <input type="number" name="persen_potongan" class="form-control bg-dark text-white border-secondary"
-                                       id="persenPotongan" step="0.01" min="0" max="100" value="0" required>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label text-warning">
-                                    <i class="fas fa-weight me-1"></i>Display Timbangan 2
-                                </label>
-                                <input type="text" class="form-control bg-dark text-white border-secondary"
-                                       id="weightDisplay2" value="0 Kg" readonly>
-                            </div>
-
-                            <!-- Tombol Capture Timbangan 2 -->
-                            <div class="col-md-5">
-                                <div class="card bg-secondary border-0">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-8">
-                                                <div class="display-4 text-danger fw-bold" id="weightDisplay2Large">0 Kg</div>
-                                                <small class="text-light opacity-75" id="weightStatus2">Menghubungkan ke indikator...</small>
-                                                <div class="mt-2">
-                                                    <button type="button" class="btn btn-outline-info btn-sm" id="toggleConnection2">
-                                                        <i class="fas fa-plug me-2"></i>Connect Indicator
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4 text-end">
-                                                <button type="button" class="btn btn-outline-warning btn-lg" id="captureWeight2">
-                                                    <i class="fas fa-camera me-2"></i>CAPTURE TIMBANG 2
-                                                </button>
-                                                <input type="hidden" name="berat2" id="beratInput2" value="0" required>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Perhitungan Otomatis -->
-                            <div class="col-7">
-                                <div class="card bg-gradient-success border-0">
-                                    <div class="card-body">
-                                        <h6 class="card-title text-white mb-3">
-                                            <i class="fas fa-calculator me-2"></i>HASIL PERHITUNGAN OTOMATIS
-                                        </h6>
-                                        <div class="row text-center g-2 ">
-                                            <div class="col-md-2">
-                                                <div class="p-3 bg-dark rounded">
-                                                    <small class="text-warning d-block mb-1">Bruto </small>
-                                                    <h4 class="text-white mb-0" id="hasilBruto">0 Kg</h4>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="p-3 bg-dark rounded">
-                                                    <small class="text-warning d-block mb-1">Tara</small>
-                                                    <h4 class="text-white mb-0" id="hasilTara">0 Kg</h4>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="p-3 bg-dark rounded">
-                                                    <small class="text-warning d-block mb-1">Netto</small>
-                                                    <h4 class="text-white mb-0" id="hasilNettoBT">0 Kg</h4>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="p-3 bg-dark rounded">
-                                                    <small class="text-warning d-block mb-1">Potongan</small>
-                                                    <h4 class="text-danger mb-0" id="hasilPotongan">0 Kg</h4>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="p-3 bg-dark rounded">
-                                                    <small class="text-warning d-block mb-1">Netto Akhir</small>
-                                                    <h4 class="text-success mb-0" id="hasilNettoAkhir">0 Kg</h4>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="p-3 bg-dark rounded">
-                                                    <small class="text-warning d-block mb-1">Total Harga</small>
-                                                    <h4 class="text-info mb-0" id="hasilTotalHarga">Rp 0</h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Tombol Aksi -->
-                            <div class="col-12">
-                                <div class="d-flex justify-content-between">
-                                    <a href="timbangan1.php" class="btn btn-outline-secondary">
-                                        <i class="fas fa-arrow-left me-2"></i>KEMBALI KE TIMBANGAN 1
-                                    </a>
-                                    <button type="submit" class="btn btn-success btn-lg px-5" id="saveButton" disabled>
-                                        <i class="fas fa-save me-2"></i>SIMPAN & CETAK STRUK
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <style>
-.card-header.bg-gradient {
-    background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+/* Dark Theme seperti Timbangan 1 - Layout Tetap Sama */
+
+/* Container Style */
+.container-fluid {
+    background: #212529;
+    padding: 20px;
+    max-height: 100vh;
+    overflow-y: auto;
 }
 
-.bg-gradient-success {
-    background: linear-gradient(135deg, #16a34a, #15803d) !important;
+/* Box Style - Layout tetap sama, warna diubah */
+.terminal-box {
+    background: #000000ff;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.form-control, .form-select {
-    border-radius: 8px;
-    border-width: 2px;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus, .form-select:focus {
-    border-color: #dc2626;
-    box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.25);
-    background-color: #2a2a2a;
-}
-
-.form-label {
-    font-weight: 600;
+/* Labels */
+.terminal-label {
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
     text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: block;
 }
 
-.btn {
+/* Select Dropdown */
+.terminal-select {
+    background: #6c757d;
+    border: none;
+    color: #fff;
     border-radius: 8px;
-    font-weight: 600;
+    font-size: 12px;
+    padding: 8px;
+    width: 100%;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
-#weightDisplay2Large {
-    font-family: 'Courier New', monospace;
-    text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
-    animation: pulse 2s infinite;
+.terminal-select:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+    outline: none;
 }
 
-#weightDisplay2Large.captured {
-    animation: none;
-    color: #22c55e !important;
-    text-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+.terminal-select option {
+    background: #6c757d;
+    color: #fff;
 }
 
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.8; }
-    100% { opacity: 1; }
+/* Input Fields */
+.terminal-input {
+    background: #6c757d;
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 12px;
+    padding: 8px;
+    width: 100%;
+    text-align: center;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
 }
 
-.card {
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+.terminal-input:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+    outline: none;
+}
+
+.terminal-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.terminal-input:read-only {
+    opacity: 0.7;
+    background: #495057;
+}
+
+/* Buttons */
+.terminal-btn {
+    background: transparent;
+    border: 2px solid #fff;
+    color: #fff;
+    font-size: 11px;
+    padding: 8px 15px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 6px;
+}
+
+.terminal-btn:hover {
+    background: #fff;
+    color: #343a40;
+}
+
+.terminal-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.terminal-btn-primary {
+    background: #28a745;
+    border-color: #28a745;
+    color: #fff;
+}
+
+.terminal-btn-primary:hover {
+    background: #218838;
+    border-color: #1e7e34;
+}
+
+/* Button Warnings - seperti di timbangan 1 */
+.terminal-btn-warning {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.terminal-btn-warning:hover {
+    background: #e0a800;
+    border-color: #d39e00;
+}
+
+/* Button Info - seperti di timbangan 1 */
+.terminal-btn-info {
+    background: #17a2b8;
+    border-color: #17a2b8;
+    color: #fff;
+}
+
+.terminal-btn-info:hover {
+    background: #138496;
+    border-color: #117a8b;
+}
+
+/* Display Panel */
+.display-panel {
+    background: #343a40;
+    border: none;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.display-value {
+    font-size: 48px;
+    font-weight: 700;
+    color: #dc3545;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    margin: 10px 0;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+.display-status {
+    font-size: 11px;
+    color: #fff;
+    opacity: 0.75;
+    margin-top: 5px;
+}
+
+/* Results Grid */
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.result-item {
+    background: #343a40;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.result-label {
+    font-size: 9px;
+    color: #fff;
+    opacity: 0.7;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.result-value {
+    font-size: 14px;
+    color: #fff;
+    font-weight: bold;
+}
+
+/* Alert Override */
+.alert {
+    background: #343a40 !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .display-value {
+        font-size: 32px;
+    }
+    
+    /* Stack layout vertically on mobile */
+    div[style*="grid-template-columns: 1fr 1.5fr"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    div[style*="grid-template-columns: repeat(6, 1fr) auto"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+    background: #000;
+}
+
+::-webkit-scrollbar-track {
+    background: #000;
+    border: 1px solid #0f0;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #0f0;
+}
+
+/* Animation for display */
+@keyframes blink {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0.7; }
+}
+
+.display-value.captured {
+    animation: blink 0.5s ease-in-out 3;
 }
 </style>
 
+<div class="container-fluid">
+    <?php if (isset($success_message)): ?>
+        <div class="alert alert-dismissible fade show" role="alert">
+            <?= $success_message ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($error_message)): ?>
+        <div class="alert alert-dismissible fade show" role="alert">
+           <?= $error_message ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <form method="POST" id="timbangan2Form">
+        <!-- PILIH TIKET - FULL WIDTH -->
+        <div class="terminal-box">
+            <label class="terminal-label">Pilih Tiket</label>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px;">
+                <select name="no_tiket1" class="terminal-select" id="tiketSelector" required>
+                    <option value="">-- PILIH TIKET --</option>
+                    <?php foreach ($tiket_list as $tiket): ?>
+                        <option value="<?= $tiket['no_tiket'] ?>"
+                                data-kendaraan="<?= $tiket['no_polisi'] ?>"
+                                data-pengemudi="<?= $tiket['nama_supir'] ?>"
+                                data-suplier="<?= $tiket['nama_supplier'] ?>"
+                                data-supplier-id="<?= $tiket['id_supplier'] ?>"
+                                data-material="<?= $tiket['jenis_material'] ?>"
+                                data-harga="<?= $tiket['harga_per_kg'] ?>"
+                                data-berat="<?= $tiket['berat_bruto'] ?>"
+                                data-keterangan="<?= htmlspecialchars($tiket['keterangan'] ?? '') ?>">
+                        <?= $tiket['no_tiket'] ?> - <?= $tiket['no_polisi'] ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="button" class="terminal-btn" id="refreshTiketBtn">REFRESH</button>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT: LEFT (DATA) + RIGHT (DISPLAY) -->
+        <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 15px; margin-bottom: 15px;">
+            
+            <!-- LEFT SIDE: DATA TIMBANGAN 1 -->
+            <div class="terminal-box">
+                <label class="terminal-label">Data Timbangan 1</label>
+                
+                <!-- 2 COLUMNS LAYOUT -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    
+                    <!-- COLUMN 1 -->
+                    <div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">No Kendaraan</label>
+                            <input type="text" class="terminal-input" id="displayKendaraan">
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">Supir</label>
+                            <input type="text" class="terminal-input" id="displayPengemudi" >
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">Supplier</label>
+                            <input type="text" class="terminal-input" id="displaySuplier" >
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">Material</label>
+                            <input type="text" class="terminal-input" id="displayMaterial">
+                        </div>
+                        <div>
+                            <label class="terminal-label" style="font-size: 9px;">Harga</label>
+                            <input type="text" class="terminal-input" id="displayHarga">
+                        </div>
+                    </div>
+                    
+                    <!-- COLUMN 2 -->
+                    <div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">Bruto (Timbangan1)</label>
+                            <input type="text" class="terminal-input" id="displayBerat1" >
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">Potongan</label>
+                            <input type="number" name="persen_potongan" class="terminal-input" id="persenPotongan" 
+                                   step="0.01" min="0" max="100" required>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">Keterangan</label>
+                            <input type="text" name="keterangan" class="terminal-input" >
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">Total Hutang</label>
+                            <input type="text" class="terminal-input" id="totalHutangDisplay" readonly style="background: #495057; color: #ef4444; text-align: right;">
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label class="terminal-label" style="font-size: 9px;">Potong Hutang</label>
+                            <input type="text" name="potong_hutang" class="terminal-input rupiah-input" id="potongHutangInput"
+                                   placeholder="0 (format: 1.000.000)" style="text-align: right;">
+                            <input type="hidden" name="potong_hutang_hidden" id="potongHutangHidden" value="0">
+                        </div>
+                        <div>
+                            <label class="terminal-label" style="font-size: 9px;">Sisa Hutang</label>
+                            <input type="text" class="terminal-input" id="sisaHutangDisplay" readonly
+                                   style="background: #495057; color: #10b981; text-align: right;">
+                            <input type="hidden" name="sisa_hutang" id="sisaHutangHidden" value="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT SIDE: DISPLAY PANEL -->
+            <div class="terminal-box">
+                <label class="terminal-label">Display</label>
+                <div class="display-panel">
+                    <div class="display-value" id="weightDisplay2Large">0 KG</div>
+                    <div class="display-status" id="weightStatus2">Menunggu...</div>
+                    <button type="button" class="terminal-btn terminal-btn-info" id="toggleConnection2"
+                            style="margin-top: 15px; width: 100%; padding: 8px;">CONNECT</button>
+                </div>
+
+                <!-- INPUT MANUAL BERAT (Seperti Timbangan 1) -->
+                <div style="margin-top: 15px;">
+                    <label class="terminal-label" style="color: #28a745; font-weight: bold;">INPUT</label>
+                    <input type="number" class="terminal-input" id="beratInputForm2" step="1" min="0"
+                           style="background: #28a745; color: #fff; font-size: 24px; font-weight: bold; height: auto;">
+                    <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button type="button" class="terminal-btn terminal-btn-warning" id="useManualWeight2"
+                                style="width: 100%; padding: 8px;">CAPTURE MANUAL</button>
+                        <button type="button" class="terminal-btn terminal-btn-primary" id="captureWeight2"
+                                style="width: 100%; padding: 8px;">CAPTURE INDIKATOR</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <input type="hidden" name="berat2" id="beratInput2" required>
+<input type="hidden" name="total_akhir2" id="totalAkhir2Hidden" value="0">
+
+        <!-- HASIL PERHITUNGAN - FULL WIDTH BOTTOM -->
+        <div class="terminal-box">
+            <label class="terminal-label">Hasil Perhitungan</label>
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr) auto; gap: 10px; align-items: stretch;">
+                <div class="result-item">
+                    <div class="result-label">Bruto</div>
+                    <div class="result-value" id="hasilBruto">0</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Tara</div>
+                    <div class="result-value" id="hasilTara">0</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Netto Awal</div>
+                    <div class="result-value" id="hasilNettoBT">0</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Potongan</div>
+                    <div class="result-value" id="hasilPotongan">0</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Netto Akhir</div>
+                    <div class="result-value" id="hasilNettoAkhir">0</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Total Akhir</div>
+                    <div class="result-value" id="hasilTotalHarga">0</div>
+                </div>
+                <div class="result-item" style="border: 2px solid #10b981; background: linear-gradient(135deg, #064e3b, #065f46);">
+                    <div class="result-label" style="color: #10b981;">Total Akhir 2</div>
+                    <div class="result-value" id="hasilTotalHarga2" style="color: #10b981;">0</div>
+                </div>
+                <button type="submit" class="terminal-btn terminal-btn-primary" id="saveButton" disabled
+                        style="height: 100%; padding: 15px 25px; white-space: nowrap;">SIMPAN DAN CETAK</button>
+            </div>
+            <div style="margin-top: 10px; padding: 8px; background: #374151; border-radius: 8px; display: none;" id="potongHutangInfo">
+                <small style="color: #f59e0b;">
+                    <strong>💰 Info:</strong> Total Akhir 2 = Total Akhir - Potong Hutang
+                </small>
+            </div>
+        </div>
+
+        <!-- HUTANG SUPPLIER SECTION -->
+        <div class="terminal-box" id="hutangSection" style="display: none; border: 2px solid #dc2626;">
+            <label class="terminal-label" style="color: #dc2626;">📊 Detail Hutang Supplier</label>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; color: #fff;">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #dc2626, #b91c1c);">
+                            <th style="padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase;">No. Tiket</th>
+                            <th style="padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase;">Tanggal</th>
+                            <th style="padding: 12px; text-align: right; font-size: 11px; text-transform: uppercase;">Total Harga</th>
+                            <th style="padding: 12px; text-align: right; font-size: 11px; text-transform: uppercase;">Status Bayar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hutangTableBody">
+                        <tr>
+                            <td colspan="4" style="padding: 20px; text-align: center; opacity: 0.7;">
+                                <div style="display: flex; align-items: center; justify-content: center;">
+                                    <div style="width: 20px; height: 20px; border: 3px solid #dc2626; border-top: 3px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 10px;"></div>
+                                    Loading data hutang...
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: linear-gradient(135deg, #495057, #343a40); font-weight: bold;">
+                            <td colspan="2" style="padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase;">💰 Total Hutang:</td>
+                            <td style="padding: 12px; text-align: right; color: #fbbf24; font-size: 14px; font-weight: 700;" id="totalHutangTable">Rp 0</td>
+                            <td style="padding: 12px;"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        </style>
+
+  </form>
+</div>
+
 <!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/jquery-3.7.1.min.js"></script>
 <!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/sweetalert2.min.js"></script>
+<!-- Function definitions moved here to fix scope issues -->
+<script>
+// Initialize Auto Serial Connector for Timbangan 2
+async function initializeAutoSerialConnector2() {
+    if (!window.AutoSerialConnector) {
+        return false;
+    }
+
+    if (!serialConnector2) {
+        serialConnector2 = new AutoSerialConnector({
+            targetInputId: 'beratInput2',
+            maxReconnectAttempts: 10,
+            reconnectInterval: 3000,
+            onConnect: () => {
+                updateConnectionUI2(true);
+                showNotification2('Terhubung ke indikator Sonic A283', 'success');
+            },
+            onDisconnect: () => {
+                updateConnectionUI2(false);
+            },
+            onData: (weight) => {
+                currentWeight2 = weight;
+                lastWeightUpdate2 = Date.now();
+                updateWeightDisplayAutoSerial2(weight);
+            },
+            onError: (error) => {
+                console.error('Auto Serial Error (Timbangan 2):', error);
+                showNotification2('Error koneksi serial: ' + error.message, 'error');
+                updateConnectionUI2(false);
+            }
+        });
+    }
+
+    // Try auto-connect first
+    const autoConnected = await serialConnector2.autoConnect();
+    if (autoConnected) {
+        return true;
+    }
+
+    return false;
+}
+
+// Update weight display from Auto Serial Connector for Timbangan 2
+function updateWeightDisplayAutoSerial2(weight) {
+    const weightDisplay2Large = document.getElementById('weightDisplay2Large');
+    const weightStatus2 = document.getElementById('weightStatus2');
+    const beratInput2 = document.getElementById('beratInput2');
+
+    // Reset warna display ketika menerima data dari indikator
+    resetDisplayColor();
+
+    // Update display timbangan
+    if (weightDisplay2Large) {
+        // JIKA BERAT SUDAH DI-LOCK, TUNJUKAN BERAT ASLI TAPI DENGAN INDIKATOR
+        if (window.isWeightLocked2) {
+            weightDisplay2Large.innerHTML = `${weight.toLocaleString('id-ID')} KG<br><small style="color: #ffc107; opacity: 0.7;">(Locked: ${window.capturedWeight2.toLocaleString('id-ID')} KG)</small>`;
+        } else {
+            weightDisplay2Large.textContent = weight.toLocaleString('id-ID') + ' KG';
+        }
+    }
+
+    // Update status
+    if (weightStatus2) {
+        if (window.isWeightLocked2) {
+            weightStatus2.textContent = 'Berat terkunci - Timbangan masih aktif';
+        } else if (weight > 0) {
+            weightStatus2.textContent = 'Data diterima dari Sonic A28E';
+        } else {
+            weightStatus2.textContent = 'Terhubung';
+        }
+    }
+
+    // JANGAN UPDATE FORM INPUT JIKA SUDAH DI-LOCK
+    if (beratInput2 && !window.isWeightLocked2) {
+        currentWeight2 = weight;
+        lastWeightUpdate2 = Date.now();
+    } else if (beratInput2 && window.isWeightLocked2) {
+        // Pastikan form input tetap menampilkan berat yang di-lock
+        beratInput2.value = window.capturedWeight2;
+    }
+}
+</script>
+
 <!-- Lazy load serial modules only when needed -->
 <script>
 // Load serial modules dynamically when DOM is ready
@@ -454,8 +796,8 @@ if (document.readyState === 'loading') {
 </script>
 
 <script>
-// Update date and time
-function updateDateTime() {
+// Update date and time untuk Timbangan 2
+function updateDateTime2() {
     const now = new Date();
     const options = {
         weekday: 'long',
@@ -466,14 +808,23 @@ function updateDateTime() {
         minute: '2-digit',
         second: '2-digit'
     };
-    document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
+    const dateTimeElement = document.getElementById('currentDateTime2');
+    if (dateTimeElement) {
+        dateTimeElement.textContent = now.toLocaleDateString('id-ID', options);
+    }
 }
-updateDateTime();
-setInterval(updateDateTime, 1000);
+updateDateTime2();
+setInterval(updateDateTime2, 1000);
 
 // Load data tiket ketika dipilih
 document.getElementById('tiketSelector').addEventListener('change', function() {
     const selectedOption = this.options[this.selectedIndex];
+
+    // Reset hutang section first
+    const hutangSection = document.getElementById('hutangSection');
+    if (hutangSection) {
+        hutangSection.style.display = 'none';
+    }
 
     if (this.value) {
         const displayKendaraan = document.getElementById('displayKendaraan');
@@ -482,11 +833,25 @@ document.getElementById('tiketSelector').addEventListener('change', function() {
         const displayMaterial = document.getElementById('displayMaterial');
         const displayHarga = document.getElementById('displayHarga');
         const displayBerat1 = document.getElementById('displayBerat1');
+        const keteranganTextarea = document.querySelector('input[name="keterangan"]');
         const saveButton = document.getElementById('saveButton');
 
         if (displayKendaraan) displayKendaraan.value = selectedOption.dataset.kendaraan || '';
         if (displayPengemudi) displayPengemudi.value = selectedOption.dataset.pengemudi || '';
         if (displaySuplier) displaySuplier.value = selectedOption.dataset.suplier || '';
+
+        // Load hutang supplier
+        const supplierId = selectedOption.dataset.supplierId;
+        if (supplierId) {
+            loadSupplierHutang(supplierId);
+        }
+
+        // Isi keterangan dari data timbangan 1
+        const keteranganInput = document.querySelector('input[name="keterangan"]');
+        if (keteranganInput) {
+            const keteranganDariTiket = selectedOption.dataset.keterangan || '';
+            keteranganInput.value = keteranganDariTiket;
+        }
 
         // Konversi kode material ke nama deskriptif (dari PHP)
         const materialCodes = <?php echo get_material_js_mapping(); ?>;
@@ -513,31 +878,40 @@ document.getElementById('tiketSelector').addEventListener('change', function() {
         // Reset capture state when changing ticket
         isCaptured2 = false;
         const beratInput2 = document.getElementById('beratInput2');
+        const beratInputForm2 = document.getElementById('beratInputForm2');
+
         if (beratInput2) {
             beratInput2.value = '0';
             beratInput2.readOnly = false;
-            beratInput2.style.backgroundColor = '';
-            beratInput2.style.border = '';
+        }
+
+        // Reset form input manual
+        if (beratInputForm2) {
+            beratInputForm2.value = '0';
+            beratInputForm2.readOnly = false;
         }
 
         // CLEAR LOCK VARIABLES
         window.isWeightLocked2 = false;
         window.capturedWeight2 = 0;
 
+        // Reset capture button
         const captureBtn = document.getElementById('captureWeight2');
         if (captureBtn) {
-            captureBtn.innerHTML = '<i class="fas fa-camera me-2"></i>CAPTURE TIMBANG 2';
-            captureBtn.classList.remove('btn-success');
-            captureBtn.classList.add('btn-outline-warning');
+            captureBtn.innerHTML = 'BUTTON CAPTURE';
             captureBtn.disabled = false;
         }
 
         const weightDisplay2Large = document.getElementById('weightDisplay2Large');
         if (weightDisplay2Large) {
             weightDisplay2Large.classList.remove('captured');
-            weightDisplay2Large.style.color = '';
-            weightDisplay2Large.style.textShadow = '';
-            weightDisplay2Large.innerHTML = '0 Kg'; // Reset dari innerHTML ke textContent
+            weightDisplay2Large.innerHTML = '0 KG';
+        }
+
+        // Reset status
+        const weightStatus2 = document.getElementById('weightStatus2');
+        if (weightStatus2) {
+            weightStatus2.textContent = 'Menghubungkan...';
         }
 
         // Restart weight simulation
@@ -554,6 +928,7 @@ document.getElementById('tiketSelector').addEventListener('change', function() {
         const displayMaterial = document.getElementById('displayMaterial');
         const displayHarga = document.getElementById('displayHarga');
         const displayBerat1 = document.getElementById('displayBerat1');
+        const keteranganTextarea = document.querySelector('input[name="keterangan"]');
         const saveButton = document.getElementById('saveButton');
 
         if (displayKendaraan) displayKendaraan.value = '';
@@ -562,6 +937,7 @@ document.getElementById('tiketSelector').addEventListener('change', function() {
         if (displayMaterial) displayMaterial.value = '';
         if (displayHarga) displayHarga.value = '';
         if (displayBerat1) displayBerat1.value = '';
+        if (keteranganTextarea) keteranganTextarea.value = '';
         if (saveButton) saveButton.disabled = true;
         resetHasilPerhitungan();
     }
@@ -573,130 +949,11 @@ let currentWeight2 = 0;
 let lastWeightUpdate2 = 0;
 let timbangan2Indicator = null;
 
-// Initialize Auto Serial Connector (moved to loadSerialModules2)
-// document.addEventListener('DOMContentLoaded', async function() {
-//     await initializeAutoSerialConnector2();
-//
-//     // Fallback to Enhanced Web Serial API
-//     setTimeout(function() {
-//         if (!serialConnector2 || !serialConnector2.isConnected) {
-//             initializeEnhancedWebSerialTimbangan2();
-//         }
-//     }, 500);
-// });
-
-// Initialize Auto Serial Connector for Timbangan 2
-async function initializeAutoSerialConnector2() {
-    if (!window.AutoSerialConnector) {
-        console.warn('AutoSerialConnector not available, will use fallback');
-        return false;
-    }
-
-    if (!serialConnector2) {
-        serialConnector2 = new AutoSerialConnector({
-            targetInputId: 'beratInput2',
-            maxReconnectAttempts: 10,
-            reconnectInterval: 3000,
-            onConnect: () => {
-                console.log('✅ Auto Serial Connected (Timbangan 2)');
-                updateConnectionUI2(true);
-                showNotification2('Terhubung ke indikator Sonic A283', 'success');
-            },
-            onDisconnect: () => {
-                console.log('❌ Auto Serial Disconnected (Timbangan 2)');
-                updateConnectionUI2(false);
-            },
-            onData: (weight) => {
-                console.log('📈 Auto Serial Weight (Timbangan 2):', weight);
-                currentWeight2 = weight;
-                lastWeightUpdate2 = Date.now();
-                updateWeightDisplayAutoSerial2(weight);
-            },
-            onError: (error) => {
-                console.error('❌ Auto Serial Error (Timbangan 2):', error);
-                showNotification2('Error koneksi serial: ' + error.message, 'error');
-                updateConnectionUI2(false);
-            }
-        });
-    }
-
-    // Try auto-connect first
-    const autoConnected = await serialConnector2.autoConnect();
-    if (autoConnected) {
-        console.log('✅ Auto-connect successful (Timbangan 2)');
-        return true;
-    }
-
-    // If auto-connect fails, wait for manual connection
-    console.log('⏳ Auto-connect failed, waiting for manual connection (Timbangan 2)');
-    return false;
-}
-
-// Update weight display from Auto Serial Connector for Timbangan 2
-function updateWeightDisplayAutoSerial2(weight) {
-    const weightDisplay2 = document.getElementById('weightDisplay2');
-    const weightDisplay2Large = document.getElementById('weightDisplay2Large');
-    const weightStatus2 = document.getElementById('weightStatus2');
-    const beratInput2 = document.getElementById('beratInput2');
-
-    // Update display timbangan
-    if (weightDisplay2Large) {
-        // JIKA BERAT SUDAH DI-LOCK, TUNJUKAN BERAT ASLI TAPI DENGAN INDIKATOR
-        if (window.isWeightLocked2) {
-            weightDisplay2Large.innerHTML = `${weight.toLocaleString('id-ID')} Kg<br><small style="color: #ef4444;">(Locked: ${window.capturedWeight2.toLocaleString('id-ID')} Kg)</small>`;
-            weightDisplay2Large.style.color = '#fbbf24'; // Warna kuning untuk menandakan locked
-        } else {
-            weightDisplay2Large.textContent = weight.toLocaleString('id-ID') + ' Kg';
-        }
-    }
-
-    if (weightDisplay2) {
-        if (window.WeightIndicatorUtils) {
-            if (window.isWeightLocked2) {
-                weightDisplay2.value = `${window.WeightIndicatorUtils.formatWeight(weight)} (Locked: ${window.WeightIndicatorUtils.formatWeight(window.capturedWeight2)})`;
-            } else {
-                weightDisplay2.value = window.WeightIndicatorUtils.formatWeight(weight);
-            }
-        } else {
-            if (window.isWeightLocked2) {
-                weightDisplay2.value = `${weight.toLocaleString('id-ID')} Kg (Locked: ${window.capturedWeight2.toLocaleString('id-ID')} Kg)`;
-            } else {
-                weightDisplay2.value = weight.toLocaleString('id-ID') + ' Kg';
-            }
-        }
-    }
-
-    // Update status
-    if (weightStatus2) {
-        if (window.isWeightLocked2) {
-            weightStatus2.textContent = 'Berat terkunci - Timbangan masih aktif';
-            weightStatus2.className = 'text-warning opacity-75';
-        } else if (weight > 0) {
-            weightStatus2.textContent = 'Data diterima dari Sonic A28E';
-            weightStatus2.className = 'text-success opacity-75';
-        } else {
-            weightStatus2.textContent = 'Terhubung';
-            weightStatus2.className = 'text-light opacity-75';
-        }
-    }
-
-    // JANGAN UPDATE FORM INPUT JIKA SUDAH DI-LOCK
-    if (beratInput2 && !window.isWeightLocked2) {
-        currentWeight2 = weight;
-        lastWeightUpdate2 = Date.now();
-    } else if (beratInput2 && window.isWeightLocked2) {
-        // Pastikan form input tetap menampilkan berat yang di-lock
-        beratInput2.value = window.capturedWeight2;
-    }
-}
-
 // Initialize Enhanced Web Serial API for Timbangan 2
 function initializeEnhancedWebSerialTimbangan2() {
     // Check if Enhanced Web Serial API is available
     if (!window.WeightIndicators) {
-        console.warn('Enhanced Web Serial API not loaded yet for Timbangan 2, using fallback mode');
         document.getElementById('weightStatus2').textContent = 'Enhanced Web Serial API tidak tersedia. Menggunakan fallback.';
-        document.getElementById('weightStatus2').className = 'text-warning opacity-75';
         updateConnectionUI2(false);
         return;
     }
@@ -710,12 +967,9 @@ function initializeEnhancedWebSerialTimbangan2() {
             throw new Error('Failed to create timbangan2 indicator instance');
         }
 
-        console.log('Setting up Enhanced Web Serial callbacks for Timbangan 2...');
-
         // Set up callbacks using the MultiWeightManager
         window.WeightIndicators.onWeightUpdate(function(indicatorId, weight) {
             if (indicatorId === 'timbangan2') {
-                console.log('📈 [Timbangan2] Weight callback received:', weight);
                 currentWeight2 = weight;
                 lastWeightUpdate2 = Date.now();
                 updateWeightDisplay2WebSerial(weight);
@@ -724,14 +978,13 @@ function initializeEnhancedWebSerialTimbangan2() {
 
         window.WeightIndicators.onConnectionChange(function(indicatorId, connected) {
             if (indicatorId === 'timbangan2') {
-                console.log('🔌 [Timbangan2] Connection callback received:', connected);
                 updateConnectionUI2(connected);
             }
         });
 
         window.WeightIndicators.onError(function(indicatorId, error) {
             if (indicatorId === 'timbangan2') {
-                console.error('❌ [Timbangan2] Serial Error callback received:', error);
+                console.error('Serial Error callback received (Timbangan 2):', error);
                 showNotification2('Error Timbangan 2: ' + error, 'error');
                 updateConnectionUI2(false);
             }
@@ -740,19 +993,17 @@ function initializeEnhancedWebSerialTimbangan2() {
         // Alternative: Set callbacks directly on indicator
         if (typeof timbangan2Indicator.onWeightUpdate === 'function') {
             timbangan2Indicator.onWeightUpdate(function(weight) {
-                console.log('📈 [Timbangan2] Direct weight callback received:', weight);
                 currentWeight2 = weight;
                 lastWeightUpdate2 = Date.now();
                 updateWeightDisplay2WebSerial(weight);
             });
 
             timbangan2Indicator.onConnectionChange(function(connected) {
-                console.log('🔌 [Timbangan2] Direct connection callback received:', connected);
                 updateConnectionUI2(connected);
             });
 
             timbangan2Indicator.onError(function(error) {
-                console.error('❌ [Timbangan2] Direct serial Error callback received:', error);
+                console.error('Direct serial Error callback received (Timbangan 2):', error);
                 showNotification2('Error Timbangan 2: ' + error, 'error');
                 updateConnectionUI2(false);
             });
@@ -760,26 +1011,15 @@ function initializeEnhancedWebSerialTimbangan2() {
 
         // Initial UI update
         updateConnectionUI2(false);
-        console.log('✅ Enhanced Web Serial API callbacks initialized successfully for Timbangan 2');
-
-        // Test callback setup
-        console.log('🔍 Callbacks test for Timbangan 2:');
-        console.log('- MultiWeightManager available:', !!window.WeightIndicators);
-        console.log('- Timbangan2 indicator created:', !!timbangan2Indicator);
-        console.log('- Browser support:', timbangan2Indicator.isSupported());
 
         // Add test function for manual weight testing
         window.testWeightUpdateTimbangan2 = function(testWeight) {
-            console.log('🧪 Testing weight update for Timbangan 2 with:', testWeight);
             updateWeightDisplay2WebSerial(testWeight);
         };
-
-        console.log('💡 Test function available: testWeightUpdateTimbangan2(weight)');
 
     } catch (error) {
         console.error('Failed to initialize Enhanced Web Serial API for Timbangan 2:', error);
         document.getElementById('weightStatus2').textContent = 'Gagal inisialisasi Enhanced Web Serial API';
-        document.getElementById('weightStatus2').className = 'text-danger opacity-75';
     }
 }
 
@@ -806,25 +1046,6 @@ document.getElementById('toggleConnection2').addEventListener('click', async fun
     // Fallback to Enhanced Web Serial API
     if (!window.WeightIndicators) {
         showNotification2('Enhanced Web Serial API tidak tersedia. Menggunakan fallback AJAX', 'warning');
-        // Use original AJAX method as fallback
-        const toggleBtn = document.getElementById('toggleConnection2');
-        const currentText = toggleBtn.innerHTML;
-        const isConnected = currentText.includes('Disconnect');
-
-        $.ajax({
-            url: 'ajax.php',
-            type: 'POST',
-            data: {
-                action: 'toggle_indicator_connection',
-                connect: !isConnected
-            },
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    updateWeightDisplay2();
-                }
-            }
-        });
         return;
     }
 
@@ -867,26 +1088,19 @@ document.getElementById('toggleConnection2').addEventListener('click', async fun
 // Update weight display for timbangan 2 via Web Serial API
 function updateWeightDisplay2WebSerial(weight) {
     const weightDisplay2Large = document.getElementById('weightDisplay2Large');
-    const weightDisplay2 = document.getElementById('weightDisplay2');
     const weightStatus2 = document.getElementById('weightStatus2');
     const beratInput2 = document.getElementById('beratInput2');
+
+    // Reset warna display ketika menerima data dari indikator
+    resetDisplayColor();
 
     // Update display timbangan
     if (weightDisplay2Large && window.WeightIndicatorUtils) {
         // JIKA BERAT SUDAH DI-LOCK, TUNJUKAN BERAT ASLI TAPI DENGAN INDIKATOR
         if (window.isWeightLocked2) {
-            weightDisplay2Large.innerHTML = `${window.WeightIndicatorUtils.formatWeight(weight)}<br><small style="color: #ef4444;">(Locked: ${window.WeightIndicatorUtils.formatWeight(window.capturedWeight2)})</small>`;
-            weightDisplay2Large.style.color = '#fbbf24'; // Warna kuning untuk menandakan locked
+            weightDisplay2Large.innerHTML = `${window.WeightIndicatorUtils.formatWeight(weight)}<br><small style="color: #ffc107; opacity: 0.7;">(Locked: ${window.WeightIndicatorUtils.formatWeight(window.capturedWeight2)})</small>`;
         } else {
             weightDisplay2Large.textContent = window.WeightIndicatorUtils.formatWeight(weight);
-        }
-    }
-
-    if (weightDisplay2 && window.WeightIndicatorUtils) {
-        if (window.isWeightLocked2) {
-            weightDisplay2.value = `${window.WeightIndicatorUtils.formatWeight(weight)} (Locked: ${window.WeightIndicatorUtils.formatWeight(window.capturedWeight2)})`;
-        } else {
-            weightDisplay2.value = window.WeightIndicatorUtils.formatWeight(weight);
         }
     }
 
@@ -894,13 +1108,10 @@ function updateWeightDisplay2WebSerial(weight) {
     if (weightStatus2) {
         if (window.isWeightLocked2) {
             weightStatus2.textContent = 'Berat terkunci - Timbangan masih aktif';
-            weightStatus2.className = 'text-warning opacity-75';
         } else if (weight > 0) {
             weightStatus2.textContent = 'Data diterima dari indikator';
-            weightStatus2.className = 'text-success opacity-75';
         } else {
             weightStatus2.textContent = 'Menunggu data dari indikator...';
-            weightStatus2.className = 'text-light opacity-75';
         }
     }
 
@@ -922,20 +1133,16 @@ function updateConnectionUI2(connected) {
     if (connected) {
         if (weightStatus2) {
             weightStatus2.textContent = 'Terhubung ke Sonic A283';
-            weightStatus2.className = 'text-success opacity-75';
         }
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Disconnect Indicator';
-            toggleBtn.className = 'btn btn-outline-danger btn-sm';
+            toggleBtn.innerHTML = 'DISCONNECT';
         }
     } else {
         if (weightStatus2) {
             weightStatus2.textContent = 'Indicator Tidak Terhubung';
-            weightStatus2.className = 'text-danger opacity-75';
         }
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Connect Indicator';
-            toggleBtn.className = 'btn btn-outline-info btn-sm';
+            toggleBtn.innerHTML = 'CONNECT';
         }
     }
 }
@@ -966,7 +1173,7 @@ function updateWeightDisplay2() {
             return;
         }
     } catch (error) {
-        console.log('Error checking Auto Serial status in timbangan 2, using fallback:', error);
+        // Silently fallback to AJAX
     }
 
     // Check if Enhanced Web Serial API is available and connected
@@ -979,105 +1186,25 @@ function updateWeightDisplay2() {
             }
         }
     } catch (error) {
-        console.log('Error checking Enhanced Web Serial status in timbangan 2, using fallback:', error);
+        // Silently fallback to AJAX
     }
 
     const weightDisplay2Large = document.getElementById('weightDisplay2Large');
-    const weightDisplay2 = document.getElementById('weightDisplay2');
     const weightStatus2 = document.getElementById('weightStatus2');
     const toggleBtn = document.getElementById('toggleConnection2');
     const beratInput2 = document.getElementById('beratInput2');
 
     // If no serial connector is available, show 0 weight
     if (!window.serialConnector2) {
-        if (weightDisplay2Large) weightDisplay2Large.textContent = '0 Kg';
-        if (weightDisplay2) weightDisplay2.value = '0 Kg';
+        if (weightDisplay2Large) weightDisplay2Large.textContent = '0 KG';
         if (weightStatus2) {
             weightStatus2.textContent = 'Indicator Tidak Terhubung';
-            weightStatus2.className = 'text-danger opacity-75';
         }
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Connect Indicator';
-            toggleBtn.className = 'btn btn-outline-info btn-sm';
+            toggleBtn.innerHTML = 'CONNECT';
         }
         return;
     }
-
-    $.ajax({
-        url: 'ajax.php',
-        type: 'POST',
-        data: { action: 'get_indicator_status' },
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                const weight = response.data.weight;
-
-                // Update weight display dengan lock indicator
-                if (weightDisplay2Large) {
-                    if (window.isWeightLocked2) {
-                        weightDisplay2Large.innerHTML = `${weight.toLocaleString('id-ID')} Kg<br><small style="color: #ef4444;">(Locked: ${window.capturedWeight2.toLocaleString('id-ID')} Kg)</small>`;
-                        weightDisplay2Large.style.color = '#fbbf24';
-                    } else {
-                        weightDisplay2Large.textContent = weight.toLocaleString('id-ID') + ' Kg';
-                    }
-                }
-
-                if (weightDisplay2) {
-                    if (window.isWeightLocked2) {
-                        weightDisplay2.value = `${weight.toLocaleString('id-ID')} Kg (Locked: ${window.capturedWeight2.toLocaleString('id-ID')} Kg)`;
-                    } else {
-                        weightDisplay2.value = weight.toLocaleString('id-ID') + ' Kg';
-                    }
-                }
-
-                // Update connection status
-                if (response.data.connected) {
-                    if (weightStatus2) {
-                        if (window.isWeightLocked2) {
-                            weightStatus2.textContent = 'Berat terkunci - Terhubung via Bridge Service';
-                            weightStatus2.className = 'text-warning opacity-75';
-                        } else {
-                            weightStatus2.textContent = 'Terhubung via Bridge Service';
-                            weightStatus2.className = 'text-success opacity-75';
-                        }
-                    }
-                    if (toggleBtn) {
-                        toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Disconnect Indicator';
-                        toggleBtn.className = 'btn btn-outline-danger btn-sm';
-                    }
-                } else {
-                    if (weightStatus2) {
-                        weightStatus2.textContent = 'Tidak terhubung';
-                        weightStatus2.className = 'text-danger opacity-75';
-                    }
-                    if (toggleBtn) {
-                        toggleBtn.innerHTML = '<i class="fas fa-plug me-2"></i>Connect Indicator';
-                        toggleBtn.className = 'btn btn-outline-info btn-sm';
-                    }
-                }
-
-                // JANGAN UPDATE FORM INPUT JIKA SUDAH DI-LOCK
-                if (beratInput2 && !window.isWeightLocked2) {
-                    currentWeight2 = weight;
-                    lastWeightUpdate2 = Date.now();
-                } else if (beratInput2 && window.isWeightLocked2) {
-                    // Pastikan form input tetap menampilkan berat yang di-lock
-                    beratInput2.value = window.capturedWeight2;
-                }
-            } else {
-                if (weightStatus2) {
-                    weightStatus2.textContent = 'AJAX Error';
-                    weightStatus2.className = 'text-danger opacity-75';
-                }
-            }
-        },
-        error: function(xhr, status, error) {
-            if (weightStatus2) {
-                weightStatus2.textContent = 'Connection Error: ' + error;
-                weightStatus2.className = 'text-danger opacity-75';
-            }
-        }
-    });
 }
 
 // Simulasi berat timbangan 2 dengan kontrol
@@ -1089,36 +1216,132 @@ function updateWeight2() {
 }
 
 // Start initial weight update
-console.log('Starting Timbangan2 weight updates...');
 weightInterval2 = setInterval(updateWeight2, 2000);
 updateWeight2(); // Initial call
+
+// Fungsi untuk menggunakan input manual tanpa mengganggu koneksi indikator
+document.getElementById('useManualWeight2').addEventListener('click', function() {
+    const beratInputForm2 = document.getElementById('beratInputForm2');
+    const beratInput2 = document.getElementById('beratInput2');
+    const weightDisplay2Large = document.getElementById('weightDisplay2Large');
+    const weightStatus2 = document.getElementById('weightStatus2');
+
+    if (!beratInputForm2 || !beratInput2 || !weightDisplay2Large) {
+        showNotification2('Element tidak ditemukan. Silakan refresh halaman.', 'error');
+        return;
+    }
+
+    const manualWeight = parseFloat(beratInputForm2.value) || 0;
+
+    if (manualWeight <= 0) {
+        showNotification2('Masukkan berat yang valid (lebih dari 0)', 'warning');
+        return;
+    }
+
+    // Update current weight tanpa mengganggu koneksi indikator
+    currentWeight2 = manualWeight;
+    lastWeightUpdate2 = Date.now();
+
+    // Update hidden field langsung - INI YANG PENTING!
+    beratInput2.value = manualWeight;
+
+    // Set lock variables agar tidak di-override
+    window.isWeightLocked2 = false; // Biarkan masih bisa diubah
+    window.capturedWeight2 = manualWeight; // Simpan nilai manual
+
+    // Update display dengan indikator manual
+    if (weightDisplay2Large) {
+        weightDisplay2Large.textContent = manualWeight.toLocaleString('id-ID') + ' KG';
+        weightDisplay2Large.style.color = '#ffc107'; // Kuning untuk menandakan input manual
+        weightDisplay2Large.style.textShadow = '0 0 15px rgba(255, 193, 7, 0.8)';
+    }
+
+    // Update status
+    if (weightStatus2) {
+        weightStatus2.textContent = 'Input Manual - Ready untuk capture';
+        weightStatus2.style.color = '#ffc107';
+    }
+
+    // TRIGGER PERHITUNGAN OTOMATIS - INI YANG KURANG!
+    hitungOtomatis();
+
+    showNotification2(`Berat manual ${manualWeight.toLocaleString('id-ID')} KG digunakan!`, 'success');
+});
+
+// Event listener untuk input manual agar update otomatis saat mengetik
+document.getElementById('beratInputForm2').addEventListener('input', function() {
+    const beratInputForm2 = this;
+    const beratInput2 = document.getElementById('beratInput2');
+    const manualWeight = parseFloat(beratInputForm2.value) || 0;
+
+    // Update hidden field secara real-time saat mengetik
+    if (manualWeight > 0) {
+        beratInput2.value = manualWeight;
+        currentWeight2 = manualWeight;
+        lastWeightUpdate2 = Date.now();
+
+        // Update display warna
+        const weightDisplay2Large = document.getElementById('weightDisplay2Large');
+        if (weightDisplay2Large && !window.isWeightLocked2) {
+            weightDisplay2Large.textContent = manualWeight.toLocaleString('id-ID') + ' KG';
+            weightDisplay2Large.style.color = '#ffc107';
+        }
+
+        // Update status
+        const weightStatus2 = document.getElementById('weightStatus2');
+        if (weightStatus2 && !window.isWeightLocked2) {
+            weightStatus2.textContent = 'Input Manual - Ketik untuk update';
+            weightStatus2.style.color = '#ffc107';
+        }
+
+        // Trigger perhitungan otomatis
+        hitungOtomatis();
+    }
+});
+
+// Fungsi untuk reset warna display ketika menerima data dari indikator
+function resetDisplayColor() {
+    const weightDisplay2Large = document.getElementById('weightDisplay2Large');
+    const weightStatus2 = document.getElementById('weightStatus2');
+
+    if (weightDisplay2Large && !window.isWeightLocked2) {
+        weightDisplay2Large.style.color = '#dc3545'; // Kembali ke merah
+        weightDisplay2Large.style.textShadow = '0 2px 4px rgba(0,0,0,0.3)';
+    }
+
+    if (weightStatus2 && !window.isWeightLocked2) {
+        weightStatus2.style.color = '#fff';
+        weightStatus2.textContent = 'Data diterima dari indikator';
+    }
+}
 
 // Capture berat timbangan 2
 document.getElementById('captureWeight2').addEventListener('click', function() {
     const weightDisplay2Large = document.getElementById('weightDisplay2Large');
     const beratInput2 = document.getElementById('beratInput2');
-    const weightDisplay2 = document.getElementById('weightDisplay2');
 
     if (!weightDisplay2Large || !beratInput2) {
         Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: 'Element tidak ditemukan. Silakan refresh halaman.',
-            confirmButtonColor: '#dc2626'
+            text: 'Element tidak ditemukan. Silakan refresh halaman.'
         });
         return;
     }
 
-    // Check if connected via Auto Serial Connector or Enhanced Web Serial
+    // Check if connected via Auto Serial Connector or Enhanced Web Serial OR using manual input
     let isConnected = false;
+    let isManualInput = window.isWeightLocked2 && window.capturedWeight2 > 0;
+
     if (serialConnector2 && serialConnector2.isConnected) {
         isConnected = true;
     } else if (window.WeightIndicators) {
         isConnected = window.WeightIndicators.get('timbangan2') && window.WeightIndicators.get('timbangan2').isConnected;
     }
 
-    if (!isConnected) {
-        showNotification2('Silakan hubungkan ke indikator terlebih dahulu', 'warning');
+    // Allow capture if either connected OR using manual input
+    if (!isConnected && !isManualInput) {
+        showNotification2('Silakan hubungkan ke indikator atau gunakan input manual', 'warning');
         return;
     }
 
@@ -1145,27 +1368,12 @@ document.getElementById('captureWeight2').addEventListener('click', function() {
     isCaptured2 = true;
     beratInput2.value = weightValue;
     beratInput2.readOnly = true; // FORM INPUT DI-LOCK SEHINGGA TIDAK BISA DIUBAH
-    beratInput2.style.backgroundColor = '#2d3748'; // Visual feedback bahwa form terkunci
-    beratInput2.style.border = '2px solid #22c55e'; // Border hijau menandakan terkunci
-
-    // Update display juga agar sama
-    if (weightDisplay2) {
-        if (window.WeightIndicatorUtils) {
-            weightDisplay2.value = window.WeightIndicatorUtils.formatWeight(weightValue);
-        } else {
-            weightDisplay2.value = weightValue.toLocaleString('id-ID') + ' Kg';
-        }
-    }
 
     // Visual feedback - stop animation
     weightDisplay2Large.classList.add('captured');
-    weightDisplay2Large.style.color = '#22c55e';
-    weightDisplay2Large.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.5)';
 
     // Visual feedback button
-    this.innerHTML = '<i class="fas fa-lock me-2"></i>BERAT TERKUNCI!';
-    this.classList.remove('btn-outline-warning');
-    this.classList.add('btn-success');
+    this.innerHTML = 'BERAT TERKUNCI!';
     this.disabled = true;
 
     // Stop weight update interval untuk display, tapi tetap terima data untuk monitoring
@@ -1181,7 +1389,7 @@ document.getElementById('captureWeight2').addEventListener('click', function() {
     hitungOtomatis();
 
     // Show success toast
-    showNotification2(`Berat ${window.WeightIndicatorUtils ? window.WeightIndicatorUtils.formatWeight(weightValue) : weightValue.toLocaleString('id-ID') + ' Kg'} berhasil di-capture dan dikunci!`, 'success');
+    showNotification2(`Berat ${weightValue.toLocaleString('id-ID')} KG berhasil di-capture dan dikunci!`, 'success');
 });
 
 // Hitung otomatis dengan formula yang benar
@@ -1189,6 +1397,7 @@ function hitungOtomatis() {
     const tiketSelector = document.getElementById('tiketSelector');
     const persenPotonganElement = document.getElementById('persenPotongan');
     const beratInput2Element = document.getElementById('beratInput2');
+    const potongHutangInput = document.getElementById('potongHutangInput');
 
     if (!tiketSelector || !tiketSelector.value) return;
 
@@ -1197,6 +1406,7 @@ function hitungOtomatis() {
     const harga = parseInt(selectedOption.dataset.harga) || 0;
     const persenPotongan = persenPotonganElement ? parseFloat(persenPotonganElement.value) || 0 : 0;
     const berat2 = beratInput2Element ? parseInt(beratInput2Element.value) || 0 : 0; // Tara
+    const potongHutang = potongHutangInput ? parseRupiah(potongHutangInput.value) || 0 : 0;
 
     // Formula yang benar:
     // Timbangan 1 = BRUTO (Truck Penuh), Timbangan 2 = TARA (Truck Kosong)
@@ -1204,6 +1414,7 @@ function hitungOtomatis() {
     // 2. Netto x (Potongan % / 100) = Potongan (kg)
     // 3. Netto - Potongan (kg) = Netto Akhir
     // 4. Netto Akhir x Harga per kg = Total Harga
+    // 5. Total Harga - Potong Hutang = Total Akhir 2
 
     const bruto = berat1; // Timbangan 1 = BRUTO (Truck Penuh)
     const tara = berat2;  // Timbangan 2 = TARA (Truck Kosong)
@@ -1211,23 +1422,42 @@ function hitungOtomatis() {
     const potonganKg = (persenPotongan / 100) * netto; // Potongan dalam kg
     const nettoAkhir = netto - potonganKg; // Netto Akhir
     const totalHarga = nettoAkhir * harga; // Total Harga
+    const totalHarga2 = Math.max(0, totalHarga - potongHutang); // Total Akhir 2 (tidak boleh negatif)
 
-    // Update display dengan safe access
+    // Update display dengan safe access dan format Rupiah yang lebih baik
     const elements = {
         hasilBruto: document.getElementById('hasilBruto'),
         hasilTara: document.getElementById('hasilTara'),
         hasilNettoBT: document.getElementById('hasilNettoBT'),
         hasilPotongan: document.getElementById('hasilPotongan'),
         hasilNettoAkhir: document.getElementById('hasilNettoAkhir'),
-        hasilTotalHarga: document.getElementById('hasilTotalHarga')
+        hasilTotalHarga: document.getElementById('hasilTotalHarga'),
+        hasilTotalHarga2: document.getElementById('hasilTotalHarga2'),
+        potongHutangInfo: document.getElementById('potongHutangInfo')
     };
 
-    if (elements.hasilBruto) elements.hasilBruto.textContent = bruto.toLocaleString('id-ID') + ' Kg';
-    if (elements.hasilTara) elements.hasilTara.textContent = tara.toLocaleString('id-ID') + ' Kg';
-    if (elements.hasilNettoBT) elements.hasilNettoBT.textContent = netto.toLocaleString('id-ID') + ' Kg';
-    if (elements.hasilPotongan) elements.hasilPotongan.textContent = potonganKg.toFixed(2).toLocaleString('id-ID') + ' Kg';
-    if (elements.hasilNettoAkhir) elements.hasilNettoAkhir.textContent = nettoAkhir.toFixed(2).toLocaleString('id-ID') + ' Kg';
-    if (elements.hasilTotalHarga) elements.hasilTotalHarga.textContent = 'Rp ' + Math.round(totalHarga).toLocaleString('id-ID');
+    if (elements.hasilBruto) elements.hasilBruto.textContent = bruto.toLocaleString('id-ID');
+    if (elements.hasilTara) elements.hasilTara.textContent = tara.toLocaleString('id-ID');
+    if (elements.hasilNettoBT) elements.hasilNettoBT.textContent = netto.toLocaleString('id-ID');
+    if (elements.hasilPotongan) elements.hasilPotongan.textContent = potonganKg.toFixed(2).toLocaleString('id-ID');
+    if (elements.hasilNettoAkhir) elements.hasilNettoAkhir.textContent = nettoAkhir.toFixed(2).toLocaleString('id-ID');
+    if (elements.hasilTotalHarga) elements.hasilTotalHarga.textContent = formatRupiah(totalHarga);
+    if (elements.hasilTotalHarga2) elements.hasilTotalHarga2.textContent = formatRupiah(totalHarga2);
+
+    // Update hidden field untuk total akhir 2
+    const totalAkhir2Hidden = document.getElementById('totalAkhir2Hidden');
+    if (totalAkhir2Hidden) {
+        totalAkhir2Hidden.value = totalHarga2;
+    }
+
+    // Tampilkan info potong hutang jika ada potongan
+    if (elements.potongHutangInfo) {
+        if (potongHutang > 0) {
+            elements.potongHutangInfo.style.display = 'block';
+        } else {
+            elements.potongHutangInfo.style.display = 'none';
+        }
+    }
 }
 
 // Event listeners untuk perhitungan otomatis
@@ -1246,12 +1476,12 @@ function resetHasilPerhitungan() {
         hasilTotalHarga: document.getElementById('hasilTotalHarga')
     };
 
-    if (elements.hasilBruto) elements.hasilBruto.textContent = '0 Kg';
-    if (elements.hasilTara) elements.hasilTara.textContent = '0 Kg';
-    if (elements.hasilNettoBT) elements.hasilNettoBT.textContent = '0 Kg';
-    if (elements.hasilPotongan) elements.hasilPotongan.textContent = '0 Kg';
-    if (elements.hasilNettoAkhir) elements.hasilNettoAkhir.textContent = '0 Kg';
-    if (elements.hasilTotalHarga) elements.hasilTotalHarga.textContent = 'Rp 0';
+    if (elements.hasilBruto) elements.hasilBruto.textContent = '0';
+    if (elements.hasilTara) elements.hasilTara.textContent = '0';
+    if (elements.hasilNettoBT) elements.hasilNettoBT.textContent = '0';
+    if (elements.hasilPotongan) elements.hasilPotongan.textContent = '0';
+    if (elements.hasilNettoAkhir) elements.hasilNettoAkhir.textContent = '0';
+    if (elements.hasilTotalHarga) elements.hasilTotalHarga.textContent = '0';
 }
 
 // Form validation
@@ -1266,8 +1496,7 @@ if (timbangan2Form) {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Form element tidak ditemukan. Silakan refresh halaman.',
-                confirmButtonColor: '#dc2626'
+                text: 'Form element tidak ditemukan. Silakan refresh halaman.'
             });
             return;
         }
@@ -1281,8 +1510,7 @@ if (timbangan2Form) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Perhatian',
-                text: 'Silakan pilih nomor tiket terlebih dahulu!',
-                confirmButtonColor: '#dc2626'
+                text: 'Silakan pilih nomor tiket terlebih dahulu!'
             });
             return;
         }
@@ -1293,8 +1521,7 @@ if (timbangan2Form) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Perhatian',
-                text: 'Silakan capture berat timbangan 2 terlebih dahulu!',
-                confirmButtonColor: '#dc2626'
+                text: 'Silakan capture berat timbangan 2 terlebih dahulu!'
             });
             return;
         }
@@ -1306,60 +1533,34 @@ if (timbangan2Form) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Perhatian',
-                text: 'Persen potongan harus antara 0% - 100%!',
-                confirmButtonColor: '#dc2626'
+                text: 'Persen potongan harus antara 0% - 100%!'
             });
             return;
         }
 
-        // Konfirmasi sebelum simpan
-        e.preventDefault();
+        // Validasi potong hutang
+        const potongHutangInput = document.getElementById('potongHutangInput');
 
-        // Get data for confirmation
-        const selectedOption = tiketSelectorElement.options[tiketSelectorElement.selectedIndex];
-        const noKendaraan = selectedOption.dataset.kendaraan || 'N/A';
-        const namaSuplier = selectedOption.dataset.suplier || 'N/A';
-        const berat1 = parseInt(selectedOption.dataset.berat) || 0;
-        const harga = parseInt(selectedOption.dataset.harga) || 0;
+        // Get potong hutang value
+        const potongHutang = (potongHutangInput && potongHutangInput.value)
+            ? parseRupiah(potongHutangInput.value) || 0
+            : 0;
 
-        const berat2Int = parseInt(berat2);
-        // CORRECT: Timbangan 1 = BRUTO, Timbangan 2 = TARA
-        const bruto = berat1;     // Timbangan 1 (Penuh)
-        const tara = berat2Int;   // Timbangan 2 (Kosong)
-        const netto = bruto - tara;
-        const potonganKg = (persenPotongan / 100) * netto;
-        const nettoAkhir = netto - potonganKg;
-        const totalHarga = nettoAkhir * harga;
+        const totalHutang = currentSupplierData.total_hutang || 0;
 
-        Swal.fire({
-            title: 'Simpan Data Timbangan 2?',
-            html: `
-                <div style="text-align: left;">
-                    <p><strong>No. Kendaraan:</strong> ${noKendaraan}</p>
-                    <p><strong>Suplier:</strong> ${namaSuplier}</p>
-                    <hr>
-                    <p><strong>Bruto (Timbang 1):</strong> ${bruto.toLocaleString('id-ID')} Kg</p>
-                    <p><strong>Tara (Timbang 2):</strong> ${tara.toLocaleString('id-ID')} Kg</p>
-                    <p><strong>Netto:</strong> ${netto.toLocaleString('id-ID')} Kg</p>
-                    <p><strong>Potongan ${persenPotongan}%:</strong> ${potonganKg.toFixed(2).toLocaleString('id-ID')} Kg</p>
-                    <hr>
-                    <p><strong>Netto Akhir:</strong> <span style="color: #22c55e; font-size: 1.2em;">${nettoAkhir.toFixed(2).toLocaleString('id-ID')} Kg</span></p>
-                    <p><strong>Total Harga:</strong> <span style="color: #3b82f6; font-size: 1.2em;">Rp ${Math.round(totalHarga).toLocaleString('id-ID')}</span></p>
-                </div>
-                <p class="text-warning mt-3"><em>Data akan disimpan dan status tiket akan berubah menjadi selesai!</em></p>
-            `,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Simpan & Cetak Struk',
-            cancelButtonText: 'Batal',
-            width: '600px'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.submit();
-            }
-        });
+        // Validasi hutang tidak boleh melebihi total hutang
+        if (potongHutang > totalHutang) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Perhatian',
+                text: 'Jumlah potong hutang melebihi total hutang supplier!'
+            });
+            return;
+        }
+
+        // Langsung submit tanpa konfirmasi
+        // Form akan diproses oleh PHP dan langsung print struk
     });
 }
 
@@ -1369,7 +1570,7 @@ document.getElementById('refreshTiketBtn').addEventListener('click', function() 
     const originalHtml = btn.innerHTML;
 
     // Show loading state
-    btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Refreshing...';
+    btn.innerHTML = 'REFRESHING...';
     btn.disabled = true;
 
     // Clear cache for tiket data
@@ -1413,6 +1614,321 @@ document.getElementById('refreshTiketBtn').addEventListener('click', function() 
         }, 2000);
     });
 });
+
 </script>
 
-<?php require_once '../../includes/footer.php'; ?>
+<script>
+// Global variable untuk menyimpan data hutang supplier
+let currentSupplierData = {
+    supplier_id: null,
+    nama_supplier: null,
+    total_hutang: 0
+};
+
+// Load hutang supplier dari database
+function loadSupplierHutang(supplierId) {
+    if (!supplierId) return;
+
+    // Show hutang section
+    const hutangSection = document.getElementById('hutangSection');
+    if (hutangSection) {
+        hutangSection.style.display = 'block';
+    }
+
+    // Load summary hutang
+    fetch('ajax.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'action=get_supplier_hutang&supplier_id=' + supplierId
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status + ' - ' + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            currentSupplierData = data.data;
+            updateHutangDisplay();
+            updatePotongHutangInput();
+            loadHutangDetails(supplierId); // Load detail hutang
+        } else {
+            // Reset data jika gagal
+            currentSupplierData = {
+                supplier_id: supplierId,
+                nama_supplier: 'Unknown',
+                total_hutang: 0
+            };
+            updateHutangDisplay();
+            updatePotongHutangInput();
+            hideHutangSection();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading hutang supplier:', error);
+        // Reset data jika error
+        currentSupplierData = {
+            supplier_id: supplierId,
+            nama_supplier: 'Unknown',
+            total_hutang: 0
+        };
+        updateHutangDisplay();
+        updatePotongHutangInput();
+        hideHutangSection();
+    });
+}
+
+// Load detail hutang supplier
+function loadHutangDetails(supplierId) {
+    // Load detail transaksi yang menunggu pembayaran
+    fetch('ajax.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'action=get_supplier_hutang_details&supplier_id=' + supplierId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data && data.data.length > 0) {
+            displayHutangTable(data.data);
+        } else {
+            displayEmptyHutangTable();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading hutang details:', error);
+        displayEmptyHutangTable();
+    });
+}
+
+// Display hutang table
+function displayHutangTable(hutangData) {
+    const tbody = document.getElementById('hutangTableBody');
+    const totalHutangTable = document.getElementById('totalHutangTable');
+
+    if (!tbody) return;
+
+    let html = '';
+    let total = 0;
+
+    hutangData.forEach(item => {
+        total += parseFloat(item.total_harga || 0);
+        const tanggal = new Date(item.tanggal).toLocaleDateString('id-ID');
+        const status = item.status_bayar || 'Belum Bayar';
+        const statusColor = status === 'Lunas' ? '#10b981' : '#ef4444';
+
+        html += `
+            <tr style="border-bottom: 1px solid #495057;">
+                <td style="padding: 8px; font-size: 11px;">${item.no_tiket || '-'}</td>
+                <td style="padding: 8px; font-size: 11px;">${tanggal}</td>
+                <td style="padding: 8px; text-align: right; font-size: 11px;">${formatRupiah(item.total_harga || 0)}</td>
+                <td style="padding: 8px; text-align: right; font-size: 11px; color: ${statusColor};">${status}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+
+    if (totalHutangTable) {
+        totalHutangTable.textContent = formatRupiah(total);
+    }
+}
+
+// Display empty hutang table
+function displayEmptyHutangTable() {
+    const tbody = document.getElementById('hutangTableBody');
+    const totalHutangTable = document.getElementById('totalHutangTable');
+
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="4" style="padding: 20px; text-align: center; opacity: 0.7;">Tidak ada data hutang</td>
+        </tr>
+    `;
+
+    if (totalHutangTable) {
+        totalHutangTable.textContent = 'Rp 0';
+    }
+}
+
+// Hide hutang section
+function hideHutangSection() {
+    const hutangSection = document.getElementById('hutangSection');
+    if (hutangSection) {
+        hutangSection.style.display = 'none';
+    }
+}
+
+// Update display hutang
+function updateHutangDisplay() {
+    const totalHutangDisplay = document.getElementById('totalHutangDisplay');
+    const sisaHutangDisplay = document.getElementById('sisaHutangDisplay');
+    const sisaHutangHidden = document.getElementById('sisaHutangHidden');
+
+    const totalHutang = parseFloat(currentSupplierData.total_hutang) || 0;
+
+    // Update total hutang display dengan format baru
+    if (totalHutangDisplay) {
+        if (totalHutang > 0) {
+            totalHutangDisplay.style.color = '#ef4444'; // Red untuk hutang
+            totalHutangDisplay.value = formatRupiah(totalHutang);
+        } else {
+            totalHutangDisplay.style.color = '#10b981'; // Green untuk tidak ada hutang
+            totalHutangDisplay.value = 'Rp 0';
+        }
+    }
+
+    // Update sisa hutang (initially same as total)
+    if (sisaHutangDisplay) {
+        if (totalHutang > 0) {
+            sisaHutangDisplay.style.color = '#f59e0b'; // Orange untuk sisa hutang
+            sisaHutangDisplay.value = formatRupiah(totalHutang);
+        } else {
+            sisaHutangDisplay.style.color = '#10b981'; // Green untuk tidak ada hutang
+            sisaHutangDisplay.value = 'Rp 0';
+        }
+    }
+
+    if (sisaHutangHidden) {
+        sisaHutangHidden.value = totalHutang;
+    }
+
+    }
+
+// Update input potong hutang dengan validasi maksimal
+function updatePotongHutangInput() {
+    const potongHutangInput = document.getElementById('potongHutangInput');
+
+    if (potongHutangInput) {
+        // Set max value
+        potongHutangInput.max = currentSupplierData.total_hutang || 0;
+        // Set title dengan format benar
+        potongHutangInput.title = currentSupplierData.total_hutang > 0
+            ? `Maksimal: ${formatRupiah(currentSupplierData.total_hutang)}`
+            : 'Supplier tidak memiliki hutang';
+
+        // Disable jika tidak ada hutang
+        potongHutangInput.disabled = currentSupplierData.total_hutang <= 0;
+        if (currentSupplierData.total_hutang <= 0) {
+            potongHutangInput.value = '0';
+        }
+    }
+}
+
+// Fungsi format Rupiah untuk display (1.000.000, 500.000, 100.000)
+function formatRupiah(amount) {
+    if (amount === 0 || !amount) return 'Rp 0';
+
+    const num = parseFloat(amount);
+    if (isNaN(num)) return 'Rp 0';
+
+    // Format manual untuk memastikan titik sebagai pemisah ribuan
+    // Test cases: 5000000 -> 5.000.000, 500000 -> 500.000, 100000 -> 100.000
+    const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+    return 'Rp ' + formatted;
+}
+
+// Fungsi format Rupiah untuk input (tanpa "Rp ")
+function formatRupiahInput(amount) {
+    if (amount === 0 || !amount) return '0';
+
+    const num = parseFloat(amount);
+    if (isNaN(num)) return '0';
+
+    // Format manual untuk memastikan titik sebagai pemisah ribuan
+    const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+    
+    return formatted;
+}
+
+// Fungsi parse Rupiah dari input (hilangkan "Rp " dan titik)
+function parseRupiah(rupiahString) {
+    if (!rupiahString) return 0;
+
+    // Hilangkan "Rp " dan titik, ganti dengan kosong
+    const cleanString = rupiahString.toString().replace(/[^0-9]/g, '');
+    return parseFloat(cleanString) || 0;
+}
+
+// Fungsi untuk format input saat user mengetik
+function formatRupiahInputOnChange(input) {
+    let value = input.value;
+
+    // Parse current value
+    let numValue = parseRupiah(value);
+
+    // Format kembali
+    if (numValue > 0) {
+        input.value = formatRupiahInput(numValue);
+        // Update hidden field
+        const hiddenField = document.getElementById(input.id.replace('Input', 'Hidden'));
+        if (hiddenField) {
+            hiddenField.value = numValue;
+        }
+    } else {
+        input.value = '';
+        const hiddenField = document.getElementById(input.id.replace('Input', 'Hidden'));
+        if (hiddenField) {
+            hiddenField.value = 0;
+        }
+    }
+}
+
+
+// Event listener untuk input potong hutang (sederhana karena sudah ada global functions)
+document.addEventListener('DOMContentLoaded', function() {
+    const potongHutangInput = document.getElementById('potongHutangInput');
+
+    if (potongHutangInput) {
+        // Custom logic untuk validasi maksimal potong hutang dan update sisa hutang
+        potongHutangInput.addEventListener('input', function() {
+            // Get actual numeric value
+            const potongHutang = parseRupiah(this.value) || 0;
+            const totalHutang = currentSupplierData.total_hutang || 0;
+
+            // Validasi maksimal potong hutang
+            if (potongHutang > totalHutang) {
+                // Format ke nilai maksimal
+                this.value = formatRupiahInput(totalHutang);
+                document.getElementById('potongHutangHidden').value = totalHutang;
+                return;
+            }
+
+            const sisaHutang = Math.max(0, totalHutang - potongHutang);
+
+            // Update sisa hutang display
+            const sisaHutangDisplay = document.getElementById('sisaHutangDisplay');
+            const sisaHutangHidden = document.getElementById('sisaHutangHidden');
+
+            if (sisaHutangDisplay) {
+                if (sisaHutang > 0) {
+                    sisaHutangDisplay.style.color = '#f59e0b'; // Orange untuk sisa hutang
+                    sisaHutangDisplay.value = formatRupiah(sisaHutang);
+                } else if (sisaHutang === 0 && totalHutang > 0) {
+                    sisaHutangDisplay.style.color = '#10b981'; // Green untuk lunas
+                    sisaHutangDisplay.value = 'LUNAS';
+                } else {
+                    sisaHutangDisplay.style.color = '#10b981'; // Green untuk tidak ada hutang
+                    sisaHutangDisplay.value = 'Rp 0';
+                }
+            }
+
+            if (sisaHutangHidden) {
+                sisaHutangHidden.value = sisaHutang;
+            }
+
+            // Trigger perhitungan otomatis untuk update Total Akhir 2
+            hitungOtomatis();
+        });
+    }
+});
+</script>
+
+<?php require_once '../../includes/footer.php'; ?>  

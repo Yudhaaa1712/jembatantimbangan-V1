@@ -29,7 +29,7 @@ class PerformanceOptimizer {
             const lcpObserver = new PerformanceObserver((entryList) => {
                 const entries = entryList.getEntries();
                 const lastEntry = entries[entries.length - 1];
-                console.log('LCP:', lastEntry.startTime.toFixed(2) + 'ms');
+                // LCP monitoring - console log disabled in production
 
                 // Log to analytics if needed
                 if (window.gtag) {
@@ -48,7 +48,7 @@ class PerformanceOptimizer {
         if ('PerformanceObserver' in window) {
             const fidObserver = new PerformanceObserver((entryList) => {
                 for (const entry of entryList.getEntries()) {
-                    console.log('FID:', entry.processingStart - entry.startTime.toFixed(2) + 'ms');
+                    // FID monitoring - console log disabled in production
                 }
             });
 
@@ -166,7 +166,7 @@ class PerformanceOptimizer {
                                 pageLength: 10,
                                 responsive: true,
                                 language: {
-                                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
+                                    url: window.location.origin + '/jembatantimbangan/assets/id.json'
                                 }
                             });
                         }

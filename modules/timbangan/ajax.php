@@ -112,39 +112,52 @@ switch ($action) {
         $jenis_material = clean_input($_POST['jenis_material']);
         $berat_timbangan1 = clean_input($_POST['berat_timbangan1']);
 
-        // Get vehicle data
-        $query = "SELECT no_polisi FROM kendaraan WHERE id = '$id_kendaraan'";
-        $result = mysqli_query($conn, $query);
+        // Get vehicle data (using prepared statement)
+        $stmt = $conn->prepare("SELECT no_polisi FROM kendaraan WHERE id = ? LIMIT 1");
+        $stmt->bind_param("s", $id_kendaraan);
+        $stmt->execute();
+        $result = $stmt->get_result();
         $kendaraan = mysqli_fetch_assoc($result);
+        $stmt->close();
 
-        // Insert or update transaction
+        if (!$kendaraan) {
+            json_response(false, 'Vehicle not found');
+            break;
+        }
+
+        // Insert or update transaction (using prepared statement)
         $query = "INSERT INTO transaksi_timbangan
             (no_tiket, no_do, nama_supir, id_kendaraan, no_polisi, id_supplier,
              jenis_material, berat_timbangan1, timbang1_locked, waktu_timbangan1, tanggal,
              status, operator_id, created_at)
             VALUES
-            ('$no_tiket', '$no_do', '$nama_supir', '$id_kendaraan', '{$kendaraan['no_polisi']}',
-             '$id_supplier', '$jenis_material', '$berat_timbangan1', 1, NOW(),
-             CURDATE(), 'timbang_1', '{$_SESSION['user_id']}', NOW())
+            (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), CURDATE(), 'timbang_1', ?, NOW())
             ON DUPLICATE KEY UPDATE
-            no_do = '$no_do',
-            nama_supir = '$nama_supir',
-            id_kendaraan = '$id_kendaraan',
-            no_polisi = '{$kendaraan['no_polisi']}',
-            id_supplier = '$id_supplier',
-            jenis_material = '$jenis_material',
-            berat_timbangan1 = '$berat_timbangan1',
-            timbang1_locked = 1,
-            waktu_timbangan1 = NOW(),
-            status = 'timbang_1',
-            operator_id = '{$_SESSION['user_id']}',
+            no_do = VALUES(no_do),
+            nama_supir = VALUES(nama_supir),
+            id_kendaraan = VALUES(id_kendaraan),
+            no_polisi = VALUES(no_polisi),
+            id_supplier = VALUES(id_supplier),
+            jenis_material = VALUES(jenis_material),
+            berat_timbangan1 = VALUES(berat_timbangan1),
+            timbang1_locked = VALUES(timbang1_locked),
+            waktu_timbangan1 = VALUES(waktu_timbangan1),
+            status = VALUES(status),
+            operator_id = VALUES(operator_id),
             updated_at = NOW()";
 
-        if (mysqli_query($conn, $query)) {
+        $stmt = $conn->prepare($query);
+        $user_id = $_SESSION['user_id'];
+        $stmt->bind_param("sssisssdis",
+            $no_tiket, $no_do, $nama_supir, $id_kendaraan, $kendaraan['no_polisi'],
+            $id_supplier, $jenis_material, $berat_timbangan1, $user_id);
+
+        if ($stmt->execute()) {
             json_response(true, 'Data Timbangan 1 berhasil disimpan');
         } else {
-            json_response(false, 'Gagal menyimpan data: ' . mysqli_error($conn));
+            json_response(false, 'Gagal menyimpan data: ' . $stmt->error);
         }
+        $stmt->close();
         break;
 
     case 'save_timbangan2':
@@ -162,7 +175,10 @@ switch ($action) {
 
         $berat_t1 = $transaksi['berat_timbangan1'];
         $netto = $berat_t1 - $berat_timbangan2;
-        $total_potongan = ($netto * $persen_potongan / 100) + $kg_potongan;
+
+        // FIX: kg_potongan sudah mengandung hasil perhitungan persentase dari JavaScript
+        // Jangan hitung ulang, gunakan nilai yang sudah dikirim dari frontend
+        $total_potongan = $kg_potongan; // kg_potongan = hasil perhitungan JavaScript
         $netto_akhir = $netto - $total_potongan;
         $total_harga = $netto_akhir * $harga_per_kg;
 
@@ -343,10 +359,9 @@ switch ($action) {
         
     case 'check_ticket':
         $no_tiket = clean_input($_POST['no_tiket']);
-        $query = "SELECT * FROM transaksi_timbangan WHERE no_tiket = '$no_tiket'";
-        $result = mysqli_query($conn, $query);
 
-        if (mysqli_num_rows($result) > 0) {
+        // Use the new safe ticket checking function
+        if (is_ticket_exists($conn, $no_tiket)) {
             json_response(false, 'Nomor tiket sudah digunakan!');
         } else {
             json_response(true, 'Nomor tiket tersedia');
@@ -616,6 +631,98 @@ case 'get_bridge_status':
             'status' => []
         ]);
     }
+    break;
+
+case 'refresh_supplier_list':
+        // Clear cache and reload supplier list
+        require_once '../../includes/cache_manager.php';
+
+        // Clear current hour cache key (yang dipake di timbangan1)
+        $cache_key = 'supplier_list_' . date('Y-m-d-H');
+        cache_delete($cache_key);
+
+        // Get fresh supplier data
+        $suppliers = [];
+        $query = "SELECT id, nama_supplier FROM supplier ORDER BY nama_supplier";
+        $result = mysqli_query($conn, $query);
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            $suppliers[] = $row;
+        }
+
+        json_response(true, 'Supplier list refreshed', ['suppliers' => $suppliers]);
+        break;
+
+case 'get_supplier_hutang':
+    $supplier_id = filter_var($_POST['supplier_id'], FILTER_VALIDATE_INT);
+
+    if (!$supplier_id) {
+        json_response(false, 'Supplier ID tidak valid');
+        break;
+    }
+
+    $query = "SELECT id, nama_supplier, total_hutang, hutang_terakhir_update FROM supplier WHERE id = ? AND status = 'active'";
+    $stmt = mysqli_prepare($conn, $query);
+    mysqli_stmt_bind_param($stmt, 'i', $supplier_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    if (!$result || mysqli_num_rows($result) == 0) {
+        json_response(false, 'Supplier tidak ditemukan');
+        mysqli_stmt_close($stmt);
+        break;
+    }
+
+    $supplier = mysqli_fetch_assoc($result);
+
+    json_response(true, 'Supplier data retrieved', [
+        'supplier_id' => $supplier['id'],
+        'nama_supplier' => $supplier['nama_supplier'],
+        'total_hutang' => floatval($supplier['total_hutang'] ?? 0),
+        'hutang_terakhir_update' => $supplier['hutang_terakhir_update']
+    ]);
+
+    mysqli_stmt_close($stmt);
+    break;
+
+case 'get_supplier_hutang_details':
+    $supplier_id = filter_var($_POST['supplier_id'], FILTER_VALIDATE_INT);
+
+    if (!$supplier_id) {
+        json_response(false, 'Supplier ID tidak valid');
+        break;
+    }
+
+    $query = "SELECT tt.no_tiket, tt.tanggal, tt.total_harga,
+                     CASE
+                        WHEN tt.potong_hutang > 0 THEN 'Sebagian'
+                        WHEN tt.potong_hutang >= tt.total_harga THEN 'Lunas'
+                        ELSE 'Belum Bayar'
+                     END as status_bayar,
+                     tt.potong_hutang
+              FROM transaksi_timbangan tt
+              WHERE tt.id_supplier = ? AND tt.status = 'selesai' AND tt.total_harga > 0
+              ORDER BY tt.tanggal DESC
+              LIMIT 50";
+
+    $stmt = mysqli_prepare($conn, $query);
+    mysqli_stmt_bind_param($stmt, 'i', $supplier_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $hutang_details = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $hutang_details[] = [
+            'no_tiket' => $row['no_tiket'],
+            'tanggal' => $row['tanggal'],
+            'total_harga' => $row['total_harga'],
+            'status_bayar' => $row['status_bayar'],
+            'potong_hutang' => $row['potong_hutang']
+        ];
+    }
+
+    json_response(true, 'Detail hutang retrieved', $hutang_details);
+    mysqli_stmt_close($stmt);
     break;
 
 default:

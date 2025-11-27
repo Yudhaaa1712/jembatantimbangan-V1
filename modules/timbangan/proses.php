@@ -55,14 +55,8 @@ if ($action == 'save') {
     $kendaraan = mysqli_fetch_assoc($result);
     $no_polisi = $kendaraan['no_polisi'];
 
-    // Check if ticket already exists using prepared statement
-    $check_query = "SELECT id FROM transaksi_timbangan WHERE no_tiket = ?";
-    $check_stmt = mysqli_prepare($conn, $check_query);
-    mysqli_stmt_bind_param($check_stmt, "s", $no_tiket);
-    mysqli_stmt_execute($check_stmt);
-    $check_result = mysqli_stmt_get_result($check_stmt);
-
-    if (mysqli_num_rows($check_result) > 0) {
+    // Check if ticket already exists using new safe function
+    if (is_ticket_exists($conn, $no_tiket)) {
         json_response(false, 'Nomor tiket sudah digunakan!');
     }
     
@@ -130,6 +124,7 @@ if ($action == 'save') {
     $jenis_material = trim($_POST['jenis_material'] ?? '');
     $harga_per_kg = filter_var($_POST['harga_per_kg'] ?? 0, FILTER_VALIDATE_FLOAT);
     $keterangan = trim($_POST['keterangan'] ?? '');
+    $potong_hutang = filter_var($_POST['potong_hutang'] ?? 0, FILTER_VALIDATE_FLOAT);
 
     // Validate inputs
     if (!$id || empty($nama_supir) || !$id_supplier || empty($jenis_material)) {
@@ -142,19 +137,63 @@ if ($action == 'save') {
         json_response(false, 'Jenis material tidak valid!');
     }
 
+    // Validate potong hutang
+    if ($potong_hutang < 0) {
+        json_response(false, 'Potong hutang tidak boleh negatif!');
+    }
+
+    // Get supplier data for validation
+    $supplier_query = "SELECT total_hutang FROM supplier WHERE id = ?";
+    $supplier_stmt = mysqli_prepare($conn, $supplier_query);
+    mysqli_stmt_bind_param($supplier_stmt, 'i', $id_supplier);
+    mysqli_stmt_execute($supplier_stmt);
+    $supplier_result = mysqli_stmt_get_result($supplier_stmt);
+    $supplier_data = mysqli_fetch_assoc($supplier_result);
+
+    if (!$supplier_data) {
+        json_response(false, 'Supplier tidak ditemukan!');
+    }
+
+    $total_hutang_supplier = floatval($supplier_data['total_hutang'] ?? 0);
+
+    // Validate potong hutang tidak melebihi total hutang supplier
+    if ($potong_hutang > $total_hutang_supplier) {
+        json_response(false, 'Potong hutang (Rp ' . number_format($potong_hutang, 0, ',', '.') . ') melebihi total hutang supplier (Rp ' . number_format($total_hutang_supplier, 0, ',', '.') . ')');
+    }
+
+    $sisa_hutang = max(0, $total_hutang_supplier - $potong_hutang);
+
     // Update using prepared statement
     $query = "UPDATE transaksi_timbangan SET
                 nama_supir = ?,
                 id_supplier = ?,
                 jenis_material = ?,
                 harga_per_kg = ?,
-                keterangan = ?
+                keterangan = ?,
+                potong_hutang = ?,
+                sisa_hutang = ?
               WHERE id = ?";
 
     $stmt = mysqli_prepare($conn, $query);
-    mysqli_stmt_bind_param($stmt, "sisdis", $nama_supir, $id_supplier, $jenis_material, $harga_per_kg, $keterangan, $id);
+    mysqli_stmt_bind_param($stmt, "sisdisddi", $nama_supir, $id_supplier, $jenis_material, $harga_per_kg, $keterangan, $potong_hutang, $sisa_hutang, $id);
+
+    mysqli_stmt_close($supplier_stmt);
 
     if (mysqli_stmt_execute($stmt)) {
+        // Update hutang supplier jika ada potong hutang
+        if ($potong_hutang > 0) {
+            require_once '../../../includes/masterdata_handler.php';
+            $supplier_handler = new SupplierHandler($conn);
+
+            try {
+                $update_result = $supplier_handler->updateHutang($id_supplier, $potong_hutang, 'Potong hutang dari transaksi #' . $id);
+                error_log("HUTANG UPDATE: Supplier ID $id_supplier, Potong: Rp $potong_hutang, Sisa: Rp " . $update_result['new_hutang']);
+            } catch (Exception $e) {
+                error_log("Gagal update hutang supplier: " . $e->getMessage());
+                json_response(false, 'Transaksi berhasil tapi gagal update hutang supplier: ' . $e->getMessage());
+            }
+        }
+
         json_response(true, 'Data berhasil diupdate!');
     } else {
         json_response(false, 'Gagal update data: ' . mysqli_error($conn));

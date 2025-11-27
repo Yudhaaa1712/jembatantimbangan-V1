@@ -66,7 +66,7 @@ if ($transaction['status'] == 'complete') {
             background: white;
             width: 380px;
             max-width: 100%;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
             border-radius: 10px;
         }
@@ -74,26 +74,26 @@ if ($transaction['status'] == 'complete') {
         .receipt-header {
             text-align: center;
             border-bottom: 2px dashed #333;
-            padding-bottom: 15px;
-            margin-bottom: 15px;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
         }
 
         .company-name {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .company-address {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .receipt-title {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
-            margin-top: 10px;
+            margin-top: 8px;
         }
 
         .receipt-info {
@@ -103,8 +103,8 @@ if ($transaction['status'] == 'complete') {
         .info-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 6px;
+            font-size: 12px;
         }
 
         .info-label {
@@ -127,8 +127,8 @@ if ($transaction['status'] == 'complete') {
         }
 
         .detail-table td {
-            padding: 5px 0;
-            font-size: 14px;
+            padding: 4px 0;
+            font-size: 12px;
             border-bottom: 1px dotted #ccc;
         }
 
@@ -145,16 +145,16 @@ if ($transaction['status'] == 'complete') {
 
         .weight-info {
             background: #f8f8f8;
-            padding: 15px;
+            padding: 12px;
             border-radius: 5px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .weight-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 6px;
+            font-size: 12px;
         }
 
         .weight-label {
@@ -163,37 +163,37 @@ if ($transaction['status'] == 'complete') {
 
         .weight-value {
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
         }
 
         .total-weight {
             border-top: 2px solid #333;
-            padding-top: 10px;
-            margin-top: 10px;
+            padding-top: 8px;
+            margin-top: 8px;
         }
 
         .total-weight .weight-value {
             color: #dc2626;
-            font-size: 18px;
+            font-size: 16px;
         }
 
         .receipt-footer {
             text-align: center;
             border-top: 2px dashed #333;
-            padding-top: 15px;
-            margin-top: 15px;
+            padding-top: 12px;
+            margin-top: 12px;
         }
 
         .footer-text {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .thank-you {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
-            margin-top: 10px;
+            margin-top: 8px;
         }
 
         .print-button {
@@ -214,17 +214,27 @@ if ($transaction['status'] == 'complete') {
         }
 
         @media print {
+            @page {
+                size: 11in 9.5in landscape;
+                margin: 0.3in 0.4in;
+            }
+
             body {
                 background: white;
                 padding: 0;
+                font-family: 'Arial', sans-serif;
+                font-size: 16px;
+                line-height: 1.4;
+                width: 10.2in;
+                font-weight: bold;
             }
 
             .receipt-container {
                 box-shadow: none;
                 border-radius: 0;
                 width: 100%;
-                max-width: 380px;
                 margin: 0 auto;
+                padding: 0;
             }
 
             .print-button {
@@ -256,115 +266,103 @@ if ($transaction['status'] == 'complete') {
 </head>
 <body>
     <div class="receipt-container">
-        <!-- Receipt Header -->
-        <div class="receipt-header">
-            <div class="company-name">JEMBATAN TIMBANGAN SAWIT</div>
-            <div class="company-address">Jl. Industri No. 123</div>
-            <div class="company-address">Tel: (021) 1234567</div>
-            <div class="receipt-title">STRUK TRANSAKSI</div>
+        <!-- Header -->
+        <div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px;">
+            <div style="font-size: 22px; font-weight: bold; margin-bottom: 8px;">JEMBATAN TIMBANGAN SAWIT</div>
+            <div style="font-size: 14px; margin-bottom: 5px;">Jl. Industri No. 123</div>
+            <div style="font-size: 14px;">Tel: (021) 1234567</div>
         </div>
 
-        <!-- Receipt Information -->
-        <div class="receipt-info">
-            <div class="info-row">
-                <span class="info-label">No. Tiket:</span>
-                <span class="info-value"><?php echo $transaction['no_tiket']; ?></span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Tanggal:</span>
-                <span class="info-value"><?php echo $transaction['tanggal'] ? date('d/m/Y', strtotime($transaction['tanggal'])) : '-'; ?></span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Waktu:</span>
-                <span class="info-value"><?php echo $transaction['waktu_masuk'] ? date('H:i:s', strtotime($transaction['waktu_masuk'])) : '-'; ?></span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Status:</span>
-                <span class="info-value">
-                    <span class="status-badge <?php echo $transaction['status'] == 'complete' ? 'status-complete' : 'status-t1'; ?>">
-                        <?php echo $transaction['status'] == 'complete' ? 'SELESAI' : 'TIMBANG 1'; ?>
-                    </span>
-                </span>
-            </div>
+        <!-- Data Transaksi -->
+        <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+            <span style="font-weight: bold;">No. Tiket:</span>
+            <span style="font-weight: bold;"><?php echo $transaction['no_tiket']; ?></span>
         </div>
-
-        <!-- Transaction Details -->
-        <div class="receipt-details">
-            <table class="detail-table">
-                <tr>
-                    <td class="label">No. Polisi:</td>
-                    <td class="value"><?php echo $transaction['no_polisi'] ?? '-'; ?></td>
-                </tr>
-                <tr>
-                    <td class="label">Pengemudi:</td>
-                    <td class="value"><?php echo $transaction['nama_supir'] ?? '-'; ?></td>
-                </tr>
-                <tr>
-                    <td class="label">Supplier:</td>
-                    <td class="value"><?php echo $transaction['nama_supplier'] ?? '-'; ?></td>
-                </tr>
-                <tr>
-                    <td class="label">Material:</td>
-                    <td class="value"><?php echo ucfirst($transaction['jenis_material']); ?></td>
-                </tr>
-                <?php if ($transaction['harga_per_kg'] > 0): ?>
-                <tr>
-                    <td class="label">Harga/Kg:</td>
-                    <td class="value">Rp <?php echo number_format($transaction['harga_per_kg'], 0, ',', '.'); ?></td>
-                </tr>
-                <?php endif; ?>
-            </table>
+        <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+            <span style="font-weight: bold;">Tanggal:</span>
+            <span style="font-weight: bold;"><?php echo $transaction['tanggal'] ? date('d/m/Y', strtotime($transaction['tanggal'])) : '-'; ?></span>
         </div>
-
-        <!-- Weight Information -->
-        <div class="weight-info">
-            <div class="weight-row">
-                <span class="weight-label">Berat Timbangan 1:</span>
-                <span class="weight-value"><?php echo number_format($transaction['berat_timbangan1'] ?? $transaction['berat_bruto'], 0, ',', '.'); ?> Kg</span>
-            </div>
-            <?php if ($transaction['status'] == 'selesai'): ?>
-                <div class="weight-row">
-                    <span class="weight-label">Berat Timbangan 2:</span>
-                    <span class="weight-value"><?php echo number_format($transaction['berat_tara'] ?? 0, 0, ',', '.'); ?> Kg</span>
-                </div>
-                <div class="weight-row">
-                    <span class="weight-label">Potongan:</span>
-                    <span class="weight-value"><?php echo number_format($transaction['potongan'] ?? 0, 0, ',', '.'); ?> Kg</span>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($transaction['status'] == 'selesai'): ?>
-                <div class="total-weight weight-row">
-                    <span class="weight-label">Berat Netto:</span>
-                    <span class="weight-value"><?php echo number_format($berat_netto, 0, ',', '.'); ?> Kg</span>
-                </div>
-            <?php else: ?>
-                <div class="weight-row">
-                    <span class="weight-label" style="color: #dc2626;">Belum Selesai Timbang 2</span>
-                    <span class="weight-value" style="color: #dc2626;">--- Kg</span>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($transaction['harga_per_kg'] > 0 && $transaction['status'] == 'complete'): ?>
-                <div class="total-weight weight-row">
-                    <span class="weight-label">Total Harga:</span>
-                    <span class="weight-value">Rp <?php echo number_format($berat_netto * $transaction['harga_per_kg'], 0, ',', '.'); ?></span>
-                </div>
-            <?php endif; ?>
+        <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+            <span style="font-weight: bold;">No. Kendaraan:</span>
+            <span style="font-weight: bold;"><?php echo $transaction['no_polisi'] ?? '-'; ?></span>
+        </div>
+        <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+            <span style="font-weight: bold;">Pengemudi:</span>
+            <span style="font-weight: bold;"><?php echo $transaction['nama_supir'] ?? '-'; ?></span>
+        </div>
+        <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+            <span style="font-weight: bold;">Supplier:</span>
+            <span style="font-weight: bold;"><?php echo $transaction['nama_supplier'] ?? '-'; ?></span>
+        </div>
+        <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+            <span style="font-weight: bold;">Material:</span>
+            <span style="font-weight: bold;"><?php echo ucfirst($transaction['jenis_material']); ?></span>
         </div>
 
         <?php if (!empty($transaction['keterangan'])): ?>
-        <div style="font-size: 12px; color: #666; margin-bottom: 15px;">
-            <strong>Keterangan:</strong><br>
-            <?php echo $transaction['keterangan']; ?>
+        <div style="margin: 15px 0; padding: 10px; border: 1px dashed #666; background: #f9f9f9;">
+            <div style="font-weight: bold; margin-bottom: 5px; font-size: 14px; text-align: center;">KETERANGAN</div>
+            <div style="font-size: 13px; line-height: 1.4; text-align: center;"><?php echo htmlspecialchars($transaction['keterangan']); ?></div>
         </div>
         <?php endif; ?>
 
-        <!-- Receipt Footer -->
-        <div class="receipt-footer">
-            <div class="footer-text">Terima kasih atas kepercayaan Anda</div>
-            <div class="footer-text">Barang yang sudah ditimbang tidak bisa dikembalikan</div>
-            <div class="thank-you">*** TERIMA KASIH ***</div>
+        <div class="separator" style="text-align: center; margin: 20px 0; font-size: 18px; font-weight: bold;">*** DATA TIMBANGAN ***</div>
+
+        <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+            <span style="font-weight: bold;">Berat Timbangan 1:</span>
+            <span style="font-weight: bold;"><?php echo number_format($transaction['berat_timbangan1'] ?? $transaction['berat_bruto'], 0, ',', '.'); ?> Kg</span>
+        </div>
+
+        <?php if ($transaction['status'] == 'selesai'): ?>
+            <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+                <span style="font-weight: bold;">Berat Timbangan 2:</span>
+                <span style="font-weight: bold;"><?php echo number_format($transaction['berat_tara'] ?? 0, 0, ',', '.'); ?> Kg</span>
+            </div>
+            <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+                <span style="font-weight: bold;">Berat Netto:</span>
+                <span style="font-weight: bold;"><?php echo number_format($berat_netto, 0, ',', '.'); ?> Kg</span>
+            </div>
+        <?php else: ?>
+            <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+                <span style="font-weight: bold; color: #dc2626;">Status:</span>
+                <span style="font-weight: bold; color: #dc2626;">BELUM SELESAI</span>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($transaction['harga_per_kg'] > 0 && $transaction['status'] == 'complete'): ?>
+            <div class="separator" style="text-align: center; margin: 20px 0; font-size: 18px; font-weight: bold;">*** HARGA ***</div>
+            <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+                <span style="font-weight: bold;">Harga/Kg:</span>
+                <span style="font-weight: bold;">Rp <?php echo number_format($transaction['harga_per_kg'], 0, ',', '.'); ?></span>
+            </div>
+            <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 20px; border-top: 2px solid #000; padding-top: 10px;">
+                <span style="font-weight: bold;">TOTAL HARGA:</span>
+                <span style="font-weight: bold;">Rp <?php echo number_format($berat_netto * $transaction['harga_per_kg'], 0, ',', '.'); ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if (($transaction['potong_hutang'] ?? 0) > 0 || ($transaction['sisa_hutang'] ?? 0) > 0): ?>
+            <div class="separator" style="text-align: center; margin: 20px 0; font-size: 18px; font-weight: bold;">*** INFORMASI HUTANG ***</div>
+            <?php if (($transaction['potong_hutang'] ?? 0) > 0): ?>
+            <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px;">
+                <span style="font-weight: bold; color: #dc2626;">Potong Hutang:</span>
+                <span style="font-weight: bold; color: #dc2626;">Rp <?php echo number_format($transaction['potong_hutang'], 0, ',', '.'); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if (($transaction['sisa_hutang'] ?? 0) > 0): ?>
+            <div class="data-row" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; border: 2px dashed #dc2626; padding: 8px; border-radius: 5px;">
+                <span style="font-weight: bold; color: #dc2626;">SISA HUTANG:</span>
+                <span style="font-weight: bold; color: #dc2626;">Rp <?php echo number_format($transaction['sisa_hutang'], 0, ',', '.'); ?></span>
+            </div>
+            <?php endif; ?>
+        <?php endif; ?>
+
+        <div class="separator" style="text-align: center; margin: 20px 0; font-size: 18px; font-weight: bold;">***</div>
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 30px; border-top: 3px double #000; padding-top: 15px; font-size: 14px;">
+            <div>Terima kasih atas kepercayaan Anda</div>
+            <div>Barang yang sudah ditimbang tidak bisa dikembalikan</div>
         </div>
     </div>
 

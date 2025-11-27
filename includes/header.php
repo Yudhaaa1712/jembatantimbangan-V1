@@ -13,20 +13,20 @@ if (!is_logged_in()) {
     <title><?php echo $page_title ?? 'Jembatan Timbangan Sawit'; ?></title>
     
     <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+    <link href="<?php echo BASE_URL; ?>assets/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/all.min.css">
+
     <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-    
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/dataTables.bootstrap5.min.css">
+
     <!-- Select2 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
-    
+    <link href="<?php echo BASE_URL; ?>assets/css/select2.min.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>assets/css/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+
     <!-- SweetAlert2 -->
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>assets/css/sweetalert2.min.css" rel="stylesheet">
     
     <!-- Critical CSS - Optimized -->
     <style>
@@ -174,10 +174,10 @@ if (!is_logged_in()) {
         /* Professional Navigation */
         .nav-group {
             display: flex;
-            gap: 6px;
+            gap: 4px;
             background: rgba(255, 255, 255, 0.02);
             padding: 4px;
-            border-radius: 12px;
+            border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.05);
             flex-wrap: wrap;
         }
@@ -239,6 +239,12 @@ if (!is_logged_in()) {
             display: flex;
             align-items: center;
             gap: 16px;
+            margin-left: auto;
+            padding-left: 550px;
+        }
+
+        .user-section.margin {
+            margin-left: auto;
         }
 
         .user-badge {
@@ -460,47 +466,42 @@ if (!is_logged_in()) {
     <!-- Top Navigation Bar -->
     <nav class="navbar navbar-dark top-navbar">
         <div class="container-fluid">
-            <div class="d-flex align-items-center justify-content-between gap-3">
-                <a class="navbar-brand" href="<?php echo BASE_URL; ?>modules/timbangan/timbangan1.php">
-                    <i class="fas fa-weight"></i> TIMBANGAN 1
-                </a>
+            <div class="d-flex align-items-center justify-content-between">
+                <!-- Left side: Brand and Navigation -->
+                <div class="d-flex align-items-center gap-4">
+                    <a class="navbar-brand" href="<?php echo BASE_URL; ?>modules/timbangan/timbangan1.php">
+                       WEIGHBRIDGE
+                    </a>
 
-                <div class="d-flex align-items-center gap-3">
                     <!-- Quick Navigation -->
                     <div class="nav-group">
                         <a class="nav-link <?php echo (strpos($_SERVER['PHP_SELF'], 'timbangan1') !== false) ? 'active' : ''; ?>"
                            href="<?php echo BASE_URL; ?>modules/timbangan/timbangan1.php">
-                            <i class="fas fa-tachometer-alt"></i> <span>Timbangan 1</span>
+                            <span>Timbangan 1</span>
                         </a>
                         <a class="nav-link <?php echo (strpos($_SERVER['PHP_SELF'], 'timbangan2') !== false) ? 'active' : ''; ?>"
                            href="<?php echo BASE_URL; ?>modules/timbangan/timbangan2.php">
-                            <i class="fas fa-weight"></i> <span>Timbangan 2</span>
+                            <span>Timbangan 2</span>
                         </a>
                         <a class="nav-link <?php echo (strpos($_SERVER['PHP_SELF'], 'transaksi') !== false) ? 'active' : ''; ?>"
                            href="<?php echo BASE_URL; ?>modules/transaksi/index.php">
-                            <i class="fas fa-exchange-alt"></i> <span>Transaksi</span>
+                            <span>Transaksi</span>
                         </a>
                         <a class="nav-link <?php echo (strpos($_SERVER['PHP_SELF'], 'masterdata') !== false) ? 'active' : ''; ?>"
                            href="<?php echo BASE_URL; ?>modules/masterdata/index.php">
-                            <i class="fas fa-database"></i> <span>Master Data</span>
+                         <span>Master Data</span>
                         </a>
-                        <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'admin'): ?>
-                        <a class="nav-link <?php echo (strpos($_SERVER['PHP_SELF'], 'users') !== false) ? 'active' : ''; ?>"
-                           href="<?php echo BASE_URL; ?>modules/users/index.php">
-                            <i class="fas fa-users"></i> <span>Manajemen Pengguna</span>
-                        </a>
-                        <?php endif; ?>
                     </div>
+                </div>
 
-                    <!-- User Section -->
-                    <div class="user-section">
-                        <div class="user-badge">
-                            <i class="fas fa-user-circle"></i> <span><?php echo $_SESSION['nama_lengkap']; ?></span>
-                        </div>
-                        <a href="<?php echo BASE_URL; ?>modules/auth/logout.php" class="btn-logout">
-                            <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-                        </a>
+                <!-- Right side: User Section -->
+                <div class="user-section margin">
+                    <div class="user-badge">
+                         <span><?php echo $_SESSION['nama_lengkap']; ?></span>
                     </div>
+                    <a href="<?php echo BASE_URL; ?>modules/auth/logout.php" class="btn-logout">
+                        <span>Logout</span>
+                    </a>
                 </div>
             </div>
         </div>
