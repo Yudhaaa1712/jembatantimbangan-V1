@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS transaksi_timbangan (
   id_supplier INTEGER,
   id_customer INTEGER,
   id_supir INTEGER,
+  id_gaji INTEGER,
   jenis_material TEXT,
   berat_bruto REAL DEFAULT 0,
   berat_tara REAL DEFAULT 0,
@@ -99,6 +100,9 @@ CREATE TABLE IF NOT EXISTS transaksi_timbangan (
   potongan_hutang_rp REAL DEFAULT 0,
   potongan_muat_rp REAL DEFAULT 0,
   sisa_hutang_snapshot REAL,
+  potongan_hutang_supplier_rp REAL DEFAULT 0,
+  sisa_hutang_supplier_snapshot REAL,
+  mode_timbangan TEXT DEFAULT 'beli',
   tanggal TEXT,
   waktu_timbangan1 TEXT,
   waktu_timbangan2 TEXT,
@@ -174,6 +178,20 @@ CREATE TABLE IF NOT EXISTS hutang_supir_history (
   operator_id INTEGER,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (id_supir) REFERENCES supir(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS hutang_supplier_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_supplier INTEGER NOT NULL,
+  tanggal TEXT NOT NULL,
+  jenis TEXT CHECK(jenis IN ('tambah','bayar')) NOT NULL,
+  jumlah REAL NOT NULL DEFAULT 0,
+  keterangan TEXT,
+  id_transaksi INTEGER,
+  saldo_setelah REAL NOT NULL DEFAULT 0,
+  operator_id INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_supplier) REFERENCES supplier(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS pengaturan_gaji (

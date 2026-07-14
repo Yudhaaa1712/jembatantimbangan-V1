@@ -141,7 +141,7 @@
   // ─── Load Saldo ─────────────────────────────────────────────────────────────
   async function loadSaldo() {
     try {
-      const res = await fetch('/kas/saldo');
+      const res = await fetch('/kas/saldo?_t=' + Date.now());
       const r = await res.json();
       if (r.success) {
         document.getElementById('saldoUtama').textContent = formatRp(r.data.saldo);
@@ -165,7 +165,7 @@
     tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><p>Memuat data...</p></td></tr>';
 
     try {
-      let url = `/kas/ledger?date_filter=${filter}`;
+      let url = `/kas/ledger?date_filter=${filter}&_t=${Date.now()}`;
       if (filter === 'custom_range' && start && end) {
         url += `&start_date=${start}&end_date=${end}`;
       }

@@ -101,9 +101,9 @@ async function activateReservedTicket(noTiket, data) {
     // Update basic fields
     const [r1] = await conn.execute(
       `UPDATE transaksi_timbangan SET
-         no_polisi = ?, nama_supir = ?, id_supplier = ?, updated_at = NOW()
+         no_polisi = ?, nama_supir = ?, id_supir = ?, id_supplier = ?, mode_timbangan = ?, updated_at = NOW()
        WHERE no_tiket = ? AND status = 'reserved'`,
-      [data.no_polisi, data.nama_supir, data.id_supplier, noTiket]
+      [data.no_polisi, data.nama_supir, data.id_supir || null, data.id_supplier, data.mode_timbangan || 'beli', noTiket]
     );
 
     if (r1.affectedRows === 0) {
@@ -114,10 +114,10 @@ async function activateReservedTicket(noTiket, data) {
     await conn.execute(
       `UPDATE transaksi_timbangan SET
          jenis_material = ?, keterangan = ?, harga_per_kg = ?,
-         berat_bruto = ?, berat_timbangan1 = ?
+         berat_bruto = ?, berat_tara = ?, berat_timbangan1 = ?
        WHERE no_tiket = ?`,
       [data.jenis_material, data.keterangan || '', data.harga_per_kg,
-       data.berat_bruto, data.berat_timbangan1, noTiket]
+       data.berat_bruto || 0, data.berat_tara || 0, data.berat_timbangan1, noTiket]
     );
 
     // Update status

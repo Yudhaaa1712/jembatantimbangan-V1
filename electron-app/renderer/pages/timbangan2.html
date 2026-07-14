@@ -42,7 +42,10 @@
 
         <!-- COLUMN 1: DATA TIMBANGAN 1 -->
         <div class="terminal-box">
-          <label class="terminal-label"><i class="bi bi-database"></i> Data Timbangan 1</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label class="terminal-label" style="margin: 0;"><i class="bi bi-database"></i> Data Timbangan 1</label>
+            <span class="badge" id="modeTimbanganBadge" style="font-size: 11px; padding: 4px 8px; display: none; font-weight: bold; border-radius: 4px;"></span>
+          </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div style="margin-bottom: 10px;" id="t1field_no_kendaraan">
               <label class="terminal-label" style="font-size: 12px;">No Kendaraan</label>
@@ -89,6 +92,15 @@
                 <input type="hidden" id="supirDebtVal" value="0">
               </div>
             </div>
+
+            <div style="margin-bottom: 10px; display: none;" id="t2field_potongan_hutang_supplier">
+              <div class="mb-2">
+                <label class="terminal-label" style="font-size: 12px; color: #3b82f6;">Potongan Hutang Supplier (Max: <span id="maxSupplierDebt">0</span>)</label>
+                <input type="number" name="potongan_hutang_supplier_rp" class="terminal-input" id="potonganHutangSupplierInput" 
+                       step="1" min="0" placeholder="0" style="font-size: 16px; padding: 8px;">
+                <input type="hidden" id="supplierDebtVal" value="0">
+              </div>
+            </div>
             
             <div style="margin-bottom: 10px;" id="t2field_potongan_muat">
               <label class="terminal-label" style="font-size: 12px; color: #f59e0b;">Potongan Uang Muat</label>
@@ -132,6 +144,10 @@
             <div class="result-item" id="result_potongan_hutang" style="padding: 8px; display: none;">
               <div class="result-label" style="font-size: 9px;">Potongan Hutang</div>
               <div class="result-value" id="hasilPotonganHutang" style="font-size: 12px; color: #ef4444;">0</div>
+            </div>
+            <div class="result-item" id="result_potongan_hutang_supplier" style="padding: 8px; display: none;">
+              <div class="result-label" style="font-size: 9px;">Potongan Hutang Supplier</div>
+              <div class="result-value" id="hasilPotonganHutangSupplier" style="font-size: 12px; color: #3b82f6;">0</div>
             </div>
             <div class="result-item" id="result_potongan_muat" style="padding: 8px; display: none;">
               <div class="result-label" style="font-size: 9px;">Potongan Muat</div>
@@ -226,6 +242,7 @@
           opt.dataset.berat = t.berat_bruto || t.berat_timbangan1 || 0;
           opt.dataset.keterangan = t.keterangan || '';
           opt.dataset.id = t.id;
+          opt.dataset.mode = t.mode_timbangan || 'beli';
           sel.appendChild(opt);
         });
       }
@@ -265,31 +282,76 @@
     document.getElementById('persenPotongan').value = defPotongan > 0 ? defPotongan : '';
     
     
-    // Reset debt inputs
+    // Show/hide Mode Badge
+    const mode = opt.dataset.mode || 'beli';
+    const modeBadge = document.getElementById('modeTimbanganBadge');
+    if (modeBadge) {
+      modeBadge.style.display = 'inline-block';
+      if (mode === 'jual') {
+        modeBadge.textContent = 'MODE JUAL';
+        modeBadge.style.backgroundColor = '#2563eb';
+        modeBadge.style.color = '#fff';
+      } else {
+        modeBadge.textContent = 'MODE BELI';
+        modeBadge.style.backgroundColor = '#10b981';
+        modeBadge.style.color = '#fff';
+      }
+    }
+
+    // Reset supir debt inputs
     document.getElementById('supirDebtVal').value = 0;
     document.getElementById('maxSupirDebt').textContent = '0';
     document.getElementById('potonganHutangInput').value = '';
+    document.getElementById('t2field_potongan_hutang').style.display = 'none';
+
+    // Reset supplier debt inputs
+    document.getElementById('supplierDebtVal').value = 0;
+    document.getElementById('maxSupplierDebt').textContent = '0';
+    document.getElementById('potonganHutangSupplierInput').value = '';
+    document.getElementById('t2field_potongan_hutang_supplier').style.display = 'none';
+
     document.getElementById('potonganMuatInput').value = '';
     
     if (window.isHutangActive && opt.dataset.pengemudi) {
       try {
         const res = await fetch('/hutang-supir-api/supir/check-debt?name=' + encodeURIComponent(opt.dataset.pengemudi));
         const d = await res.json();
-        if (d.success && d.data) {
+        if (d.success && d.data && d.data.total_hutang > 0) {
           document.getElementById('supirDebtVal').value = d.data.total_hutang || 0;
           document.getElementById('maxSupirDebt').textContent = formatRibuan(d.data.total_hutang || 0);
+          document.getElementById('t2field_potongan_hutang').style.display = 'block';
         }
       } catch(e) { console.error('Fetch supir debt error:', e); }
+    }
+
+    if (opt.dataset.suplier) {
+      try {
+        const res = await fetch('/hutang-supplier-api/supplier/check-debt?name=' + encodeURIComponent(opt.dataset.suplier));
+        const d = await res.json();
+        if (d.success && d.data && d.data.total_hutang > 0) {
+          document.getElementById('supplierDebtVal').value = d.data.total_hutang || 0;
+          document.getElementById('maxSupplierDebt').textContent = formatRibuan(d.data.total_hutang || 0);
+          document.getElementById('t2field_potongan_hutang_supplier').style.display = 'block';
+        }
+      } catch(e) { console.error('Fetch supplier debt error:', e); }
     }
     
     hitungKalkulasi();
   });
 
   function hitungKalkulasi() {
-      const bruto = parseFloat(document.getElementById('beratT1Hidden').value) || 0;
-      const tara = parseFloat(document.getElementById('beratInput2').value) || 0;
+      const t1Weight = parseFloat(document.getElementById('beratT1Hidden').value) || 0;
+      const t2Weight = parseFloat(document.getElementById('beratInput2').value) || 0;
       const persen = parseFloat(document.getElementById('persenPotongan').value) || 0;
       const harga = parseFloat(document.getElementById('hargaHiddenT2').value) || 0;
+      
+      const selector = document.getElementById('tiketSelector');
+      const opt = selector.options[selector.selectedIndex];
+      const mode = opt ? (opt.dataset.mode || 'beli') : 'beli';
+      const isModeJual = mode === 'jual';
+
+      const bruto = isModeJual ? t2Weight : t1Weight;
+      const tara = isModeJual ? t1Weight : t2Weight;
       
       document.getElementById('hasilBruto').textContent = formatRibuan(bruto);
       document.getElementById('hasilTara').textContent = formatRibuan(tara);
@@ -322,16 +384,29 @@
         }
         potonganHutang = pInput;
         
-        // Show/hide result items
         document.getElementById('result_potongan_hutang').style.display = potonganHutang > 0 ? '' : 'none';
         document.getElementById('hasilPotonganHutang').textContent = '- Rp ' + formatRibuan(potonganHutang);
       }
+      
+      let potonganHutangSupplier = 0;
+      const supplierDebt = parseFloat(document.getElementById('supplierDebtVal').value) || 0;
+      const maxPotonganSupplier = Math.min(supplierDebt, totalAwal - potonganHutang);
+      
+      let pSupplierInput = parseFloat(document.getElementById('potonganHutangSupplierInput').value) || 0;
+      if (pSupplierInput > maxPotonganSupplier) {
+        pSupplierInput = maxPotonganSupplier;
+        document.getElementById('potonganHutangSupplierInput').value = pSupplierInput;
+      }
+      potonganHutangSupplier = pSupplierInput;
+      
+      document.getElementById('result_potongan_hutang_supplier').style.display = potonganHutangSupplier > 0 ? '' : 'none';
+      document.getElementById('hasilPotonganHutangSupplier').textContent = '- Rp ' + formatRibuan(potonganHutangSupplier);
       
       let potonganMuat = parseFloat(document.getElementById('potonganMuatInput').value) || 0;
       document.getElementById('result_potongan_muat').style.display = potonganMuat > 0 ? '' : 'none';
       document.getElementById('hasilPotonganMuat').textContent = '- Rp ' + formatRibuan(potonganMuat);
       
-      const totalAkhir = totalAwal - potonganHutang - potonganMuat;
+      const totalAkhir = totalAwal - potonganHutang - potonganHutangSupplier - potonganMuat;
       document.getElementById('hasilTotalHargaFinal').textContent = 'Rp ' + formatRibuan(totalAkhir);
   }
 
@@ -349,6 +424,7 @@
   document.getElementById('beratInput2').addEventListener('input', hitungKalkulasi);
   document.getElementById('persenPotongan').addEventListener('input', hitungKalkulasi);
   document.getElementById('potonganHutangInput').addEventListener('input', hitungKalkulasi);
+  document.getElementById('potonganHutangSupplierInput').addEventListener('input', hitungKalkulasi);
   document.getElementById('potonganMuatInput').addEventListener('input', hitungKalkulasi);
 
   document.getElementById('captureWeight2').addEventListener('click', function() {
@@ -397,6 +473,7 @@
             kg_potongan: kgPot,
             harga_per_kg: harga,
             potongan_hutang_rp: window.isHutangActive ? (parseFloat(document.getElementById('potonganHutangInput').value) || 0) : 0,
+            potongan_hutang_supplier_rp: parseFloat(document.getElementById('potonganHutangSupplierInput').value) || 0,
             potongan_muat_rp: parseFloat(document.getElementById('potonganMuatInput').value) || 0,
             keterangan: keterangan
           };

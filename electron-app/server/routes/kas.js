@@ -13,6 +13,7 @@ const express = require('express');
 const router = express.Router();
 const { query, queryOne, pool, jsonResponse } = require('../config/database');
 const { isLoggedIn, requireRole } = require('../middleware/auth');
+const { recalculateKasBalances } = require('../helpers/kasHelper');
 
 router.use(isLoggedIn);
 
@@ -396,21 +397,8 @@ router.delete('/hapus/:id', async (req, res) => {
     }
     // ----------------------------------------------
 
-    // Recalculate saldo_setelah untuk semua entry setelah yang dihapus (merambat melintasi hari)
-    const allAfter = await query(`SELECT id, jenis, jumlah FROM kas WHERE id > ? ORDER BY id ASC`, [id]);
-    
-    // Ambil saldo dari entry sebelum yang dihapus
-    const prevEntry = await queryOne(`SELECT saldo_setelah FROM kas WHERE id < ? ORDER BY id DESC LIMIT 1`, [id]);
-    let runningSaldo = prevEntry ? parseFloat(prevEntry.saldo_setelah) : 0;
-
-    for (const row of allAfter) {
-      if (row.jenis === 'masuk') {
-        runningSaldo += parseFloat(row.jumlah);
-      } else {
-        runningSaldo -= parseFloat(row.jumlah);
-      }
-      await query(`UPDATE kas SET saldo_setelah = ? WHERE id = ?`, [runningSaldo, row.id]);
-    }
+    // Recalculate saldo_setelah untuk semua entry setelah yang dihapus
+    const runningSaldo = await recalculateKasBalances();
 
     console.log(`[Kas] Entry #${id} dihapus (${jenisHapus}: Rp ${jumlahHapus.toLocaleString('id-ID')})`);
 

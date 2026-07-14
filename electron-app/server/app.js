@@ -98,6 +98,7 @@ app.use('/hutang', hutangRoutes);
 app.use('/upah-api', upahRoutes);
 app.use('/license', licenseRoutes);
 app.use('/hutang-supir-api', hutangRoutes);
+app.use('/hutang-supplier-api', hutangRoutes);
 
 // ─── Page Routes (serve HTML) ──────────────────────────────────────────────────
 const { isLoggedIn } = require('./middleware/auth');

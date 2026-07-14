@@ -272,4 +272,198 @@ router.post('/supir/add', async (req, res) => {
   }
 });
 
+// ─── SUPPLIER DEBT ENDPOINTS ──────────────────────────────────────────────────
+
+// GET /supplier-aktif
+router.get('/supplier-aktif', async (req, res) => {
+  try {
+    const data = await query(
+      `SELECT DISTINCT s.* FROM supplier s
+       INNER JOIN hutang_supplier_history h ON s.id = h.id_supplier
+       WHERE s.status = 'active'
+       ORDER BY s.nama_supplier`
+    );
+    return jsonResponse(res, true, 'List supplier aktif', data);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// GET /supplier/check-debt
+router.get('/supplier/check-debt', async (req, res) => {
+  try {
+    const cleanName = cleanInput(req.query.name).trim().toUpperCase();
+    if (!cleanName) return jsonResponse(res, false, 'Nama supplier tidak valid');
+    
+    let supplier = await queryOne(`SELECT * FROM supplier WHERE UPPER(nama_supplier) = ?`, [cleanName]);
+    if (!supplier) {
+      supplier = {
+        id: null,
+        nama_supplier: cleanName,
+        total_hutang: 0,
+        status: 'active'
+      };
+    }
+    return jsonResponse(res, true, 'Debt info', supplier);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// GET /supplier/:id/history
+router.get('/supplier/:id/history', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const history = await query(
+      `SELECT h.*, u.nama_lengkap as nama_operator 
+       FROM hutang_supplier_history h
+       LEFT JOIN users u ON h.operator_id = u.id
+       WHERE h.id_supplier = ? 
+       ORDER BY h.created_at DESC`,
+      [id]
+    );
+    return jsonResponse(res, true, 'History hutang supplier', history);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// POST /supplier/bayar
+router.post('/supplier/bayar', async (req, res) => {
+  try {
+    const { id_supplier, jumlah, keterangan, tanggal } = req.body;
+    const amount = parseFloat(jumlah);
+    if (!id_supplier || isNaN(amount) || amount <= 0) {
+      return jsonResponse(res, false, 'Data tidak valid');
+    }
+    const tgl = tanggal || new Date().toISOString().split('T')[0];
+
+    const supplier = await queryOne(`SELECT * FROM supplier WHERE id = ?`, [id_supplier]);
+    if (!supplier) return jsonResponse(res, false, 'Supplier tidak ditemukan');
+
+    const newHutang = Math.max(0, supplier.total_hutang - amount);
+    const tx = beginTransaction();
+    try {
+      tx.execute(`UPDATE supplier SET total_hutang = ?, hutang_terakhir_update = datetime('now', 'localtime') WHERE id = ?`, [newHutang, id_supplier]);
+      tx.execute(
+        `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id) 
+         VALUES (?, ?, 'bayar', ?, ?, ?, ?)`,
+        [id_supplier, tgl, amount, keterangan || 'Pembayaran Manual', newHutang, req.session.user_id]
+      );
+      tx.commit();
+      return jsonResponse(res, true, 'Pembayaran hutang supplier berhasil dicatat');
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// POST /supplier/tambah
+router.post('/supplier/tambah', async (req, res) => {
+  try {
+    const { id_supplier, jumlah, keterangan, tanggal } = req.body;
+    const amount = parseFloat(jumlah);
+    if (!id_supplier || isNaN(amount) || amount <= 0) {
+      return jsonResponse(res, false, 'Data tidak valid');
+    }
+    const tgl = tanggal || new Date().toISOString().split('T')[0];
+
+    const supplier = await queryOne(`SELECT * FROM supplier WHERE id = ?`, [id_supplier]);
+    if (!supplier) return jsonResponse(res, false, 'Supplier tidak ditemukan');
+
+    const newHutang = supplier.total_hutang + amount;
+    const tx = beginTransaction();
+    try {
+      tx.execute(`UPDATE supplier SET total_hutang = ?, hutang_terakhir_update = datetime('now', 'localtime') WHERE id = ?`, [newHutang, id_supplier]);
+      tx.execute(
+        `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id) 
+         VALUES (?, ?, 'tambah', ?, ?, ?, ?)`,
+        [id_supplier, tgl, amount, keterangan || 'Penambahan Manual', newHutang, req.session.user_id]
+      );
+      tx.commit();
+      return jsonResponse(res, true, 'Penambahan hutang supplier berhasil dicatat');
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// GET /supplier/export-excel
+router.get('/supplier/export-excel', async (req, res) => {
+  try {
+    const supplierList = await query(`SELECT * FROM supplier ORDER BY nama_supplier`);
+    let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Laporan Rekapan Hutang Supplier</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .title { font-size: 18px; font-weight: bold; text-decoration: underline; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { border: 1px solid #000; padding: 5px; font-size: 11px; }
+        .data-table th { background-color: #DDEBF7; font-weight: bold; text-align: center; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .currency-format { text-align: right; mso-number-format:"\\"Rp \\"\\#\\,\\#\\#0;\\"Rp \\"\\-\\#\\,\\#\\#0;\\"-\\""; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="title">LAPORAN REKAPAN HUTANG SUPPLIER</div>
+    <div>Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}</div>
+</div>
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>NO</th>
+            <th>KODE SUPPLIER</th>
+            <th>NAMA SUPPLIER</th>
+            <th>TOTAL HUTANG</th>
+            <th>STATUS</th>
+        </tr>
+    </thead>
+    <tbody>`;
+
+    let totalSemuaHutang = 0;
+    supplierList.forEach((s, idx) => {
+      totalSemuaHutang += s.total_hutang || 0;
+      html += `
+        <tr>
+            <td class="text-center">${idx + 1}</td>
+            <td class="text-center">${s.kode_supplier}</td>
+            <td>${s.nama_supplier}</td>
+            <td class="currency-format">${s.total_hutang || 0}</td>
+            <td class="text-center">${s.status.toUpperCase()}</td>
+        </tr>`;
+    });
+
+    html += `
+        <tr style="font-weight:bold; background-color:#F2F2F2;">
+            <td colspan="3" class="text-center">TOTAL HUTANG KESELURUHAN</td>
+            <td class="currency-format">${totalSemuaHutang}</td>
+            <td></td>
+        </tr>
+    </tbody>
+</table>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8');
+    res.setHeader('Content-Disposition', `attachment;filename="Rekap_Hutang_Supplier_${new Date().toISOString().split('T')[0]}.xls"`);
+    res.setHeader('Cache-Control', 'max-age=0');
+    return res.send(html);
+  } catch (err) {
+    console.error(err);
+    return jsonResponse(res, false, 'Gagal export Excel: ' + err.message);
+  }
+});
+
 module.exports = router;

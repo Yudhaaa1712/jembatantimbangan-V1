@@ -807,10 +807,10 @@
       o += ct('Jl. Contoh No. 123, Kota', W) + '\n';
       o += ct('Telp: 0812-3456-7890', W) + '\n';
       o += '\u2500'.repeat(W) + '\n';
-      o += sl('Cetakan 1', pR('No. Tiket', 19) + ': TKT-00001', W) + '\n';
-      o += '\u2500'.repeat(W) + '\n';
-      o += sl(pR('No. Kendaraan', 17) + ': BK 1234 AB', pR('Jam/ Tgl Masuk', 19) + ': 08:30 01/06/2024', W) + '\n';
-      o += sl(pR('Nama Barang', 17) + ': TBS SAWIT', pR('Jam/ Tgl Keluar', 19) + ': 09:15 01/06/2024', W) + '\n';
+      o += ct('NO. TIKET: TKT-00001   JAM MASUK: 08:30', W) + '\n';
+      o += '═'.repeat(W) + '\n';
+      o += pR('No. Kendaraan', 17) + ': BK 1234 AB\n';
+      o += pR('Nama Barang', 17) + ': TBS SAWIT\n';
       o += pR('Nama Supir', 17) + ': AHMAD\n';
       o += pR('Customer/Supplier', 17) + ': PT. SAWIT JAYA\n\n';
       o += pR('Bruto', 17) + ': ' + pL('10.500', 16) + ' kg\n';

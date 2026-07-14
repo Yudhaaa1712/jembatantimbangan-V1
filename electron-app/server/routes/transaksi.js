@@ -5,8 +5,9 @@
 const express = require('express');
 const router = express.Router();
 const ExcelJS = require('exceljs');
-const { query, queryOne, pool, jsonResponse, cleanInput } = require('../config/database');
+const { query, queryOne, pool, jsonResponse, cleanInput, beginTransaction } = require('../config/database');
 const { isLoggedIn, requireRole, getCurrentUser } = require('../middleware/auth');
+const { recalculateKasBalances } = require('../helpers/kasHelper');
 
 router.use(isLoggedIn);
 
@@ -42,7 +43,7 @@ router.get('/list', async (req, res) => {
               tt.no_polisi as no_polisi_display,
               s.nama_supplier,
               u.nama_lengkap as operator_nama,
-              (tt.berat_timbangan1 - tt.berat_timbangan2) as netto1_calc
+              tt.berat_netto as netto1_calc
        FROM transaksi_timbangan tt
        LEFT JOIN supplier s ON tt.id_supplier = s.id
        LEFT JOIN users u ON tt.operator_id = u.id
@@ -54,10 +55,10 @@ router.get('/list', async (req, res) => {
     const [statsRows] = await pool.execute(
       `SELECT
          COUNT(*) as total_transaksi,
-         COALESCE(SUM(tt.berat_timbangan1), 0) as total_bruto,
+         COALESCE(SUM(tt.berat_bruto), 0) as total_bruto,
          COALESCE(SUM(tt.berat_netto), 0) as total_netto,
          COALESCE(SUM(tt.total_harga), 0) as total_harga,
-         COALESCE(AVG(tt.berat_timbangan1), 0) as rata_bruto
+         COALESCE(AVG(tt.berat_bruto), 0) as rata_bruto
        FROM transaksi_timbangan tt
        WHERE ${dateSql} AND tt.status = 'selesai' AND tt.timbang2_locked = 1`,
       dateParams
@@ -216,8 +217,34 @@ router.post('/cancel', requireRole('admin', 'operator'), async (req, res) => {
     // -------------------------------------------
 
     if (actionType === 'delete') {
-      await refundKas(id, trx.no_tiket);
-      await query(`DELETE FROM transaksi_timbangan WHERE id = ?`, [id]);
+      const fullTrx = await queryOne(`SELECT id_supir, id_supplier, potongan_hutang_rp, potongan_hutang_supplier_rp FROM transaksi_timbangan WHERE id = ?`, [id]);
+      if (fullTrx) {
+        const tx = beginTransaction();
+        try {
+          // Restore supir debt if deducted
+          if (fullTrx.id_supir && parseFloat(fullTrx.potongan_hutang_rp) > 0) {
+            tx.execute(`UPDATE supir SET total_hutang = total_hutang + ? WHERE id = ?`, [parseFloat(fullTrx.potongan_hutang_rp), fullTrx.id_supir]);
+            tx.execute(`DELETE FROM hutang_supir_history WHERE id_transaksi = ?`, [id]);
+          }
+          // Restore supplier debt if deducted
+          if (fullTrx.id_supplier && parseFloat(fullTrx.potongan_hutang_supplier_rp) > 0) {
+            tx.execute(`UPDATE supplier SET total_hutang = total_hutang + ? WHERE id = ?`, [parseFloat(fullTrx.potongan_hutang_supplier_rp), fullTrx.id_supplier]);
+            tx.execute(`DELETE FROM hutang_supplier_history WHERE id_transaksi = ?`, [id]);
+          }
+          // Delete kas record
+          tx.execute(`DELETE FROM kas WHERE id_transaksi = ?`, [id]);
+          // Delete transaction
+          tx.execute(`DELETE FROM transaksi_timbangan WHERE id = ?`, [id]);
+          tx.commit();
+        } catch (txErr) {
+          tx.rollback();
+          throw txErr;
+        }
+        
+        // Recalculate kas balances
+        await recalculateKasBalances();
+      }
+      
       await notifyGoogleSheet(trx.no_tiket, 'delete');
       return jsonResponse(res, true, 'Transaksi berhasil dihapus permanen');
     } else if (actionType === 'ulang_timbang') {

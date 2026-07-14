@@ -21,7 +21,7 @@ router.get('/data', async (req, res) => {
 
     let suppliers = cacheGet(cacheKey);
     if (!suppliers) {
-      suppliers = await query(`SELECT id, nama_supplier, default_harga, default_potongan FROM supplier WHERE status = 'active' AND is_temporary = 0 ORDER BY nama_supplier`);
+      suppliers = await query(`SELECT id, nama_supplier, default_harga, default_potongan, total_hutang FROM supplier WHERE status = 'active' AND is_temporary = 0 ORDER BY nama_supplier`);
       cacheSet(cacheKey, suppliers, 3600);
     }
 
@@ -77,7 +77,7 @@ router.post('/ajax', async (req, res) => {
       case 'get_pending_tickets': {
         const tickets = await query(
           `SELECT tt.id, tt.no_tiket, tt.berat_timbangan1, tt.berat_bruto, tt.no_polisi,
-                  tt.nama_supir, tt.jenis_material, tt.harga_per_kg, tt.keterangan, s.nama_supplier,
+                  tt.nama_supir, tt.id_supir, tt.jenis_material, tt.harga_per_kg, tt.keterangan, tt.mode_timbangan, s.nama_supplier,
                   s.default_harga, s.default_potongan
            FROM transaksi_timbangan tt
            LEFT JOIN supplier s ON tt.id_supplier = s.id
@@ -90,12 +90,14 @@ router.post('/ajax', async (req, res) => {
           berat_bruto:   t.berat_timbangan1 || t.berat_bruto,
           no_polisi:     t.no_polisi,
           nama_supir:    t.nama_supir,
+          id_supir:      t.id_supir,
           nama_supplier: t.nama_supplier || 'Unknown',
           default_harga: t.default_harga || 0,
           default_potongan: t.default_potongan || 0,
           jenis_material: t.jenis_material,
           harga_per_kg:  t.harga_per_kg,
-          keterangan:    t.keterangan
+          keterangan:    t.keterangan,
+          mode_timbangan: t.mode_timbangan || 'beli'
         })));
       }
 
@@ -167,12 +169,19 @@ router.post('/ajax', async (req, res) => {
         if (!idTransaksi) return jsonResponse(res, false, 'ID transaksi tidak valid');
 
         const transaksi = await queryOne(
-          `SELECT berat_timbangan1, no_tiket, nama_supir, potongan_jalan, potongan_pupuk_rp, potongan_hutang_rp 
+          `SELECT berat_timbangan1, no_tiket, nama_supir, id_supplier, mode_timbangan, potongan_jalan, potongan_pupuk_rp, potongan_hutang_rp 
            FROM transaksi_timbangan WHERE id = ? LIMIT 1`, [idTransaksi]
         );
         if (!transaksi) return jsonResponse(res, false, 'Data transaksi tidak ditemukan');
 
-        const netto = transaksi.berat_timbangan1 - beratT2;
+        const isJual = transaksi.mode_timbangan === 'jual';
+        const netto = isJual 
+          ? (beratT2 - transaksi.berat_timbangan1) 
+          : (transaksi.berat_timbangan1 - beratT2);
+        
+        const updateBruto = isJual ? beratT2 : transaksi.berat_timbangan1;
+        const updateTara  = isJual ? transaksi.berat_timbangan1 : beratT2;
+
         const nettoAkhir = netto - kgPotongan;
         const totalHarga = nettoAkhir * hargaPerKg;
 
@@ -207,20 +216,43 @@ router.post('/ajax', async (req, res) => {
           finalNewDebt = Math.max(0, currentDebt - finalPotonganHutang);
         }
 
+        // Supplier Debt deduction
+        let supplierId = transaksi.id_supplier;
+        let currentSupplierDebt = 0;
+        if (supplierId) {
+          const sup = await queryOne(`SELECT total_hutang FROM supplier WHERE id = ?`, [supplierId]);
+          if (sup) {
+            currentSupplierDebt = sup.total_hutang || 0;
+          }
+        }
+
+        const potonganHutangSupplier = parseFloat(req.body.potongan_hutang_supplier_rp) || 0;
+        let finalPotonganHutangSupplier = 0;
+        let finalNewSupplierDebt = currentSupplierDebt;
+
+        if (supplierId) {
+          finalPotonganHutangSupplier = Math.max(0, Math.min(potonganHutangSupplier, currentSupplierDebt, totalHarga - finalPotonganHutang));
+          finalNewSupplierDebt = Math.max(0, currentSupplierDebt - finalPotonganHutangSupplier);
+        }
+
         // Execute save in transaction
         const tx = beginTransaction();
         try {
           tx.execute(
             `UPDATE transaksi_timbangan SET
                id_customer = ?, berat_timbangan2 = ?, timbang2_locked = 1,
+               berat_bruto = ?, berat_tara = ?,
                persen_potongan = ?, kg_potongan = ?, harga_per_kg = ?,
                total_harga = ?, berat_netto = ?, netto_akhir = ?,
                potongan_hutang_rp = ?, potongan_muat_rp = ?, sisa_hutang_snapshot = ?,
+               potongan_hutang_supplier_rp = ?, sisa_hutang_supplier_snapshot = ?,
                keterangan = ?, waktu_timbangan2 = datetime('now', 'localtime'), waktu_keluar = datetime('now', 'localtime'),
                status = 'selesai', updated_at = datetime('now', 'localtime')
              WHERE id = ?`,
-            [idCustomer, beratT2, persenPot, kgPotongan, hargaPerKg,
+            [idCustomer, beratT2, updateBruto, updateTara,
+             persenPot, kgPotongan, hargaPerKg,
              totalHarga, netto, nettoAkhir, finalPotonganHutang, potonganMuat, finalNewDebt,
+             finalPotonganHutangSupplier, finalNewSupplierDebt,
              keterangan, idTransaksi]
           );
 
@@ -235,6 +267,15 @@ router.post('/ajax', async (req, res) => {
                 [supirId, finalPotonganHutang, `Potong otomatis tiket ${transaksi.no_tiket}`, idTransaksi, debtAfterPay, req.session.user_id]
               );
             }
+          }
+
+          if (supplierId && finalPotonganHutangSupplier > 0) {
+            tx.execute(`UPDATE supplier SET total_hutang = ?, hutang_terakhir_update = datetime('now', 'localtime') WHERE id = ?`, [finalNewSupplierDebt, supplierId]);
+            tx.execute(
+              `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, id_transaksi, saldo_setelah, operator_id)
+               VALUES (?, date('now', 'localtime'), 'bayar', ?, ?, ?, ?, ?)`,
+              [supplierId, finalPotonganHutangSupplier, `Potong otomatis tiket ${transaksi.no_tiket}`, idTransaksi, finalNewSupplierDebt, req.session.user_id]
+            );
           }
 
           tx.commit();
@@ -279,9 +320,9 @@ router.post('/ajax', async (req, res) => {
                 nama_supir: fullData.nama_supir || '',
                 nama_supplier: fullData.nama_supplier || '',
                 jenis_material: fullData.jenis_material || '',
-                bruto: new Intl.NumberFormat('id-ID').format(Math.round(fullData.berat_timbangan1 || 0)) + ' kg',
-                tara: new Intl.NumberFormat('id-ID').format(Math.round(fullData.berat_timbangan2 || 0)) + ' kg',
-                netto1: new Intl.NumberFormat('id-ID').format(Math.round(fullData.berat_timbangan1 - fullData.berat_timbangan2)) + ' kg',
+                bruto: new Intl.NumberFormat('id-ID').format(Math.round(fullData.berat_bruto || 0)) + ' kg',
+                tara: new Intl.NumberFormat('id-ID').format(Math.round(fullData.berat_tara || 0)) + ' kg',
+                netto1: new Intl.NumberFormat('id-ID').format(Math.round(fullData.berat_netto || 0)) + ' kg',
                 potongan_persen: parseFloat(fullData.persen_potongan || 0) + '%',
                 potongan_kg: new Intl.NumberFormat('id-ID').format(Math.round(fullData.kg_potongan || 0)) + ' kg',
                 netto2: new Intl.NumberFormat('id-ID').format(Math.round(fullData.berat_netto || 0)) + ' kg',
@@ -342,24 +383,25 @@ router.post('/ajax', async (req, res) => {
           }
         } catch (e) {
           console.error('[GoogleSheet] DB fetch/formatting error:', e.message);
-        }
-
-        // ── Auto-deduct Kas (Uang Kas berkurang saat beli buah) ─────────────
+        }        // ── Auto-deduct/deposit Kas (Uang Kas bertambah/berkurang berdasarkan mode_timbangan) ─────────────
         try {
-          // Total akhir = totalHarga - (potongan_jalan + potongan_pupuk + potongan_hutang)
           const potJln = parseFloat(transaksi?.potongan_jalan || 0);
           const potPpk = parseFloat(transaksi?.potongan_pupuk_rp || 0);
           const potHut = isHutangActive ? finalPotonganHutang : parseFloat(transaksi?.potongan_hutang_rp || 0);
+          const potHutSupplier = finalPotonganHutangSupplier;
           const potMuat = potonganMuat;
-          const totalAkhir = Math.max(0, totalHarga - (potJln + potPpk + potHut + potMuat));
-          
+          const totalAkhir = Math.max(0, totalHarga - (potJln + potPpk + potHut + potHutSupplier + potMuat));
+
           if (totalAkhir > 0) {
             // Ambil saldo terakhir absolut (carry-over)
             const lastKas = await queryOne(
               `SELECT saldo_setelah FROM kas ORDER BY id DESC LIMIT 1`
             );
             const saldoSebelum = lastKas ? parseFloat(lastKas.saldo_setelah) : 0;
-            const saldoSesudah = saldoSebelum - totalAkhir;
+            
+            const isBeli = (transaksi?.mode_timbangan || 'beli') !== 'jual';
+            const jenisKas = isBeli ? 'keluar' : 'masuk';
+            const saldoSesudah = isBeli ? (saldoSebelum - totalAkhir) : (saldoSebelum + totalAkhir);
 
             // Ambil no_tiket + info supplier untuk referensi
             const tiketInfo = await queryOne(
@@ -372,12 +414,14 @@ router.post('/ajax', async (req, res) => {
             // Format keterangan: "TBS UJANG" atau "BRONDOLAN SIRUN"
             const materialLabel = (tiketInfo?.jenis_material || '').toUpperCase();
             const supirLabel = (tiketInfo?.nama_supir || '').toUpperCase();
-            const kasKeterangan = `${materialLabel} ${supirLabel}`.trim() || `Pembelian buah - ${tiketInfo?.no_tiket || 'N/A'}`;
+            const actionLabel = isBeli ? '' : 'PENJUALAN ';
+            const kasKeterangan = `${actionLabel}${materialLabel} ${supirLabel}`.trim() || `${isBeli ? 'Pembelian' : 'Penjualan'} buah - ${tiketInfo?.no_tiket || 'N/A'}`;
 
             await query(
               `INSERT INTO kas (tanggal, jenis, jumlah, keterangan, id_transaksi, no_tiket, saldo_setelah, operator_id, created_at)
-               VALUES (CURDATE(), 'keluar', ?, ?, ?, ?, ?, ?, NOW())`,
+               VALUES (CURDATE(), ?, ?, ?, ?, ?, ?, ?, NOW())`,
               [
+                jenisKas,
                 totalAkhir,
                 kasKeterangan,
                 idTransaksi,
@@ -386,9 +430,9 @@ router.post('/ajax', async (req, res) => {
                 req.session.user_id
               ]
             );
-            console.log(`[Kas] Auto-deduct: -Rp ${totalAkhir.toLocaleString('id-ID')} (${tiketInfo?.no_tiket}). Sisa: Rp ${saldoSesudah.toLocaleString('id-ID')}`);
+            console.log(`[Kas] Auto-${isBeli ? 'deduct' : 'deposit'}: ${isBeli ? '-' : '+'}Rp ${totalAkhir.toLocaleString('id-ID')} (${tiketInfo?.no_tiket}). Sisa: Rp ${saldoSesudah.toLocaleString('id-ID')}`);
             
-            // Sync auto-deduct kas ke Google Sheet
+            // Sync auto-deduct/deposit kas ke Google Sheet
             const settingKas = await queryOne(`SELECT setting_value FROM settings WHERE setting_key = 'google_sheet_url'`);
             if (settingKas && settingKas.setting_value && settingKas.setting_value.startsWith('http')) {
               try {
@@ -396,8 +440,8 @@ router.post('/ajax', async (req, res) => {
                   sheet_type: 'keuangan',
                   tanggal: new Date().toLocaleDateString('id-ID'),
                   keterangan: kasKeterangan,
-                  debit: '',
-                  kredit: 'Rp. ' + new Intl.NumberFormat('id-ID').format(totalAkhir),
+                  debit: isBeli ? '' : 'Rp. ' + new Intl.NumberFormat('id-ID').format(totalAkhir),
+                  kredit: isBeli ? 'Rp. ' + new Intl.NumberFormat('id-ID').format(totalAkhir) : '',
                   saldo: 'Rp. ' + new Intl.NumberFormat('id-ID').format(saldoSesudah),
                   waktu: new Date().toLocaleTimeString('id-ID'),
                   operator: user.nama_lengkap || 'Operator'
@@ -420,8 +464,7 @@ router.post('/ajax', async (req, res) => {
             }
           }
         } catch (kasErr) {
-          console.error('[Kas] Auto-deduct error (non-fatal):', kasErr.message);
-          // Non-fatal: transaksi tetap berhasil meskipun kas gagal dicatat
+          console.error('[Kas] Auto-deduct/deposit error (non-fatal):', kasErr.message);
         }
 
         return jsonResponse(res, true, 'Data Timbangan 2 berhasil disimpan');
@@ -678,6 +721,19 @@ router.post('/save-timbangan1', async (req, res) => {
 
     const noTiket = await generateTicketNumber();
 
+    // Find or create supir
+    let supirId = null;
+    if (namaPengemudi && namaPengemudi !== '-') {
+      const driverName = namaPengemudi.trim().toUpperCase();
+      let supir = await queryOne(`SELECT id FROM supir WHERE UPPER(nama_supir) = ?`, [driverName]);
+      if (!supir) {
+        const sRes = await query(`INSERT INTO supir (nama_supir, total_hutang, status, created_at) VALUES (?, 0, 'active', datetime('now', 'localtime'))`, [driverName]);
+        supirId = sRes.insertId;
+      } else {
+        supirId = supir.id;
+      }
+    }
+
     // Find or create supplier
     let supplier = await queryOne(`SELECT id FROM supplier WHERE UPPER(nama_supplier) = ?`, [namaSupplier]);
     let supplierId;
@@ -689,15 +745,19 @@ router.post('/save-timbangan1', async (req, res) => {
       supplierId = result.insertId;
     }
 
+    const isJual = (req.body.mode_timbangan || 'beli') === 'jual';
     const data = {
       no_polisi:     noKendaraan,
       nama_supir:    namaPengemudi,
+      id_supir:      supirId,
       id_supplier:   supplierId,
       jenis_material: material,
       harga_per_kg:  harga,
-      berat_bruto:   berat,
+      berat_bruto:   isJual ? 0 : berat,
+      berat_tara:    isJual ? berat : 0,
       berat_timbangan1: berat,
       keterangan,
+      mode_timbangan: req.body.mode_timbangan || 'beli',
       operator_id:   user.id
     };
 

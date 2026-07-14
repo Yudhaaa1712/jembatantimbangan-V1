@@ -44,6 +44,25 @@
                     <!-- Form Fields -->
                     <div class="col-md-8">
                       <div class="row g-3">
+                        <!-- Mode Timbangan -->
+                        <div class="col-12 mb-2">
+                          <label class="form-label text-danger" style="font-weight: bold;">Mode Timbangan</label>
+                          <div class="d-flex gap-4 align-items-center">
+                            <div class="form-check">
+                              <input class="form-check-input" type="radio" name="mode_timbangan" id="modeBeli" value="beli" checked style="transform: scale(1.2); cursor: pointer;">
+                              <label class="form-check-label ms-2" for="modeBeli" style="font-weight: 500; cursor: pointer; color: #10b981;">
+                                <i class="bi bi-cart-dash-fill"></i> MODE BELI (Pembelian TBS)
+                              </label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="radio" name="mode_timbangan" id="modeJual" value="jual" style="transform: scale(1.2); cursor: pointer;">
+                              <label class="form-check-label ms-2" for="modeJual" style="font-weight: 500; cursor: pointer; color: #3b82f6;">
+                                <i class="bi bi-cart-plus-fill"></i> MODE JUAL (Penjualan Sortiran)
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
                         <!-- Semua Field -->
                         <div class="col-md-6 mb-3" id="field_no_kendaraan">
                           <label class="form-label text-danger">Nomor Kendaraan</label>
@@ -309,9 +328,15 @@
       hargaHidden.value = price;
       hargaInput.value = new Intl.NumberFormat('id-ID').format(price);
 
-      // Display validation info (small green text)
-      validationEl.textContent = `Harga = Rp ${new Intl.NumberFormat('id-ID').format(price)} | Potongan = ${matchedSupplier.default_potongan || 0}%`;
-      validationEl.className = 'small mt-1 text-success';
+      // Display validation info (small green text, or red if has debt)
+      let infoText = `Harga = Rp ${new Intl.NumberFormat('id-ID').format(price)} | Potongan = ${matchedSupplier.default_potongan || 0}%`;
+      if (matchedSupplier.total_hutang && parseFloat(matchedSupplier.total_hutang) > 0) {
+        infoText += ` | ⚠️ Sisa Hutang: Rp ${new Intl.NumberFormat('id-ID').format(matchedSupplier.total_hutang)}`;
+        validationEl.className = 'small mt-1 text-danger';
+      } else {
+        validationEl.className = 'small mt-1 text-success';
+      }
+      validationEl.textContent = infoText;
       validationEl.style.display = 'block';
       if (fieldHarga) fieldHarga.style.display = '';
     } else {
@@ -343,7 +368,8 @@
         material: materialVal,
         harga: formData.get('harga') || '0',
         berat: formData.get('berat'),
-        keterangan: formData.get('keterangan') || ''
+        keterangan: formData.get('keterangan') || '',
+        mode_timbangan: document.querySelector('input[name="mode_timbangan"]:checked')?.value || 'beli'
       };
 
       const res = await fetch('/timbangan/save-timbangan1', {

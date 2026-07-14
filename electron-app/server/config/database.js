@@ -81,6 +81,65 @@ try {
   console.error('[DB Migration] Error migrating transaksi_timbangan table:', e);
 }
 
+// Migration: Check and create hutang_supplier_history table
+try {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS hutang_supplier_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_supplier INTEGER NOT NULL,
+      tanggal TEXT NOT NULL,
+      jenis TEXT CHECK(jenis IN ('tambah','bayar')) NOT NULL,
+      jumlah REAL NOT NULL DEFAULT 0,
+      keterangan TEXT,
+      id_transaksi INTEGER,
+      saldo_setelah REAL NOT NULL DEFAULT 0,
+      operator_id INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (id_supplier) REFERENCES supplier(id) ON DELETE CASCADE
+    )
+  `).run();
+  console.log('[DB Migration] Checked/Created hutang_supplier_history table');
+} catch (e) {
+  console.error('[DB Migration] Error migrating hutang_supplier_history table:', e);
+}
+
+// Migration: Check new columns in transaksi_timbangan
+try {
+  const tableInfo = db.prepare("PRAGMA table_info(transaksi_timbangan)").all();
+  
+  const hasIdSupir = tableInfo.some(col => col.name === 'id_supir');
+  if (!hasIdSupir) {
+    db.prepare("ALTER TABLE transaksi_timbangan ADD COLUMN id_supir INTEGER").run();
+    console.log('[DB Migration] Added id_supir column to transaksi_timbangan');
+  }
+
+  const hasMode = tableInfo.some(col => col.name === 'mode_timbangan');
+  if (!hasMode) {
+    db.prepare("ALTER TABLE transaksi_timbangan ADD COLUMN mode_timbangan TEXT DEFAULT 'beli'").run();
+    console.log('[DB Migration] Added mode_timbangan column to transaksi_timbangan');
+  }
+
+  const hasPotHutangSupplier = tableInfo.some(col => col.name === 'potongan_hutang_supplier_rp');
+  if (!hasPotHutangSupplier) {
+    db.prepare("ALTER TABLE transaksi_timbangan ADD COLUMN potongan_hutang_supplier_rp REAL DEFAULT 0").run();
+    console.log('[DB Migration] Added potongan_hutang_supplier_rp column to transaksi_timbangan');
+  }
+
+  const hasSisaHutangSupplierSnapshot = tableInfo.some(col => col.name === 'sisa_hutang_supplier_snapshot');
+  if (!hasSisaHutangSupplierSnapshot) {
+    db.prepare("ALTER TABLE transaksi_timbangan ADD COLUMN sisa_hutang_supplier_snapshot REAL").run();
+    console.log('[DB Migration] Added sisa_hutang_supplier_snapshot column to transaksi_timbangan');
+  }
+
+  const hasIdGaji = tableInfo.some(col => col.name === 'id_gaji');
+  if (!hasIdGaji) {
+    db.prepare("ALTER TABLE transaksi_timbangan ADD COLUMN id_gaji INTEGER").run();
+    console.log('[DB Migration] Added id_gaji column to transaksi_timbangan');
+  }
+} catch (e) {
+  console.error('[DB Migration] Error migrating transaksi_timbangan columns:', e);
+}
+
 // Seed default settings and admin user if empty
 const hasSettings = db.prepare("SELECT count(*) as count FROM settings").get().count;
 if (hasSettings === 0) {

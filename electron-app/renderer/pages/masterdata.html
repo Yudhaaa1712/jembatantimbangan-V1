@@ -37,8 +37,22 @@
       </div>
       <div class="table-container">
         <table class="data-table">
-          <thead><tr><th>No</th><th>Nama Supplier</th><th>Harga Default</th><th>Potongan (%)</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead><tr><th>No</th><th>Nama Supplier</th><th>Harga Default</th><th>Potongan (%)</th><th>Total Hutang</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody id="supplierBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Supir Tab -->
+    <div id="tab-supir" style="display:none;">
+      <div class="d-flex justify-content-between mb-2">
+        <input type="text" id="searchSupir" class="form-control" style="max-width:300px;" placeholder="Cari supir..." oninput="loadSupir()">
+        <button class="btn btn-success btn-sm" onclick="showAddSupir()"><i class="bi bi-plus"></i> Tambah Supir</button>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead><tr><th>No</th><th>Nama Supir</th><th>No Telepon</th><th>Alamat</th><th>Total Hutang</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody id="supirBody"></tbody>
         </table>
       </div>
     </div>
@@ -346,14 +360,15 @@
     const res = await fetch('/masterdata/supplier?search=' + search);
     const data = await res.json();
     const tbody = document.getElementById('supplierBody');
-    if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;">Tidak ada data</td></tr>'; return; }
+    if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;">Tidak ada data</td></tr>'; return; }
     tbody.innerHTML = data.data.map((s,i)=>`<tr>
       <td>${i+1}</td><td>${s.nama_supplier}</td>
       <td>Rp ${new Intl.NumberFormat('id-ID').format(s.default_harga||0)}</td>
       <td>${s.default_potongan||0} %</td>
+      <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang||0)}</td>
       <td>${s.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
       <td>
-        <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.id},'${s.nama_supplier}','${s.status}',${s.default_harga||0},${s.default_potongan||0})">Edit</button>
+        <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.id},'${s.nama_supplier}','${s.status}',${s.default_harga||0},${s.default_potongan||0},${s.total_hutang||0})">Edit</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.id})">Hapus</button>
       </td>
     </tr>`).join('');
@@ -364,10 +379,12 @@
       <input id="sName" class="swal2-input" placeholder="Nama Supplier" style="text-transform:uppercase;">
       <input id="sHarga" type="number" class="swal2-input" placeholder="Default Harga (opsional)">
       <input id="sPot" type="number" step="0.01" class="swal2-input" placeholder="Default Potongan % (opsional)">
+      <input id="sHutang" type="number" class="swal2-input" placeholder="Hutang Awal Rp (opsional)">
     `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
       nama_supplier:document.getElementById('sName').value,
       default_harga:document.getElementById('sHarga').value,
-      default_potongan:document.getElementById('sPot').value
+      default_potongan:document.getElementById('sPot').value,
+      total_hutang:document.getElementById('sHutang').value
     })});
     if(!form||!form.nama_supplier) return;
     const res = await fetch('/masterdata/supplier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
@@ -376,16 +393,18 @@
     else Swal.fire({icon:'error',title:'Gagal',text:r.message});
   }
 
-  async function editSupplier(id, name, status, harga, pot) {
+  async function editSupplier(id, name, status, harga, pot, hutang) {
     const {value:form} = await Swal.fire({title:'Edit Supplier',html:`
       <input id="eSName" class="swal2-input" value="${name}" style="text-transform:uppercase;">
       <input id="eSHarga" type="number" class="swal2-input" value="${harga}">
       <input id="eSPot" type="number" step="0.01" class="swal2-input" value="${pot}">
+      <input id="eSHutang" type="number" class="swal2-input" value="${hutang}">
       <select id="eSStatus" class="swal2-input"><option value="active" ${status==='active'?'selected':''}>Aktif</option><option value="inactive" ${status!=='active'?'selected':''}>Nonaktif</option></select>
     `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
       nama_supplier:document.getElementById('eSName').value,
       default_harga:document.getElementById('eSHarga').value,
       default_potongan:document.getElementById('eSPot').value,
+      total_hutang:document.getElementById('eSHutang').value,
       status:document.getElementById('eSStatus').value
     })});
     if(!form) return;
@@ -401,6 +420,76 @@
     const res = await fetch(`/masterdata/supplier/${id}`,{method:'DELETE'});
     const r = await res.json();
     if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupplier();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  // --- SUPIR CRUD LOGIC ---
+  async function loadSupir() {
+    const search = document.getElementById('searchSupir').value;
+    const res = await fetch('/masterdata/supir?search=' + search);
+    const data = await res.json();
+    const tbody = document.getElementById('supirBody');
+    if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;">Tidak ada data</td></tr>'; return; }
+    tbody.innerHTML = data.data.map((s,i)=>`<tr>
+      <td>${i+1}</td>
+      <td>${s.nama_supir}</td>
+      <td>${s.no_telepon||'-'}</td>
+      <td>${s.alamat||'-'}</td>
+      <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang||0)}</td>
+      <td>${s.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
+      <td>
+        <button class="btn btn-sm btn-warning" onclick="editSupir(${s.id},'${s.nama_supir}','${s.no_telepon||''}','${s.alamat||''}','${s.status}',${s.total_hutang||0})">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSupir(${s.id})">Hapus</button>
+      </td>
+    </tr>`).join('');
+  }
+
+  async function showAddSupir() {
+    const {value:form} = await Swal.fire({title:'Tambah Supir',html:`
+      <input id="spName" class="swal2-input" placeholder="Nama Supir" style="text-transform:uppercase;">
+      <input id="spTelp" class="swal2-input" placeholder="No Telepon (opsional)">
+      <input id="spAlamat" class="swal2-input" placeholder="Alamat (opsional)">
+      <input id="spHutang" type="number" class="swal2-input" placeholder="Hutang Awal Rp (opsional)">
+    `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
+      nama_supir:document.getElementById('spName').value,
+      no_telepon:document.getElementById('spTelp').value,
+      alamat:document.getElementById('spAlamat').value,
+      total_hutang:document.getElementById('spHutang').value
+    })});
+    if(!form||!form.nama_supir) return;
+    const res = await fetch('/masterdata/supir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupir();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  async function editSupir(id, name, telp, alamat, status, hutang) {
+    const {value:form} = await Swal.fire({title:'Edit Supir',html:`
+      <input id="eSpName" class="swal2-input" value="${name}" style="text-transform:uppercase;">
+      <input id="eSpTelp" class="swal2-input" value="${telp}">
+      <input id="eSpAlamat" class="swal2-input" value="${alamat}">
+      <input id="eSpHutang" type="number" class="swal2-input" value="${hutang}">
+      <select id="eSpStatus" class="swal2-input"><option value="active" ${status==='active'?'selected':''}>Aktif</option><option value="inactive" ${status!=='active'?'selected':''}>Nonaktif</option></select>
+    `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
+      nama_supir:document.getElementById('eSpName').value,
+      no_telepon:document.getElementById('eSpTelp').value,
+      alamat:document.getElementById('eSpAlamat').value,
+      total_hutang:document.getElementById('eSpHutang').value,
+      status:document.getElementById('eSpStatus').value
+    })});
+    if(!form) return;
+    const res = await fetch(`/masterdata/supir/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupir();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  async function deleteSupir(id) {
+    const conf = await Swal.fire({icon:'warning',title:'Nonaktifkan supir?',showCancelButton:true,confirmButtonColor:'#dc2626'});
+    if(!conf.isConfirmed) return;
+    const res = await fetch(`/masterdata/supir/${id}`,{method:'DELETE'});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupir();}
     else Swal.fire({icon:'error',title:'Gagal',text:r.message});
   }
 
@@ -473,6 +562,7 @@
     
     document.getElementById('tab-users').style.display = 'none';
     document.getElementById('tab-supplier').style.display = 'none';
+    document.getElementById('tab-supir').style.display = 'none';
     document.getElementById('tab-material').style.display = 'none';
     document.getElementById('tab-email').style.display = 'none';
     
@@ -480,6 +570,10 @@
         document.getElementById('tab-users').style.display = 'block';
         document.getElementById('mdTitle').textContent = 'Master Data - Pengguna';
         await loadUsers();
+    } else if (tab === 'supir') {
+        document.getElementById('tab-supir').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Supir';
+        await loadSupir();
     } else if (tab === 'material') {
         document.getElementById('tab-material').style.display = 'block';
         document.getElementById('mdTitle').textContent = 'Master Data - Material';

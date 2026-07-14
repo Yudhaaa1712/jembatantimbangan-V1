@@ -4,7 +4,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const { query, queryOne, pool, jsonResponse, cleanInput } = require('../config/database');
+const { query, queryOne, pool, jsonResponse, cleanInput, beginTransaction } = require('../config/database');
 const { cacheDelete } = require('../helpers/cache');
 const { isLoggedIn, requireRole, getCurrentUser } = require('../middleware/auth');
 
@@ -34,12 +34,30 @@ router.post('/supplier', requireRole('admin'), async (req, res) => {
     const nama = cleanInput(req.body.nama_supplier).toUpperCase();
     const defaultHarga = parseFloat(req.body.default_harga) || 0;
     const defaultPotongan = parseFloat(req.body.default_potongan) || 0;
+    const totalHutang = parseFloat(req.body.total_hutang) || 0;
     const existing = await queryOne(`SELECT id FROM supplier WHERE nama_supplier = ?`, [nama]);
     if (existing) return jsonResponse(res, false, 'Supplier sudah ada');
     const kode = 'SUP-' + new Date().toISOString().slice(2,8).replace(/-/g,'') + '-' + String(Math.floor(Math.random()*999)+1).padStart(3,'0');
-    const result = await query(`INSERT INTO supplier (kode_supplier, nama_supplier, status, created_at, default_harga, default_potongan) VALUES (?,?,'active',CURRENT_TIMESTAMP,?,?)`, [kode, nama, defaultHarga, defaultPotongan]);
-    cacheDelete('active_suppliers_list');
-    return jsonResponse(res, true, 'Supplier berhasil ditambahkan', { id: result.insertId || result.lastID });
+    
+    const tx = beginTransaction();
+    try {
+      const result = tx.execute(`INSERT INTO supplier (kode_supplier, nama_supplier, status, created_at, default_harga, default_potongan, total_hutang, hutang_terakhir_update) VALUES (?,?,'active',CURRENT_TIMESTAMP,?,?,?,datetime('now', 'localtime'))`, [kode, nama, defaultHarga, defaultPotongan, totalHutang]);
+      const supplierId = result[0].insertId;
+      
+      if (totalHutang > 0) {
+        tx.execute(
+          `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
+           VALUES (?, date('now', 'localtime'), 'tambah', ?, 'Hutang awal saat pendaftaran', ?, ?)`,
+          [supplierId, totalHutang, totalHutang, req.session.user_id]
+        );
+      }
+      tx.commit();
+      cacheDelete('active_suppliers_list');
+      return jsonResponse(res, true, 'Supplier berhasil ditambahkan', { id: supplierId });
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
   } catch (err) { return jsonResponse(res, false, err.message); }
 });
 
@@ -50,16 +68,40 @@ router.put('/supplier/:id', requireRole('admin'), async (req, res) => {
     const status = cleanInput(req.body.status) || 'active';
     const defaultHarga = parseFloat(req.body.default_harga) || 0;
     const defaultPotongan = parseFloat(req.body.default_potongan) || 0;
-    await query(`UPDATE supplier SET nama_supplier=?, status=?, default_harga=?, default_potongan=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, [nama, status, defaultHarga, defaultPotongan, id]);
-    cacheDelete('active_suppliers_list');
-    return jsonResponse(res, true, 'Supplier berhasil diupdate');
+    const totalHutang = parseFloat(req.body.total_hutang) || 0;
+    
+    const oldSup = await queryOne(`SELECT total_hutang FROM supplier WHERE id = ?`, [id]);
+    if (!oldSup) return jsonResponse(res, false, 'Supplier tidak ditemukan');
+    const oldHutang = oldSup.total_hutang || 0;
+    
+    const tx = beginTransaction();
+    try {
+      tx.execute(`UPDATE supplier SET nama_supplier=?, status=?, default_harga=?, default_potongan=?, total_hutang=?, hutang_terakhir_update=datetime('now', 'localtime'), updated_at=CURRENT_TIMESTAMP WHERE id=?`, [nama, status, defaultHarga, defaultPotongan, totalHutang, id]);
+      
+      if (totalHutang !== oldHutang) {
+        const diff = totalHutang - oldHutang;
+        const jenis = diff > 0 ? 'tambah' : 'bayar';
+        const jumlah = Math.abs(diff);
+        tx.execute(
+          `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
+           VALUES (?, date('now', 'localtime'), ?, ?, 'Penyesuaian nominal hutang (edit supplier)', ?, ?)`,
+          [id, jenis, jumlah, totalHutang, req.session.user_id]
+        );
+      }
+      tx.commit();
+      cacheDelete('active_suppliers_list');
+      return jsonResponse(res, true, 'Supplier berhasil diupdate');
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
   } catch (err) { return jsonResponse(res, false, err.message); }
 });
 
 router.delete('/supplier/:id', requireRole('admin'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await query(`UPDATE supplier SET status='inactive', updated_at=NOW() WHERE id=?`, [id]);
+    await query(`UPDATE supplier SET status='inactive', updated_at=CURRENT_TIMESTAMP WHERE id=?`, [id]);
     cacheDelete('active_suppliers_list');
     return jsonResponse(res, true, 'Supplier dinonaktifkan');
   } catch (err) { return jsonResponse(res, false, err.message); }
@@ -126,6 +168,105 @@ router.post('/customer', requireRole('admin'), async (req, res) => {
     const nama = cleanInput(req.body.nama_customer).toUpperCase();
     const result = await query(`INSERT INTO customers (nama_customer, status, created_at) VALUES (?,'active',NOW())`, [nama]);
     return jsonResponse(res, true, 'Customer ditambahkan', { id: result.insertId });
+  } catch (err) { return jsonResponse(res, false, err.message); }
+});
+
+// ─── SUPIR (DRIVERS) ──────────────────────────────────────────────────────────
+
+router.get('/supir', async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    let sql = `SELECT * FROM supir`;
+    const params = [];
+    if (search) {
+      sql += ` WHERE nama_supir LIKE ?`;
+      params.push(`%${search}%`);
+    }
+    sql += ` ORDER BY nama_supir`;
+    const data = await query(sql, params);
+    return jsonResponse(res, true, 'Driver list', data);
+  } catch (err) { return jsonResponse(res, false, err.message); }
+});
+
+router.post('/supir', requireRole('admin'), async (req, res) => {
+  try {
+    const nama = cleanInput(req.body.nama_supir).toUpperCase();
+    const telepon = cleanInput(req.body.no_telepon || '');
+    const alamat = cleanInput(req.body.alamat || '');
+    const totalHutang = parseFloat(req.body.total_hutang) || 0;
+    
+    if (!nama) return jsonResponse(res, false, 'Nama supir harus diisi');
+    const existing = await queryOne(`SELECT id FROM supir WHERE UPPER(nama_supir) = ?`, [nama]);
+    if (existing) return jsonResponse(res, false, 'Supir dengan nama tersebut sudah terdaftar');
+    
+    const tx = beginTransaction();
+    try {
+      const result = tx.execute(
+        `INSERT INTO supir (nama_supir, no_telepon, alamat, total_hutang, status, created_at) VALUES (?, ?, ?, ?, 'active', datetime('now', 'localtime'))`,
+        [nama, telepon, alamat, totalHutang]
+      );
+      const supirId = result[0].insertId;
+      
+      if (totalHutang > 0) {
+        tx.execute(
+          `INSERT INTO hutang_supir_history (id_supir, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
+           VALUES (?, date('now', 'localtime'), 'tambah', ?, 'Hutang awal saat pendaftaran', ?, ?)`,
+          [supirId, totalHutang, totalHutang, req.session.user_id]
+        );
+      }
+      tx.commit();
+      return jsonResponse(res, true, 'Supir berhasil ditambahkan', { id: supirId });
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) { return jsonResponse(res, false, err.message); }
+});
+
+router.put('/supir/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const nama = cleanInput(req.body.nama_supir).toUpperCase();
+    const telepon = cleanInput(req.body.no_telepon || '');
+    const alamat = cleanInput(req.body.alamat || '');
+    const status = cleanInput(req.body.status) || 'active';
+    const totalHutang = parseFloat(req.body.total_hutang) || 0;
+    
+    const oldSup = await queryOne(`SELECT total_hutang FROM supir WHERE id = ?`, [id]);
+    if (!oldSup) return jsonResponse(res, false, 'Supir tidak ditemukan');
+    const oldHutang = oldSup.total_hutang || 0;
+    
+    const tx = beginTransaction();
+    try {
+      tx.execute(
+        `UPDATE supir SET nama_supir=?, no_telepon=?, alamat=?, status=?, total_hutang=?, updated_at=datetime('now', 'localtime') WHERE id=?`,
+        [nama, telepon, alamat, status, totalHutang, id]
+      );
+      
+      if (totalHutang !== oldHutang) {
+        const diff = totalHutang - oldHutang;
+        const jenis = diff > 0 ? 'tambah' : 'bayar';
+        const jumlah = Math.abs(diff);
+        tx.execute(
+          `INSERT INTO hutang_supir_history (id_supir, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
+           VALUES (?, date('now', 'localtime'), ?, ?, 'Penyesuaian nominal hutang (edit supir)', ?, ?)`,
+          [id, jenis, jumlah, totalHutang, req.session.user_id]
+        );
+      }
+      tx.commit();
+      return jsonResponse(res, true, 'Supir berhasil diupdate');
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) { return jsonResponse(res, false, err.message); }
+});
+
+router.delete('/supir/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await query(`UPDATE supir SET status='inactive', updated_at=datetime('now', 'localtime') WHERE id=?`, [id]);
+    return jsonResponse(res, true, 'Supir dinonaktifkan');
   } catch (err) { return jsonResponse(res, false, err.message); }
 });
 

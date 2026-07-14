@@ -265,28 +265,20 @@ Memuat data...
                 tglKeluar = d.waktu_keluar ? new Date(d.tanggal || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
             }
 
-            const kananTiket = rightCol('No. Tiket', d.no_tiket);
-            const kananMasuk = rightCol('Jam/ Tanggal Masuk', jamMasuk + ' ' + tglMasuk);
-            const kananKeluar = rightCol('Jam/ Tanggal Keluar', jamKeluar + ' ' + tglKeluar);
-
             let out = '';
             out += header1 + '\n';
             out += header2 + '\n';
             out += header3 + '\n';
             out += garis + '\n';
-            out += splitLine('Cetakan 1', kananTiket, W) + '\n';
+            out += centerLine(`NO. TIKET: ${d.no_tiket}   JAM MASUK: ${jamMasuk}`, W) + '\n';
             out += '═'.repeat(W) + '\n';
             
             if (t1Fields.no_kendaraan !== false) {
-                out += splitLine(padRight('No. Kendaraan', 17) + ': ' + noPolisi, kananMasuk, W) + '\n';
-            } else {
-                out += splitLine('', kananMasuk, W) + '\n';
+                out += padRight('No. Kendaraan', 17) + ': ' + noPolisi + '\n';
             }
 
             if (t1Fields.material !== false) {
-                out += splitLine(padRight('Nama Barang', 17) + ': ' + barang, kananKeluar, W) + '\n';
-            } else {
-                out += splitLine('', kananKeluar, W) + '\n';
+                out += padRight('Nama Barang', 17) + ': ' + barang + '\n';
             }
 
             if (t1Fields.nama_pengemudi !== false) {
