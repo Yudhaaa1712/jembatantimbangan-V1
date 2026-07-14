@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output
+electron-app/dist/
+
+# Environment
+.env
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Database files (runtime data, bukan schema)
+*.sqlite
+*.sqlite3
+*.db
+
+# Cache
+cache/
+sessions/
+
+# Misc
+*.stackdump

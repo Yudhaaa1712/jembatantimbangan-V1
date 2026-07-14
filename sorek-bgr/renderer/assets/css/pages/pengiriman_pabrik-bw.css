@@ -1,0 +1,227 @@
+/**
+ * Pengiriman Pabrik Page Styles - Broken White Theme
+ */
+
+/* Color Variables */
+:root {
+    --bg-primary: #f8f7f4;
+    --bg-secondary: #f0eeea;
+    --bg-tertiary: #e8e6e1;
+    --bg-white: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-secondary: #4a4a4a;
+    --text-muted: #6b6b6b;
+    --border-color: #2a2a2a;
+    --border-light: #c0bdb5;
+    --accent-dark: #1a1a1a;
+    --hover-light: #ebe9e4;
+    --hover-dark: #333333;
+}
+
+/* LAYOUT & CONTAINER */
+.container-fluid {
+    background: var(--bg-primary);
+    min-height: 100vh;
+    padding: 20px;
+    color: var(--text-primary);
+}
+
+/* CARD COMPONENTS */
+.card {
+    background: var(--bg-white);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    background: var(--accent-dark) !important;
+    border: none;
+    border-radius: 7px 7px 0 0 !important;
+    padding: 15px 20px;
+}
+
+.card-header h5 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* FORM ELEMENTS */
+.form-label {
+    color: var(--text-primary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.form-control,
+.form-select {
+    background: var(--bg-white);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: var(--bg-white);
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+}
+
+.input-group-text {
+    background: var(--accent-dark);
+    border: 1px solid var(--accent-dark);
+    color: #ffffff;
+    font-weight: bold;
+}
+
+/* BUTTONS */
+.btn-primary {
+    background: var(--accent-dark);
+    border: none;
+    padding: 10px 25px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: var(--hover-dark);
+}
+
+.btn-success {
+    background: #198754;
+    border: none;
+    color: #ffffff;
+}
+
+.btn-success:hover {
+    background: #157347;
+}
+
+.btn-info {
+    background: var(--text-secondary);
+    border: none;
+    color: #ffffff;
+}
+
+.btn-info:hover {
+    background: var(--text-muted);
+}
+
+/* TABLE STYLES */
+.table {
+    color: var(--text-primary);
+    background: var(--bg-white);
+}
+
+.table thead th {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    padding: 12px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.table tbody td {
+    background: var(--bg-white);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    padding: 10px;
+    vertical-align: middle;
+}
+
+.table tbody tr:nth-child(even) td {
+    background: var(--bg-primary);
+}
+
+.table tbody tr:hover td {
+    background: var(--bg-tertiary);
+}
+
+/* BADGES & STATUS */
+.badge-pending {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+}
+
+.badge-selesai {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #198754;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+}
+
+/* ALERTS */
+.alert {
+    border-radius: 6px;
+}
+
+.alert-success {
+    background: #d4edda;
+    border: 1px solid #198754;
+    color: #155724;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    border: 1px solid #dc3545;
+    color: #721c24;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+/* RESULT BOX (Netto Display) */
+.result-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 15px;
+    text-align: center;
+}
+
+.result-label {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.result-value {
+    color: #198754;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.susut-value {
+    color: #b8860b;
+}

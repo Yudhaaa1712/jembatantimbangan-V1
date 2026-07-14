@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transaksi - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+  <link rel="stylesheet" href="/assets/css/bw-theme.css">
+  <link rel="stylesheet" href="/assets/css/pages/transaksi-bw.css">
+</head>
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header"><h1 class="page-title">Data Transaksi</h1></div>
+
+    <!-- Filter -->
+    <div class="filter-section">
+      <div class="filter-row" style="align-items:flex-end;gap:15px;">
+        <div class="filter-group">
+          <label>Pilih Periode</label>
+          <select id="dateFilterSelect" class="filter-control" onchange="handleFilterChange()">
+            <option value="today">Hari Ini</option>
+            <option value="yesterday">Kemarin</option>
+            <option value="week">7 Hari Terakhir</option>
+            <option value="half_month">15 Hari Terakhir</option>
+            <option value="month">Bulan Ini</option>
+            <option value="half_year">6 Bulan Terakhir</option>
+            <option value="year">Tahun Ini</option>
+            <option value="custom_range">Pilih Tanggal (Custom)</option>
+          </select>
+        </div>
+        <div id="customDateRow" style="display:none;gap:10px;align-items:flex-end;">
+          <div class="filter-group"><label>Dari Tanggal</label><input type="date" id="startDateInput" class="filter-control"></div>
+          <div class="filter-group"><label>Sampai Tanggal</label><input type="date" id="endDateInput" class="filter-control"></div>
+          <button class="btn-filter" style="height:42px;" onclick="loadTransaksi()"><i class="fas fa-search"></i> Cari</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-section">
+      <div class="stat-card"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total Transaksi</div></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-section">
+      <div class="action-buttons">
+        <button class="btn-action" id="btnExportExcel" onclick="exportExcel()">EXPORT EXCEL</button>
+        <button class="btn-action" id="btnSendEmail" onclick="sendReportEmail('transaksi')" style="background:linear-gradient(135deg,#059669,#10b981);">📧 KIRIM KE EMAIL</button>
+      </div>
+      <div class="total-records"><span id="totalRecords" style="color:rgba(255,255,255,0.7);">Total Records: 0</span></div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+      <table class="data-table" id="transaksiTable">
+        <thead>
+            <tr>
+                <th rowspan="2" style="vertical-align: middle;">NO</th>
+                <th rowspan="2" style="vertical-align: middle;">NO. TIKET</th>
+                <th rowspan="2" style="vertical-align: middle;">STATUS</th>
+                <th rowspan="2" style="vertical-align: middle;">TANGGAL</th>
+                <th colspan="2" style="text-align: center;">WAKTU</th>
+                <th colspan="2" style="text-align: center;">KENDARAAN</th>
+                <th colspan="2" style="text-align: center;">SUPPLIER</th>
+                <th colspan="3" style="text-align: center;">TIMBANGAN (KG)</th>
+                <th colspan="2" style="text-align: center;">POTONGAN BERAT</th>
+                <th rowspan="2" style="vertical-align: middle;">NETTO 2 (KG)</th>
+                <th rowspan="2" style="vertical-align: middle;">HARGA</th>
+                <th rowspan="2" style="vertical-align: middle;">TOTAL AWAL</th>
+                <th rowspan="2" style="vertical-align: middle;">POTONG HUTANG</th>
+                <th rowspan="2" style="vertical-align: middle;">TOTAL AKHIR</th>
+                <th rowspan="2" style="vertical-align: middle;">KETERANGAN</th>
+                <th rowspan="2" style="vertical-align: middle;">OPERATOR</th>
+                <th rowspan="2" style="vertical-align: middle;">AKSI</th>
+            </tr>
+            <tr>
+                <th>MASUK</th>
+                <th>KELUAR</th>
+                <th>NO. POLISI</th>
+                <th>SUPIR</th>
+                <th>NAMA</th>
+                <th>MATERIAL</th>
+                <th>BRUTO</th>
+                <th>TARA</th>
+                <th>NETTO 1</th>
+                <th>%</th>
+                <th>KG</th>
+            </tr>
+        </thead>
+        <tbody id="transaksiBody"><tr><td colspan="21" style="text-align:center;">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+  window.activePage = 'transaksi';
+
+  function handleFilterChange() {
+    const val = document.getElementById('dateFilterSelect').value;
+    const customRow = document.getElementById('customDateRow');
+    if (val === 'custom_range') { customRow.style.display='flex'; }
+    else { customRow.style.display='none'; loadTransaksi(); }
+  }
+
+  async function loadTransaksi() {
+    const filter = document.getElementById('dateFilterSelect').value;
+    const start = document.getElementById('startDateInput').value;
+    const end = document.getElementById('endDateInput').value;
+    let url = `/transaksi/list?date_filter=${filter}`;
+    if (filter === 'custom_range' && start && end) url += `&start_date=${start}&end_date=${end}`;
+
+    const res = await fetch(url);
+    const result = await res.json();
+    if (!result.success) return;
+
+    document.getElementById('statTotal').textContent = result.stats?.total_transaksi || 0;
+    document.getElementById('totalRecords').textContent = `Total Records: ${result.total}`;
+
+    const tbody = document.getElementById('transaksiBody');
+    const thead = document.querySelector('#transaksiTable thead');
+    const t1 = result.fields?.t1 || { no_kendaraan: true, nama_pengemudi: true, nama_suplier: true, material: true, harga: true, keterangan: true };
+    const t2 = result.fields?.t2 || { persen_potongan: true, harga: true, potongan_hutang: true, keterangan: true };
+    const activeFeatures = result.active_features || {};
+
+    // 1. Build thead HTML dynamically
+    let kendCols = 0;
+    if (t1.no_kendaraan !== false) kendCols++;
+    if (t1.nama_pengemudi !== false) kendCols++;
+    let supCols = 0;
+    if (t1.nama_suplier !== false) supCols++;
+    if (t1.material !== false) supCols++;
+    const showPot = t2.persen_potongan !== false;
+    const showHarga = (t1.harga !== false || t2.harga !== false);
+    const showHutang = (activeFeatures.hutang === true && t2.potongan_hutang !== false);
+    const showKet = (t1.keterangan !== false || t2.keterangan !== false);
+
+    let theadHtml = `
+      <tr>
+        <th rowspan="2" style="vertical-align: middle;">NO</th>
+        <th rowspan="2" style="vertical-align: middle;">NO. TIKET</th>
+        <th rowspan="2" style="vertical-align: middle;">STATUS</th>
+        <th rowspan="2" style="vertical-align: middle;">TANGGAL</th>
+        <th colspan="2" style="text-align: center;">WAKTU</th>
+        ${kendCols > 0 ? `<th colspan="${kendCols}" style="text-align: center;">KENDARAAN</th>` : ''}
+        ${supCols > 0 ? `<th colspan="${supCols}" style="text-align: center;">SUPPLIER</th>` : ''}
+        <th colspan="3" style="text-align: center;">TIMBANGAN (KG)</th>
+        ${showPot ? `<th colspan="2" style="text-align: center;">POTONGAN BERAT</th>` : ''}
+        <th rowspan="2" style="vertical-align: middle;">NETTO 2 (KG)</th>
+        ${showHarga ? `<th rowspan="2" style="vertical-align: middle;">HARGA</th><th rowspan="2" style="vertical-align: middle;">TOTAL AWAL</th>` : ''}
+        ${showHutang ? `<th rowspan="2" style="vertical-align: middle;">POTONG HUTANG</th>` : ''}
+        ${showHarga ? `<th rowspan="2" style="vertical-align: middle;">TOTAL AKHIR</th>` : ''}
+        ${showKet ? `<th rowspan="2" style="vertical-align: middle;">KETERANGAN</th>` : ''}
+        <th rowspan="2" style="vertical-align: middle;">OPERATOR</th>
+        <th rowspan="2" style="vertical-align: middle;">AKSI</th>
+      </tr>
+      <tr>
+        <th>MASUK</th>
+        <th>KELUAR</th>
+        ${t1.no_kendaraan !== false ? `<th>NO. POLISI</th>` : ''}
+        ${t1.nama_pengemudi !== false ? `<th>SUPIR</th>` : ''}
+        ${t1.nama_suplier !== false ? `<th>NAMA</th>` : ''}
+        ${t1.material !== false ? `<th>MATERIAL</th>` : ''}
+        <th>BRUTO</th>
+        <th>TARA</th>
+        <th>NETTO 1</th>
+        ${showPot ? `<th>%</th><th>KG</th>` : ''}
+      </tr>
+    `;
+    thead.innerHTML = theadHtml;
+
+    if (!result.data || result.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="25" style="text-align:center;">Tidak ada data transaksi</td></tr>';
+      return;
+    }
+
+    let html = '';
+    result.data.forEach((row, i) => {
+      const isCancel = row.status === 'dibatalkan';
+      const style = isCancel ? 'opacity:0.5;text-decoration:line-through;' : '';
+      const bruto = parseFloat(row.berat_bruto) || parseFloat(row.berat_timbangan1) || 0;
+      const tara = parseFloat(row.berat_tara) || parseFloat(row.berat_timbangan2) || 0;
+      const persen = parseFloat(row.persen_potongan||0);
+      const harga = parseFloat(row.harga_per_kg||0);
+      const nettoAwal = bruto - tara;
+      const kgPot = Math.round((persen/100)*nettoAwal);
+      const nettoAkhir = Math.round(nettoAwal - kgPot);
+      const totalAwal = parseFloat(row.total_harga) > 0 ? parseFloat(row.total_harga) : nettoAkhir*harga;
+      const potPupuk = parseFloat(row.potongan_pupuk_rp||0);
+      const potHutang = parseFloat(row.potongan_hutang_rp||0);
+      const potJalan = parseFloat(row.potongan_jalan||0);
+      const totalPotRp = potPupuk+potHutang+potJalan;
+      const totalAkhir = Math.max(0, totalAwal - totalPotRp);
+      const fmtDate = row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-';
+      const extractTimeOnly = (str) => {
+        if (!str) return '-';
+        const timeStr = String(str).includes(' ') ? String(str).split(' ')[1] : String(str);
+        return timeStr ? timeStr.slice(0, 8) : '-';
+      };
+      const fmtT1 = extractTimeOnly(row.waktu_timbangan1);
+      const fmtKeluar = extractTimeOnly(row.waktu_keluar);
+      const statusBadge = isCancel
+        ? `<span style="background:#dc2626;color:white;padding:2px 8px;border-radius:4px;font-size:11px;">BATAL</span>`
+        : `<span style="background:#059669;color:white;padding:2px 8px;border-radius:4px;font-size:11px;">SELESAI</span>`;
+      const aksiBtn = isCancel
+        ? `<span style="color:#6b7280;font-size:11px;">Dibatalkan</span>`
+        : `<button class="btn-receipt" onclick="printReceipt('${row.no_tiket}')">Cetak</button>
+           ${ currentUser?.user_role==='admin'||currentUser?.user_role==='operator'
+             ? `<button class="btn-receipt" style="background:#dc2626;margin-left:4px;" onclick="cancelTransaction(${row.id},'${row.no_tiket}')">Batalkan</button>` : ''}` ;
+      
+      html += `<tr style="${style}">
+        <td>${i+1}</td>
+        <td><strong>${row.no_tiket}</strong></td>
+        <td>${statusBadge}</td>
+        <td>${fmtDate}</td><td>${fmtT1}</td><td>${fmtKeluar}</td>
+        ${t1.no_kendaraan !== false ? `<td>${(row.no_polisi||'-').toUpperCase()}</td>` : ''}
+        ${t1.nama_pengemudi !== false ? `<td>${(row.nama_supir||'-').toUpperCase()}</td>` : ''}
+        ${t1.nama_suplier !== false ? `<td>${(row.nama_supplier||'-').toUpperCase()}</td>` : ''}
+        ${t1.material !== false ? `<td>${(row.jenis_material||'-').toUpperCase()}</td>` : ''}
+        <td style="text-align:right;">${bruto.toLocaleString('id-ID')}</td>
+        <td style="text-align:right;">${tara.toLocaleString('id-ID')}</td>
+        <td style="text-align:right;font-weight:bold;">${nettoAwal.toLocaleString('id-ID')}</td>
+        ${showPot ? `<td style="text-align:center;">${persen>0?persen.toFixed(1)+'%':'-'}</td>
+        <td style="text-align:right;">${kgPot>0?kgPot.toLocaleString('id-ID'):'-'}</td>` : ''}
+        <td style="text-align:right;font-weight:bold;">${nettoAkhir.toLocaleString('id-ID')}</td>
+        ${showHarga ? `<td style="text-align:right;">${harga>0?'Rp '+harga.toLocaleString('id-ID'):'-'}</td>
+        <td style="text-align:right;">${totalAwal>0?'Rp '+totalAwal.toLocaleString('id-ID'):'-'}</td>` : ''}
+        ${showHutang ? `<td style="text-align:right;color:#f59e0b;">${totalPotRp>0?'- Rp '+totalPotRp.toLocaleString('id-ID'):'-'}</td>` : ''}
+        ${showHarga ? `<td style="text-align:right;font-weight:bold;color:#22c55e;">${totalAkhir>0?'Rp '+totalAkhir.toLocaleString('id-ID'):'-'}</td>` : ''}
+        ${showKet ? `<td style="max-width:200px;">${row.keterangan||'-'}</td>` : ''}
+        <td>${(row.operator_nama||'-').toUpperCase()}</td>
+        <td style="white-space:nowrap;">${aksiBtn}</td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  async function cancelTransaction(id, noTiket) {
+    const { value: formValues } = await Swal.fire({
+      title: 'Batalkan Transaksi',
+      html: `
+        <div style="text-align: left; margin-bottom: 15px;">
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">Aksi Pembatalan:</label>
+            <div style="margin-bottom: 5px;">
+                <input type="radio" id="action_ulang" name="action_type" value="ulang_timbang" checked>
+                <label for="action_ulang">Ulang Timbang (Kembali ke Timbangan 1)</label>
+            </div>
+            <div>
+                <input type="radio" id="action_delete" name="action_type" value="delete">
+                <label for="action_delete" style="color: #dc2626;">Hapus Permanen</label>
+            </div>
+        </div>
+        <div style="text-align: left;">
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">Alasan Pembatalan:</label>
+            <input id="cancel_reason" class="swal2-input" placeholder="Masukkan alasan..." style="margin: 0; width: 100%;">
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Proses Pembatalan',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#dc2626',
+      preConfirm: () => {
+        return {
+          action_type: document.querySelector('input[name="action_type"]:checked').value,
+          cancel_reason: document.getElementById('cancel_reason').value
+        }
+      }
+    });
+
+    if (!formValues) return;
+    if (formValues.action_type === 'ulang_timbang' && !formValues.cancel_reason) {
+        Swal.fire({ icon:'error', title:'Gagal', text:'Alasan pembatalan harus diisi' });
+        return;
+    }
+
+    const res = await fetch('/transaksi/cancel', { 
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body:JSON.stringify({
+            id: id,
+            action_type: formValues.action_type,
+            cancel_reason: formValues.cancel_reason
+        }) 
+    });
+    const result = await res.json();
+    if (result.success) { 
+        Swal.fire({ icon:'success', title:'Berhasil', text:result.message, timer:1500, showConfirmButton:false }); 
+        loadTransaksi(); 
+    } else {
+        Swal.fire({ icon:'error', title:'Gagal', text:result.message });
+    }
+  }
+
+  async function printReceipt(noTiket) {
+    window.open(`/print-ticket/${noTiket}`, '_blank', 'width=800,height=600');
+  }
+
+  function exportExcel() {
+    const filter = document.getElementById('dateFilterSelect').value;
+    const start = document.getElementById('startDateInput').value;
+    const end = document.getElementById('endDateInput').value;
+    let url = `/transaksi/export-excel?date_filter=${filter}`;
+    if (filter==='custom_range'&&start&&end) url+=`&start_date=${start}&end_date=${end}`;
+    window.location.href = url;
+  }
+
+  async function sendReportEmail(reportType) {
+    const { value: email } = await Swal.fire({
+      title: '📧 Kirim Laporan ke Email',
+      html: `<input id="swalEmailInput" class="swal2-input" placeholder="email_tujuan@gmail.com" type="email">
+             <select id="swalReportType" class="swal2-select" style="margin-top:10px;">
+               <option value="semua">Semua Laporan</option>
+               <option value="transaksi">Laporan Transaksi Timbangan</option>
+               <option value="keuangan">Laporan Keuangan / Kas</option>
+               <option value="pengiriman">Laporan Pengiriman Pabrik</option>
+             </select>`,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Kirim',
+      confirmButtonColor: '#059669',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const emailVal = document.getElementById('swalEmailInput').value.trim();
+        if (!emailVal) { Swal.showValidationMessage('Masukkan alamat email tujuan'); return false; }
+        return {
+          email: emailVal,
+          type: document.getElementById('swalReportType').value
+        };
+      }
+    });
+    if (!email) return;
+
+    Swal.fire({ title: 'Mengirim laporan...', text: 'Mohon tunggu sebentar', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    const filter = document.getElementById('dateFilterSelect').value;
+    const start = document.getElementById('startDateInput').value;
+    const end = document.getElementById('endDateInput').value;
+
+    try {
+      const res = await fetch('/setup/send-report-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient: email.email,
+          report_type: email.type,
+          date_filter: filter,
+          start_date: start,
+          end_date: end
+        })
+      });
+      const r = await res.json();
+      if (r.success) {
+        Swal.fire({ icon: 'success', title: 'Terkirim!', text: r.message, timer: 3000, showConfirmButton: true });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+      }
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal mengirim: ' + e.message });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async function() {
+    await loadSessionInfo();
+    await loadTransaksi();
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('startDateInput').value = today;
+    document.getElementById('endDateInput').value = today;
+  });
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+</html>

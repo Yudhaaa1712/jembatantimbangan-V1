@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen Upah - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+  <link rel="stylesheet" href="/assets/css/bw-theme.css">
+  <style>
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .card-settings {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .main-container {
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header"><h1 class="page-title">Manajemen Upah</h1></div>
+
+    <div class="card-settings">
+      <h5>Pengaturan Tarif Upah (Per Kg Netto Akhir)</h5>
+      <form id="formUpah">
+        <div class="row">
+          <div class="col-md-4">
+            <div class="form-group mb-3">
+              <label>Tarif Upah Petani (Rp/Kg)</label>
+              <input type="number" class="form-control" id="tarifPetani" value="0">
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-group mb-3">
+              <label>Tarif Upah Supir (Rp/Kg)</label>
+              <input type="number" class="form-control" id="tarifSupir" value="0">
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-group mb-3">
+              <label>Tarif Upah Pemuat (Rp/Kg)</label>
+              <input type="number" class="form-control" id="tarifPemuat" value="0">
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="simpanPengaturan()">Simpan Pengaturan</button>
+      </form>
+    </div>
+
+    <div class="card-settings">
+      <h5>Simulasi / Perhitungan Upah</h5>
+      <p class="text-muted">Fitur untuk melihat simulasi dan riwayat upah berdasarkan transaksi akan ditambahkan di update berikutnya.</p>
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+    window.activePage = 'upah';
+
+    async function loadPengaturan() {
+      try {
+        const res = await fetch('/upah-api/pengaturan');
+        const r = await res.json();
+        if (r.success && r.data) {
+          document.getElementById('tarifPetani').value = r.data.tarif_per_kg || 0;
+          document.getElementById('tarifSupir').value = r.data.tarif_supir || 0;
+          document.getElementById('tarifPemuat').value = r.data.tarif_pemuat || 0;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function simpanPengaturan() {
+      const payload = {
+        tarif_petani: document.getElementById('tarifPetani').value,
+        tarif_supir: document.getElementById('tarifSupir').value,
+        tarif_pemuat: document.getElementById('tarifPemuat').value
+      };
+      
+      try {
+        const res = await fetch('/upah-api/pengaturan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const r = await res.json();
+        if (r.success) {
+          Swal.fire({icon: 'success', title: 'Berhasil', text: r.message});
+        } else {
+          Swal.fire({icon: 'error', title: 'Gagal', text: r.message});
+        }
+      } catch (e) {
+        Swal.fire({icon: 'error', title: 'Error', text: e.message});
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadSessionInfo();
+      await loadPengaturan();
+    });
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+</html>
