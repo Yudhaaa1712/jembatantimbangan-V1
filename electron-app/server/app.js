@@ -66,6 +66,7 @@ const licenseRoutes    = require('./routes/license');
 const kasRoutes        = require('./routes/kas');
 const hutangRoutes     = require('./routes/hutang');
 const upahRoutes = require('./routes/upah');
+const tkbmRoutes = require('./routes/tkbm');
 const { isLicensed } = require('./helpers/license');
 
 // --- Global License Check Middleware ---
@@ -99,6 +100,7 @@ app.use('/upah-api', upahRoutes);
 app.use('/license', licenseRoutes);
 app.use('/hutang-supir-api', hutangRoutes);
 app.use('/hutang-supplier-api', hutangRoutes);
+app.use('/tkbm-api', tkbmRoutes);
 
 // ─── Page Routes (serve HTML) ──────────────────────────────────────────────────
 const { isLoggedIn } = require('./middleware/auth');
@@ -136,6 +138,7 @@ app.get('/users',          isLoggedIn, (req, res) => res.sendFile(path.join(page
 app.get('/setup',          isLoggedIn, (req, res) => res.sendFile(path.join(pagesDir, 'setup.html')));
 app.get('/hutang',         isLoggedIn, (req, res) => res.sendFile(path.join(pagesDir, 'hutang.html')));
 app.get('/upah',           isLoggedIn, (req, res) => res.sendFile(path.join(pagesDir, 'upah.html')));
+app.get('/tkbm',           isLoggedIn, (req, res) => res.sendFile(path.join(pagesDir, 'tkbm.html')));
 app.get('/view-data',      isLoggedIn, (req, res) => res.sendFile(path.join(pagesDir, 'view_data.html')));
 
 // Print ticket page

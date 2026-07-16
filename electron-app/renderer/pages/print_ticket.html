@@ -295,8 +295,24 @@ Memuat data...
                 out += '\n';
             }
 
-            out += wLine('Bruto', d.bruto) + '\n';
-            out += wLine('Tara', d.tara) + '\n';
+            if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
+                out += padRight('Tipe Tiket', 17) + ': LANGSIR (' + d.jumlah_trip_langsir + ' TRIP)\n';
+                const tripsStr = d.langsir_trips.map(t => Math.round(t.berat_bruto)).join(', ');
+                const wrappedTrips = wrapText(tripsStr, W - 19);
+                if (wrappedTrips.length > 0) {
+                    out += padRight('Bruto Trip', 17) + ': ' + wrappedTrips[0] + '\n';
+                    for (let i = 1; i < wrappedTrips.length; i++) {
+                        out += padRight('', 17) + '  ' + wrappedTrips[i] + '\n';
+                    }
+                }
+                out += '─'.repeat(W) + '\n';
+                out += wLine('Total Bruto', d.bruto) + '\n';
+                out += wLine(`Tara`, d.tara) + '\n';
+            } else {
+                out += wLine('Bruto', d.bruto) + '\n';
+                out += wLine('Tara', d.tara) + '\n';
+            }
+            
             out += wLine('Netto I', d.netto_awal) + '\n';
 
             if (t2Fields.persen_potongan !== false) {
@@ -435,8 +451,25 @@ Memuat data...
             out += row('NAMA', supplier) + '\n';
             out += row('JENIS BARANG', barang) + '\n';
             out += garisTipis + '\n';
-            out += row('BRUTTO', fmt(d.bruto)) + '\n';
-            out += row('TARRA', fmt(d.tara)) + '\n';
+            
+            if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
+                out += row('TIPE', `LANGSIR (${d.jumlah_trip_langsir} TRIP)`) + '\n';
+                const tripsStr = d.langsir_trips.map(t => fmt(t.berat_bruto)).join(', ');
+                const wrappedTrips = wrapText(tripsStr, 23);
+                if (wrappedTrips.length > 0) {
+                    out += row('BRUTTO TRIP', wrappedTrips[0]) + '\n';
+                    for (let i = 1; i < wrappedTrips.length; i++) {
+                        out += row('', wrappedTrips[i]) + '\n';
+                    }
+                }
+                out += garisTipis + '\n';
+                out += row('TOT BRUTTO', fmt(d.bruto)) + '\n';
+                out += row(`TARRA`, fmt(d.tara)) + '\n';
+            } else {
+                out += row('BRUTTO', fmt(d.bruto)) + '\n';
+                out += row('TARRA', fmt(d.tara)) + '\n';
+            }
+            
             out += row('NETTO-1', fmt(d.netto_awal)) + '\n';
             out += row('POTONGAN', potText) + '\n';
             out += row('NETTO-2', fmt(d.netto_akhir)) + '\n';

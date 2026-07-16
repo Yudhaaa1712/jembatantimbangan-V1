@@ -62,9 +62,9 @@ router.get('/supir-gaji-preview', async (req, res) => {
 
     // Ambil transaksi selesai untuk supir ini di periode tersebut yang belum digaji
     const transactions = await query(
-      `SELECT id, no_tiket, tanggal, no_polisi, netto_akhir, berat_timbangan1, berat_timbangan2, jenis_material 
-       FROM transaksi_timbangan 
-       WHERE id_supir = ? AND status = 'selesai' AND id_gaji IS NULL AND tanggal BETWEEN ? AND ?
+      `SELECT id, no_surat_jalan as no_tiket, tanggal, no_polisi, netto_ram as netto_akhir, berat_timbangan1, berat_timbangan2, jenis_material, nama_pabrik 
+       FROM pengiriman_pabrik 
+       WHERE id_supir = ? AND status = 'selesai' AND id_gaji_supir IS NULL AND tanggal BETWEEN ? AND ?
        ORDER BY tanggal ASC`,
       [idSupir, startDate, endDate]
     );
@@ -115,8 +115,8 @@ router.post('/gaji', requireRole('admin'), async (req, res) => {
 
     // Hitung ulang transaksi untuk verifikasi data konsisten
     const transactions = await query(
-      `SELECT id, netto_akhir FROM transaksi_timbangan 
-       WHERE id_supir = ? AND status = 'selesai' AND id_gaji IS NULL AND tanggal BETWEEN ? AND ?`,
+      `SELECT id, netto_ram as netto_akhir FROM pengiriman_pabrik 
+       WHERE id_supir = ? AND status = 'selesai' AND id_gaji_supir IS NULL AND tanggal BETWEEN ? AND ?`,
       [supirId, start_date, end_date]
     );
 
@@ -171,14 +171,14 @@ router.post('/gaji', requireRole('admin'), async (req, res) => {
 
       // 3. Link transaksi ke gajiId
       tx.execute(
-        `UPDATE transaksi_timbangan SET id_gaji = ? 
-         WHERE id_supir = ? AND status = 'selesai' AND id_gaji IS NULL AND tanggal BETWEEN ? AND ?`,
+        `UPDATE pengiriman_pabrik SET id_gaji_supir = ? 
+         WHERE id_supir = ? AND status = 'selesai' AND id_gaji_supir IS NULL AND tanggal BETWEEN ? AND ?`,
         [gajiId, supirId, start_date, end_date]
       );
 
       // 4. Catat ke kas keluar
       if (finalCleanWage > 0) {
-        const lastKas = tx.query(`SELECT saldo_setelah FROM kas ORDER BY id DESC LIMIT 1`);
+        const [lastKas] = tx.execute(`SELECT saldo_setelah FROM kas ORDER BY id DESC LIMIT 1`);
         const saldoSebelum = lastKas.length > 0 ? parseFloat(lastKas[0].saldo_setelah) : 0;
         const saldoSesudah = saldoSebelum - finalCleanWage;
 
@@ -232,7 +232,7 @@ router.get('/gaji/:id', async (req, res) => {
     if (!gaji) return jsonResponse(res, false, 'Data gaji tidak ditemukan');
 
     const potongan = await query(`SELECT * FROM potongan_gaji WHERE id_gaji = ?`, [id]);
-    const transaksi = await query(`SELECT id, no_tiket, tanggal, no_polisi, netto_akhir, jenis_material FROM transaksi_timbangan WHERE id_gaji = ?`, [id]);
+    const transaksi = await query(`SELECT id, no_surat_jalan as no_tiket, tanggal, no_polisi, netto_ram as netto_akhir, jenis_material FROM pengiriman_pabrik WHERE id_gaji_supir = ?`, [id]);
 
     return jsonResponse(res, true, 'Detail gaji supir', {
       gaji,
@@ -256,11 +256,11 @@ router.delete('/gaji/:id', requireRole('admin'), async (req, res) => {
 
     const tx = beginTransaction();
     try {
-      // 1. Reset link id_gaji di transaksi timbangan
-      tx.execute(`UPDATE transaksi_timbangan SET id_gaji = NULL WHERE id_gaji = ?`, [id]);
+      // 1. Reset link id_gaji_supir di pengiriman pabrik
+      tx.execute(`UPDATE pengiriman_pabrik SET id_gaji_supir = NULL WHERE id_gaji_supir = ?`, [id]);
 
       // 2. Kembalikan potongan hutang jika ada
-      const potHutangRow = tx.query(`SELECT jumlah FROM potongan_gaji WHERE id_gaji = ? AND jenis_potongan = 'hutang'`, [id]);
+      const [potHutangRow] = tx.execute(`SELECT jumlah FROM potongan_gaji WHERE id_gaji = ? AND jenis_potongan = 'hutang'`, [id]);
       if (potHutangRow.length > 0) {
         const refundHutang = parseFloat(potHutangRow[0].jumlah);
         const newDebt = (supir.total_hutang || 0) + refundHutang;
@@ -269,7 +269,7 @@ router.delete('/gaji/:id', requireRole('admin'), async (req, res) => {
         // Catat history
         tx.execute(
           `INSERT INTO hutang_supir_history (id_supir, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
-           VALUES (?, date('now', 'localtime'), 'tambah', ?, ?, NULL, ?, ?)`,
+           VALUES (?, date('now', 'localtime'), 'tambah', ?, ?, ?, ?)`,
           [gaji.id_supir, refundHutang, `Pembatalan Gaji #${id} periode ${gaji.periode_mulai} s/d ${gaji.periode_akhir}`, newDebt, req.session.user_id]
         );
       }
@@ -279,7 +279,7 @@ router.delete('/gaji/:id', requireRole('admin'), async (req, res) => {
 
       // 4. Catat refund kas masuk
       if (gaji.gaji_bersih > 0) {
-        const lastKas = tx.query(`SELECT saldo_setelah FROM kas ORDER BY id DESC LIMIT 1`);
+        const [lastKas] = tx.execute(`SELECT saldo_setelah FROM kas ORDER BY id DESC LIMIT 1`);
         const saldoSebelum = lastKas.length > 0 ? parseFloat(lastKas[0].saldo_setelah) : 0;
         const saldoSesudah = saldoSebelum + gaji.gaji_bersih;
 
@@ -295,6 +295,221 @@ router.delete('/gaji/:id', requireRole('admin'), async (req, res) => {
 
       tx.commit();
       return jsonResponse(res, true, 'Pembayaran upah berhasil dibatalkan');
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// ==========================================
+// API UPAH TKBM
+// ==========================================
+
+// GET /upah-api/tkbm-gaji-preview — Hitung preview gaji TKBM
+router.get('/tkbm-gaji-preview', async (req, res) => {
+  try {
+    const idTkbm = parseInt(req.query.id_tkbm);
+    const startDate = cleanInput(req.query.start_date);
+    const endDate = cleanInput(req.query.end_date);
+
+    if (!idTkbm || !startDate || !endDate) return jsonResponse(res, false, 'Parameter tidak lengkap');
+
+    const tkbm = await queryOne(`SELECT * FROM karyawan_tkbm WHERE id = ?`, [idTkbm]);
+    if (!tkbm) return jsonResponse(res, false, 'TKBM tidak ditemukan');
+
+    const config = await queryOne(`SELECT tarif_pemuat FROM pengaturan_gaji LIMIT 1`);
+    const rate = config ? parseFloat(config.tarif_pemuat) : 0;
+
+    // Cari trip pengiriman_pabrik yang melibatkan TKBM ini, yang sudah selesai dan belum digaji
+    const sql = `
+      SELECT pt.id as id_pengiriman_tkbm, p.id as id_pengiriman, p.no_surat_jalan as no_tiket, p.tanggal, p.no_polisi, p.netto_ram, p.nama_pabrik,
+             (SELECT COUNT(*) FROM pengiriman_tkbm WHERE id_pengiriman = p.id) as jumlah_pekerja
+      FROM pengiriman_tkbm pt
+      JOIN pengiriman_pabrik p ON pt.id_pengiriman = p.id
+      WHERE pt.id_tkbm = ? AND p.status = 'selesai' AND pt.id_gaji_tkbm IS NULL AND p.tanggal BETWEEN ? AND ?
+      ORDER BY p.tanggal ASC
+    `;
+    const transactions = await query(sql, [idTkbm, startDate, endDate]);
+
+    let totalGaji = 0;
+    
+    transactions.forEach(t => {
+      const netto = parseFloat(t.netto_ram || 0);
+      const totalGajiTrip = netto * rate;
+      const pekerjaCount = parseInt(t.jumlah_pekerja) || 1;
+      const gajiPerOrang = totalGajiTrip / pekerjaCount;
+      t.gaji_bagian = gajiPerOrang;
+      totalGaji += gajiPerOrang;
+    });
+
+    return jsonResponse(res, true, 'Preview gaji TKBM', {
+      tkbm: { id: tkbm.id, nama_karyawan: tkbm.nama_karyawan },
+      tarif_pemuat: rate,
+      total_trip: transactions.length,
+      gaji_kotor: totalGaji,
+      transaksi: transactions
+    });
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// POST /upah-api/tkbm-gaji — Simpan pembayaran gaji TKBM
+router.post('/tkbm-gaji', requireRole('admin'), async (req, res) => {
+  try {
+    const { id_tkbm, start_date, end_date, tarif_pemuat, gaji_kotor, potongan_lainnya, catatan } = req.body;
+    
+    const idTkbm = parseInt(id_tkbm);
+    const rate = parseFloat(tarif_pemuat) || 0;
+    const dirtyWage = parseFloat(gaji_kotor) || 0;
+    const potLainnya = parseFloat(potongan_lainnya) || 0;
+    const finalCleanWage = Math.max(0, dirtyWage - potLainnya);
+
+    if (!idTkbm || !start_date || !end_date) return jsonResponse(res, false, 'Parameter tidak lengkap');
+
+    const tkbm = await queryOne(`SELECT * FROM karyawan_tkbm WHERE id = ?`, [idTkbm]);
+    if (!tkbm) return jsonResponse(res, false, 'TKBM tidak ditemukan');
+
+    const tx = beginTransaction();
+    try {
+      // Validasi ulang
+      const sql = `
+        SELECT pt.id, p.netto_ram, (SELECT COUNT(*) FROM pengiriman_tkbm WHERE id_pengiriman = p.id) as jumlah_pekerja
+        FROM pengiriman_tkbm pt
+        JOIN pengiriman_pabrik p ON pt.id_pengiriman = p.id
+        WHERE pt.id_tkbm = ? AND p.status = 'selesai' AND pt.id_gaji_tkbm IS NULL AND p.tanggal BETWEEN ? AND ?
+      `;
+      const transactions = await tx.execute(sql, [idTkbm, start_date, end_date]);
+      
+      if (transactions.length === 0) throw new Error('Tidak ada transaksi yang belum dibayar');
+
+      let calculatedTotalGaji = 0;
+      transactions.forEach(t => {
+        const netto = parseFloat(t.netto_ram || 0);
+        const totalGajiTrip = netto * rate;
+        const pekerjaCount = parseInt(t.jumlah_pekerja) || 1;
+        calculatedTotalGaji += (totalGajiTrip / pekerjaCount);
+      });
+
+      // 1. Insert header gaji
+      const result = tx.execute(
+        `INSERT INTO gaji_tkbm (id_tkbm, periode_mulai, periode_akhir, total_trip, tarif_pemuat, gaji_kotor, potongan_lainnya, gaji_bersih, status, catatan, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?)`,
+        [idTkbm, start_date, end_date, transactions.length, rate, calculatedTotalGaji, potLainnya, (calculatedTotalGaji - potLainnya), catatan || '', req.session.user_id]
+      );
+      const gajiId = result[0].insertId;
+
+      // 2. Link trip ke gaji
+      const arrIds = transactions.map(t => t.id).join(',');
+      tx.execute(`UPDATE pengiriman_tkbm SET id_gaji_tkbm = ? WHERE id IN (${arrIds})`, [gajiId]);
+
+      // 3. Catat ke kas keluar
+      const [lastKas] = tx.execute(`SELECT saldo_setelah FROM kas ORDER BY id DESC LIMIT 1`);
+      const saldoSebelum = lastKas.length > 0 ? parseFloat(lastKas[0].saldo_setelah) : 0;
+      const saldoSesudah = saldoSebelum - (calculatedTotalGaji - potLainnya);
+
+      tx.execute(
+        `INSERT INTO kas (tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
+         VALUES (date('now', 'localtime'), 'keluar', ?, ?, ?, ?)`,
+        [(calculatedTotalGaji - potLainnya), `PEMBAYARAN UPAH TKBM - ${tkbm.nama_karyawan.toUpperCase()} (${start_date} - ${end_date})`, saldoSesudah, req.session.user_id]
+      );
+
+      tx.commit();
+      return jsonResponse(res, true, 'Pembayaran gaji TKBM berhasil disimpan', { id: gajiId });
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// GET /upah-api/tkbm-gaji/list — Riwayat gaji TKBM
+router.get('/tkbm-gaji/list', async (req, res) => {
+  try {
+    const data = await query(
+      `SELECT g.*, t.nama_karyawan, u.nama_lengkap as nama_operator 
+       FROM gaji_tkbm g 
+       LEFT JOIN karyawan_tkbm t ON g.id_tkbm = t.id 
+       LEFT JOIN users u ON g.created_by = u.id 
+       ORDER BY g.created_at DESC`
+    );
+    return jsonResponse(res, true, 'Riwayat gaji TKBM', data);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// GET /upah-api/tkbm-gaji/:id — Detail riwayat gaji TKBM
+router.get('/tkbm-gaji/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const gaji = await queryOne(
+      `SELECT g.*, t.nama_karyawan, u.nama_lengkap as nama_operator 
+       FROM gaji_tkbm g 
+       LEFT JOIN karyawan_tkbm t ON g.id_tkbm = t.id 
+       LEFT JOIN users u ON g.created_by = u.id 
+       WHERE g.id = ?`,
+      [id]
+    );
+
+    if (!gaji) return jsonResponse(res, false, 'Data gaji tidak ditemukan');
+
+    const sql = `
+      SELECT pt.id, p.no_surat_jalan as no_tiket, p.tanggal, p.no_polisi, p.netto_ram, p.nama_pabrik,
+             (SELECT COUNT(*) FROM pengiriman_tkbm WHERE id_pengiriman = p.id) as jumlah_pekerja
+      FROM pengiriman_tkbm pt
+      JOIN pengiriman_pabrik p ON pt.id_pengiriman = p.id
+      WHERE pt.id_gaji_tkbm = ?
+    `;
+    const transaksi = await query(sql, [id]);
+    
+    // hitung ulang gaji bagian untuk display
+    transaksi.forEach(t => {
+      const netto = parseFloat(t.netto_ram || 0);
+      const totalGajiTrip = netto * gaji.tarif_pemuat;
+      const pekerjaCount = parseInt(t.jumlah_pekerja) || 1;
+      t.gaji_bagian = totalGajiTrip / pekerjaCount;
+    });
+
+    return jsonResponse(res, true, 'Detail gaji TKBM', { gaji, transaksi });
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// DELETE /upah-api/tkbm-gaji/:id — Batalkan pembayaran gaji TKBM
+router.delete('/tkbm-gaji/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const gaji = await queryOne(`SELECT * FROM gaji_tkbm WHERE id = ?`, [id]);
+    if (!gaji) return jsonResponse(res, false, 'Data gaji tidak ditemukan');
+
+    const tx = beginTransaction();
+    try {
+      tx.execute(`UPDATE pengiriman_tkbm SET id_gaji_tkbm = NULL WHERE id_gaji_tkbm = ?`, [id]);
+
+      const [lastKas] = tx.execute(`SELECT saldo_setelah FROM kas ORDER BY id DESC LIMIT 1`);
+      const saldoSebelum = lastKas.length > 0 ? parseFloat(lastKas[0].saldo_setelah) : 0;
+      const nominal = parseFloat(gaji.gaji_bersih);
+      
+      if (nominal > 0) {
+        const saldoSesudah = saldoSebelum + nominal;
+        tx.execute(
+          `INSERT INTO kas (tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
+           VALUES (date('now', 'localtime'), 'masuk', ?, ?, ?, ?)`,
+          [nominal, `PEMBATALAN PEMBAYARAN UPAH TKBM ID #${id}`, saldoSesudah, req.session.user_id]
+        );
+      }
+
+      tx.execute(`DELETE FROM gaji_tkbm WHERE id = ?`, [id]);
+      tx.commit();
+      
+      return jsonResponse(res, true, 'Pembayaran gaji TKBM berhasil dibatalkan');
     } catch (txErr) {
       tx.rollback();
       throw txErr;

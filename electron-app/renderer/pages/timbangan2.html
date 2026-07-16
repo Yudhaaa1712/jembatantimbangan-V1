@@ -243,6 +243,8 @@
           opt.dataset.keterangan = t.keterangan || '';
           opt.dataset.id = t.id;
           opt.dataset.mode = t.mode_timbangan || 'beli';
+          opt.dataset.isLangsir = t.is_langsir || 0;
+          opt.dataset.tripLangsir = t.jumlah_trip_langsir || 1;
           sel.appendChild(opt);
         });
       }
@@ -295,6 +297,13 @@
         modeBadge.textContent = 'MODE BELI';
         modeBadge.style.backgroundColor = '#10b981';
         modeBadge.style.color = '#fff';
+      }
+      
+      const isLangsir = parseInt(opt.dataset.isLangsir) === 1;
+      if (isLangsir) {
+        const tripCount = opt.dataset.tripLangsir || 1;
+        modeBadge.textContent = `MODE LANGSIR (${tripCount} TRIP)`;
+        modeBadge.style.backgroundColor = '#f59e0b';
       }
     }
 

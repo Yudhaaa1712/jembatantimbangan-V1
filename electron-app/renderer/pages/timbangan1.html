@@ -63,6 +63,19 @@
                           </div>
                         </div>
 
+                        <!-- Mode Langsir -->
+                        <div class="col-12 mb-2" id="field_langsir">
+                          <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_langsir" id="isLangsir" value="1" style="transform: scale(1.2); cursor: pointer;">
+                            <label class="form-check-label ms-2 text-warning" for="isLangsir" style="font-weight: bold; cursor: pointer;">
+                              <i class="bi bi-truck-flatbed"></i> MODE LANGSIR (Timbang Berkali-kali)
+                            </label>
+                          </div>
+                          <div id="langsirInfo" class="alert alert-info py-1 px-2 mt-2 mb-0 small" style="display:none; font-weight:bold;">
+                            Terdapat tiket Langsir berjalan untuk Nomor Kendaraan ini. Menyimpan data akan menambah trip bruto baru.
+                          </div>
+                        </div>
+
                         <!-- Semua Field -->
                         <div class="col-md-6 mb-3" id="field_no_kendaraan">
                           <label class="form-label text-danger">Nomor Kendaraan</label>
@@ -129,7 +142,7 @@
                     <div class="col-md-8 d-flex align-items-end">
                       <div class="d-flex gap-2 w-100">
                         <button type="submit" class="btn btn-success flex-fill" id="btnSimpan">
-                          <i class="bi bi-save-fill"></i> SIMPAN DATA
+                          <i class="bi bi-save-fill"></i> <span id="btnSimpanText">SIMPAN DATA</span>
                         </button>
                         <button type="reset" class="btn btn-outline-warning flex-fill" id="btnReset">
                           <i class="bi bi-arrow-counterclockwise"></i> RESET
@@ -307,6 +320,52 @@
     }, 400);
   });
   
+  // ─── Check Ongoing Langsir Trip ───────────────────────────────────────────
+  let pendingLangsirTxId = null;
+  let pendingTripCount = 0;
+  
+  document.getElementById('noKendaraanInput').addEventListener('input', function() {
+    const val = this.value.trim().toUpperCase();
+    if (!val) {
+      resetLangsirUI();
+      return;
+    }
+    
+    // Check if there is an active langsir ticket for this plate
+    fetch('/timbangan/ajax', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get_pending_tickets' })
+    }).then(r => r.json()).then(res => {
+      if (res.success && res.data) {
+        const activeTx = res.data.find(t => t.no_polisi.toUpperCase() === val && t.is_langsir === 1);
+        if (activeTx) {
+          pendingLangsirTxId = activeTx.id;
+          pendingTripCount = activeTx.jumlah_trip_langsir || 1;
+          
+          document.getElementById('isLangsir').checked = true;
+          document.getElementById('isLangsir').disabled = true;
+          
+          const info = document.getElementById('langsirInfo');
+          info.innerHTML = `Terdapat tiket Langsir berjalan. Ini akan menjadi <b>Trip ke-${pendingTripCount + 1}</b> (Timbang Bruto ke-${pendingTripCount + 1}).`;
+          info.style.display = 'block';
+          
+          document.getElementById('btnSimpanText').textContent = 'TAMBAH TRIP LANGSIR';
+        } else {
+          resetLangsirUI();
+        }
+      }
+    }).catch(e => console.error(e));
+  });
+  
+  function resetLangsirUI() {
+    pendingLangsirTxId = null;
+    pendingTripCount = 0;
+    document.getElementById('isLangsir').disabled = false;
+    document.getElementById('langsirInfo').style.display = 'none';
+    document.getElementById('btnSimpanText').textContent = 'SIMPAN DATA';
+  }
+  
   // ─── Check Supplier & Autofill Price on Input ─────────────────────────────
   document.getElementById('supplierInput').addEventListener('input', function() {
     const val = this.value.trim().toUpperCase();
@@ -372,32 +431,51 @@
         mode_timbangan: document.querySelector('input[name="mode_timbangan"]:checked')?.value || 'beli'
       };
 
-      const res = await fetch('/timbangan/save-timbangan1', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const result = await res.json();
-
-      if (result.success) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil!',
-          text: result.message,
-          timer: 2000,
-          showConfirmButton: false
-        }).then(() => {
-          document.getElementById('timbangan1Form').reset();
-          document.getElementById('newMaterialInput').value = '';
-          loadSuppliers(); // Reload lists to include the newly added material in the dropdown
-          document.getElementById('weightDisplay').textContent = '0 KG';
-          isWeightLocked = false;
-          window.isWeightLocked = false;
-          document.getElementById('supirHutangWarning').style.display = 'none';
-          document.getElementById('supplierValidationText').style.display = 'none';
+      if (pendingLangsirTxId) {
+        payload.action = 'append_langsir_trip';
+        payload.id_transaksi = pendingLangsirTxId;
+        payload.berat_timbangan1 = payload.berat;
+        
+        const res = await fetch('/timbangan/ajax', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
+        const result = await res.json();
+        handleSaveResponse(result);
       } else {
-        Swal.fire({ icon: 'error', title: 'Gagal', text: result.message });
+        payload.is_langsir = document.getElementById('isLangsir').checked ? 1 : 0;
+        const res = await fetch('/timbangan/save-timbangan1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        handleSaveResponse(result);
+      }
+
+      function handleSaveResponse(result) {
+        if (result.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: result.message,
+            timer: 2000,
+            showConfirmButton: false
+          }).then(() => {
+            document.getElementById('timbangan1Form').reset();
+            document.getElementById('newMaterialInput').value = '';
+            loadSuppliers(); // Reload lists to include the newly added material in the dropdown
+            document.getElementById('weightDisplay').textContent = '0 KG';
+            isWeightLocked = false;
+            window.isWeightLocked = false;
+            document.getElementById('supirHutangWarning').style.display = 'none';
+            document.getElementById('supplierValidationText').style.display = 'none';
+            resetLangsirUI();
+          });
+        } else {
+          Swal.fire({ icon: 'error', title: 'Gagal', text: result.message });
+        }
       }
     } catch(err) {
       Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menyimpan data' });

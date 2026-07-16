@@ -50,23 +50,35 @@ try {
 // Migration: Check if default_harga, default_potongan, and is_temporary exist in supplier table
 try {
   const tableInfo = db.prepare("PRAGMA table_info(supplier)").all();
-  const hasDefaultHarga = tableInfo.some(col => col.name === 'default_harga');
-  if (!hasDefaultHarga) {
+  if (!tableInfo.some(col => col.name === 'default_harga')) {
     db.prepare("ALTER TABLE supplier ADD COLUMN default_harga REAL DEFAULT 0").run();
     console.log('[DB Migration] Added default_harga column to supplier table');
   }
-  const hasDefaultPotongan = tableInfo.some(col => col.name === 'default_potongan');
-  if (!hasDefaultPotongan) {
+  if (!tableInfo.some(col => col.name === 'default_potongan')) {
     db.prepare("ALTER TABLE supplier ADD COLUMN default_potongan REAL DEFAULT 0").run();
     console.log('[DB Migration] Added default_potongan column to supplier table');
   }
-  const hasIsTemporary = tableInfo.some(col => col.name === 'is_temporary');
-  if (!hasIsTemporary) {
+  if (!tableInfo.some(col => col.name === 'is_temporary')) {
     db.prepare("ALTER TABLE supplier ADD COLUMN is_temporary INTEGER DEFAULT 0").run();
     console.log('[DB Migration] Added is_temporary column to supplier table');
   }
 } catch (e) {
   console.error('[DB Migration] Error migrating supplier table:', e);
+}
+
+// Migration: Check if id_supir and id_gaji_supir exist in pengiriman_pabrik
+try {
+  const tableInfo = db.prepare("PRAGMA table_info(pengiriman_pabrik)").all();
+  if (!tableInfo.some(col => col.name === 'id_supir')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN id_supir INTEGER").run();
+    console.log('[DB Migration] Added id_supir column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'id_gaji_supir')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN id_gaji_supir INTEGER").run();
+    console.log('[DB Migration] Added id_gaji_supir column to pengiriman_pabrik table');
+  }
+} catch (e) {
+  console.error('[DB Migration] Error migrating pengiriman_pabrik table:', e);
 }
 
 // Migration: Check if potongan_muat_rp exists in transaksi_timbangan
@@ -76,6 +88,14 @@ try {
   if (!hasPotonganMuat) {
     db.prepare("ALTER TABLE transaksi_timbangan ADD COLUMN potongan_muat_rp REAL DEFAULT 0").run();
     console.log('[DB Migration] Added potongan_muat_rp column to transaksi_timbangan table');
+  }
+  
+  // Migration for Langsir feature
+  const hasIsLangsir = tableInfo.some(col => col.name === 'is_langsir');
+  if (!hasIsLangsir) {
+    db.prepare("ALTER TABLE transaksi_timbangan ADD COLUMN is_langsir INTEGER DEFAULT 0").run();
+    db.prepare("ALTER TABLE transaksi_timbangan ADD COLUMN jumlah_trip_langsir INTEGER DEFAULT 1").run();
+    console.log('[DB Migration] Added langsir columns to transaksi_timbangan table');
   }
 } catch (e) {
   console.error('[DB Migration] Error migrating transaksi_timbangan table:', e);

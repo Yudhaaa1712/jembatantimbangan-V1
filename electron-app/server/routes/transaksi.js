@@ -122,6 +122,12 @@ router.get('/receipt/:no_tiket', async (req, res) => {
     const settings = await query(`SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('company_name','company_address','company_phone')`);
     const settingsMap = {};
     settings.forEach(s => settingsMap[s.setting_key] = s.setting_value);
+    
+    // Fetch Langsir details if any
+    let langsirTrips = [];
+    if (data.is_langsir === 1) {
+      langsirTrips = await query(`SELECT berat_bruto, waktu_timbang FROM transaksi_timbangan_langsir WHERE id_transaksi = ? ORDER BY id ASC`, [data.id]);
+    }
 
     return jsonResponse(res, true, 'Receipt data', {
       ...data,
@@ -137,7 +143,8 @@ router.get('/receipt/:no_tiket', async (req, res) => {
       pot_muat: calc.potMuat,
       total_pot_rp: calc.totPot,
       total_akhir: calc.sisa,
-      company: settingsMap
+      company: settingsMap,
+      langsir_trips: langsirTrips
     });
   } catch (err) {
     return jsonResponse(res, false, err.message);

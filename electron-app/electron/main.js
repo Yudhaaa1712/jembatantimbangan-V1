@@ -421,6 +421,7 @@ async function handleResetDatabase() {
 
     } catch (err) {
       console.error('[Main] Reset database failed:', err);
+      isResettingDatabase = false;
       dialog.showErrorBox('Error', 'Gagal mereset database: ' + err.message);
       
       if (!serverProcess) {

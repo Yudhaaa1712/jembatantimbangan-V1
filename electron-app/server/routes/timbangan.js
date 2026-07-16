@@ -78,7 +78,7 @@ router.post('/ajax', async (req, res) => {
         const tickets = await query(
           `SELECT tt.id, tt.no_tiket, tt.berat_timbangan1, tt.berat_bruto, tt.no_polisi,
                   tt.nama_supir, tt.id_supir, tt.jenis_material, tt.harga_per_kg, tt.keterangan, tt.mode_timbangan, s.nama_supplier,
-                  s.default_harga, s.default_potongan
+                  s.default_harga, s.default_potongan, tt.is_langsir, tt.jumlah_trip_langsir
            FROM transaksi_timbangan tt
            LEFT JOIN supplier s ON tt.id_supplier = s.id
            WHERE tt.status = 'timbang_1' AND tt.berat_timbangan1 > 0
@@ -97,7 +97,9 @@ router.post('/ajax', async (req, res) => {
           jenis_material: t.jenis_material,
           harga_per_kg:  t.harga_per_kg,
           keterangan:    t.keterangan,
-          mode_timbangan: t.mode_timbangan || 'beli'
+          mode_timbangan: t.mode_timbangan || 'beli',
+          is_langsir: t.is_langsir,
+          jumlah_trip_langsir: t.jumlah_trip_langsir
         })));
       }
 
@@ -151,7 +153,39 @@ router.post('/ajax', async (req, res) => {
           [noTiket, noDo, namaSuppir, idKendaraan, kendaraan.no_polisi,
            idSupplier, jenisMaterial, beratT1, user.id, keterangan, hargaPerKg]
         );
+
+        if (req.body.is_langsir == 1 || req.body.is_langsir == '1' || req.body.is_langsir === true) {
+          const txRow = await queryOne(`SELECT id FROM transaksi_timbangan WHERE no_tiket = ?`, [noTiket]);
+          if (txRow) {
+            const detailCount = await queryOne(`SELECT COUNT(*) as c FROM transaksi_timbangan_langsir WHERE id_transaksi = ?`, [txRow.id]);
+            if (detailCount.c == 0) {
+              await query(`INSERT INTO transaksi_timbangan_langsir (id_transaksi, berat_bruto, waktu_timbang) VALUES (?, ?, NOW())`, [txRow.id, beratT1]);
+              await query(`UPDATE transaksi_timbangan SET is_langsir = 1, jumlah_trip_langsir = 1 WHERE id = ?`, [txRow.id]);
+            }
+          }
+        }
+
         return jsonResponse(res, true, 'Data Timbangan 1 berhasil disimpan');
+      }
+
+      // ── Append Langsir Trip ──────────────────────────────────────────────
+      case 'append_langsir_trip': {
+        const idTransaksi = parseInt(req.body.id_transaksi);
+        const newBruto = parseFloat(req.body.berat_timbangan1) || 0;
+        
+        if (!idTransaksi || newBruto <= 0) return jsonResponse(res, false, 'Data tidak valid');
+        
+        const existing = await queryOne(`SELECT berat_timbangan1, jumlah_trip_langsir, status FROM transaksi_timbangan WHERE id = ?`, [idTransaksi]);
+        if (!existing) return jsonResponse(res, false, 'Transaksi tidak ditemukan');
+        if (existing.status !== 'timbang_1') return jsonResponse(res, false, 'Transaksi sudah selesai, tidak bisa ditambah trip');
+        
+        const accumulatedBruto = existing.berat_timbangan1 + newBruto;
+        const newTripCount = (existing.jumlah_trip_langsir || 1) + 1;
+        
+        await query(`UPDATE transaksi_timbangan SET berat_timbangan1 = ?, jumlah_trip_langsir = ?, updated_at = NOW() WHERE id = ?`, [accumulatedBruto, newTripCount, idTransaksi]);
+        await query(`INSERT INTO transaksi_timbangan_langsir (id_transaksi, berat_bruto, waktu_timbang) VALUES (?, ?, NOW())`, [idTransaksi, newBruto]);
+        
+        return jsonResponse(res, true, `Trip langsir ke-${newTripCount} berhasil ditambahkan!`);
       }
 
       // ── Save Timbangan 2 ─────────────────────────────────────────────────
@@ -169,16 +203,23 @@ router.post('/ajax', async (req, res) => {
         if (!idTransaksi) return jsonResponse(res, false, 'ID transaksi tidak valid');
 
         const transaksi = await queryOne(
-          `SELECT berat_timbangan1, no_tiket, nama_supir, id_supplier, mode_timbangan, potongan_jalan, potongan_pupuk_rp, potongan_hutang_rp 
+          `SELECT berat_timbangan1, no_tiket, nama_supir, id_supplier, mode_timbangan, potongan_jalan, potongan_pupuk_rp, potongan_hutang_rp, is_langsir, jumlah_trip_langsir 
            FROM transaksi_timbangan WHERE id = ? LIMIT 1`, [idTransaksi]
         );
         if (!transaksi) return jsonResponse(res, false, 'Data transaksi tidak ditemukan');
 
         const isJual = transaksi.mode_timbangan === 'jual';
+        
         const netto = isJual 
           ? (beratT2 - transaksi.berat_timbangan1) 
           : (transaksi.berat_timbangan1 - beratT2);
         
+        if (netto <= 0) {
+          return jsonResponse(res, false, 'Berat Netto harus lebih besar dari 0. Periksa kembali berat timbangan 1 dan timbangan 2.');
+        }
+        
+        // For 'beli', the true Bruto is T1 (which may be accumulated). Tara is T2 (single). 
+        // But for database consistency, we store T2 as berat_timbangan2, and we can set berat_tara to T2.
         const updateBruto = isJual ? beratT2 : transaksi.berat_timbangan1;
         const updateTara  = isJual ? transaksi.berat_timbangan1 : beratT2;
 
@@ -746,6 +787,8 @@ router.post('/save-timbangan1', async (req, res) => {
     }
 
     const isJual = (req.body.mode_timbangan || 'beli') === 'jual';
+    const isLangsir = (req.body.is_langsir == 1 || req.body.is_langsir == '1' || req.body.is_langsir === true) ? 1 : 0;
+    
     const data = {
       no_polisi:     noKendaraan,
       nama_supir:    namaPengemudi,
@@ -758,10 +801,20 @@ router.post('/save-timbangan1', async (req, res) => {
       berat_timbangan1: berat,
       keterangan,
       mode_timbangan: req.body.mode_timbangan || 'beli',
-      operator_id:   user.id
+      operator_id:   user.id,
+      is_langsir:    isLangsir,
+      jumlah_trip_langsir: isLangsir ? 1 : 0
     };
 
     await activateReservedTicket(noTiket, data);
+    
+    if (isLangsir === 1) {
+      const txRow = await queryOne(`SELECT id FROM transaksi_timbangan WHERE no_tiket = ?`, [noTiket]);
+      if (txRow) {
+        await query(`INSERT INTO transaksi_timbangan_langsir (id_transaksi, berat_bruto, waktu_timbang) VALUES (?, ?, NOW())`, [txRow.id, berat]);
+      }
+    }
+    
     return jsonResponse(res, true, `Timbangan 1 berhasil disimpan. Tiket: ${noTiket}`, { no_tiket: noTiket });
 
   } catch (err) {

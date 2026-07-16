@@ -5,7 +5,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const { query, queryOne, jsonResponse, cleanInput } = require('../config/database');
+const { query, queryOne, jsonResponse, cleanInput, beginTransaction } = require('../config/database');
 const { isLoggedIn } = require('../middleware/auth');
 
 router.use(isLoggedIn);
@@ -109,11 +109,13 @@ router.get('/summary', async (req, res) => {
 router.post('/timbang1', async (req, res) => {
   try {
     const noPolisi = cleanInput(req.body.no_polisi) || '-';
+    const idSupir = parseInt(req.body.id_supir) || null;
     const namaSupir = cleanInput(req.body.nama_supir) || '-';
     const namaPabrik = cleanInput(req.body.nama_pabrik) || '-';
     const berat1 = parseFloat(req.body.berat) || 0;
     const keterangan = cleanInput(req.body.keterangan || '');
     const jenis_material = req.body.jenis_material || 'tbs';
+    const tkbmWorkers = req.body.tkbm_workers || []; // array of id_tkbm
 
     if (berat1 <= 0) {
       return jsonResponse(res, false, 'Berat Timbangan 1 harus lebih dari 0');
@@ -121,20 +123,38 @@ router.post('/timbang1', async (req, res) => {
 
     const noSJ = await generateNoSuratJalan();
 
-    const result = await query(
-      `INSERT INTO pengiriman_pabrik 
-       (no_surat_jalan, tanggal, no_polisi, nama_supir, nama_pabrik, 
-        berat_timbangan1, waktu_timbangan1, keterangan, jenis_material, status, operator_id, created_at)
-       VALUES (?, CURDATE(), ?, ?, ?, ?, NOW(), ?, ?, 'timbang_1', ?, NOW())`,
-      [noSJ, noPolisi, namaSupir, namaPabrik, berat1, keterangan, jenis_material, req.session.user_id]
-    );
+    const tx = beginTransaction();
+    try {
+      const result = tx.execute(
+        `INSERT INTO pengiriman_pabrik 
+         (no_surat_jalan, tanggal, no_polisi, id_supir, nama_supir, nama_pabrik, 
+          berat_timbangan1, waktu_timbangan1, keterangan, jenis_material, status, operator_id, created_at)
+         VALUES (?, CURDATE(), ?, ?, ?, ?, ?, NOW(), ?, ?, 'timbang_1', ?, NOW())`,
+        [noSJ, noPolisi, idSupir, namaSupir, namaPabrik, berat1, keterangan, jenis_material, req.session.user_id]
+      );
+      
+      const insertId = result[0].insertId;
 
-    console.log(`[Pengiriman] Timbang 1: ${noSJ} → ${namaPabrik}, Berat 1: ${berat1} kg`);
+      if (Array.isArray(tkbmWorkers) && tkbmWorkers.length > 0) {
+        for (const idTkbm of tkbmWorkers) {
+          tx.execute(
+            `INSERT INTO pengiriman_tkbm (id_pengiriman, id_tkbm) VALUES (?, ?)`,
+            [insertId, parseInt(idTkbm)]
+          );
+        }
+      }
 
-    return jsonResponse(res, true, 'Timbang 1 berhasil disimpan', {
-      id: result.insertId,
-      no_surat_jalan: noSJ
-    });
+      tx.commit();
+      console.log(`[Pengiriman] Timbang 1: ${noSJ} → ${namaPabrik}, Berat 1: ${berat1} kg`);
+
+      return jsonResponse(res, true, 'Timbang 1 berhasil disimpan', {
+        id: insertId,
+        no_surat_jalan: noSJ
+      });
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
   } catch (err) {
     return jsonResponse(res, false, 'Gagal menyimpan: ' + err.message);
   }

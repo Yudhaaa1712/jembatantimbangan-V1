@@ -113,8 +113,18 @@ CREATE TABLE IF NOT EXISTS transaksi_timbangan (
   cancelled_by INTEGER,
   cancel_reason TEXT,
   keterangan TEXT,
+  is_langsir INTEGER DEFAULT 0,
+  jumlah_trip_langsir INTEGER DEFAULT 1,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS transaksi_timbangan_langsir (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_transaksi INTEGER NOT NULL,
+  berat_bruto REAL NOT NULL DEFAULT 0,
+  waktu_timbang TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS kas (
@@ -246,3 +256,63 @@ LEFT JOIN supplier s ON tt.id_supplier = s.id
 LEFT JOIN customers c ON tt.id_customer = c.id
 LEFT JOIN users u ON tt.operator_id = u.id
 LEFT JOIN kendaraan k ON tt.id_kendaraan = k.id;
+
+CREATE TABLE IF NOT EXISTS karyawan_tkbm (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nama_karyawan TEXT NOT NULL,
+  no_telepon TEXT,
+  alamat TEXT,
+  total_hutang REAL DEFAULT 0,
+  status TEXT CHECK(status IN ('active','inactive')) DEFAULT 'active',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS pengiriman_tkbm (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_pengiriman INTEGER NOT NULL,
+  id_tkbm INTEGER NOT NULL,
+  FOREIGN KEY (id_pengiriman) REFERENCES pengiriman_pabrik(id) ON DELETE CASCADE,
+  FOREIGN KEY (id_tkbm) REFERENCES karyawan_tkbm(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tkbm_hutang_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_tkbm INTEGER NOT NULL,
+  tanggal TEXT NOT NULL,
+  jenis TEXT CHECK(jenis IN ('tambah','bayar')) NOT NULL,
+  jumlah REAL NOT NULL DEFAULT 0,
+  keterangan TEXT,
+  id_gaji INTEGER,
+  saldo_setelah REAL NOT NULL DEFAULT 0,
+  operator_id INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tkbm) REFERENCES karyawan_tkbm(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS gaji_tkbm (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_tkbm INTEGER NOT NULL,
+  periode_mulai TEXT NOT NULL,
+  periode_akhir TEXT NOT NULL,
+  total_berat_kg REAL DEFAULT 0,
+  total_trip INTEGER DEFAULT 0,
+  gaji_kotor REAL DEFAULT 0,
+  total_potongan REAL DEFAULT 0,
+  gaji_bersih REAL DEFAULT 0,
+  status TEXT CHECK(status IN ('draft','final','paid')) DEFAULT 'draft',
+  catatan TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  created_by INTEGER,
+  FOREIGN KEY (id_tkbm) REFERENCES karyawan_tkbm(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS potongan_gaji_tkbm (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_gaji INTEGER NOT NULL,
+  jenis_potongan TEXT NOT NULL,
+  keterangan TEXT,
+  jumlah REAL NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_gaji) REFERENCES gaji_tkbm(id) ON DELETE CASCADE
+);

@@ -55,8 +55,11 @@
                                             <input type="text" class="terminal-input" id="t1_noPolisi" style="text-transform:uppercase;">
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label">Nama Supir</label>
-                                            <input type="text" class="terminal-input" id="t1_namaSupir" style="text-transform:uppercase;">
+                                            <label class="terminal-label">Supir Pengirim</label>
+                                            <select class="terminal-select" id="t1_idSupir" required>
+                                                <option value="">-- Pilih Supir --</option>
+                                            </select>
+                                            <input type="hidden" id="t1_namaSupir">
                                         </div>
                                         <div class="mb-3">
                                             <label class="terminal-label">Pabrik Tujuan</label>
@@ -74,6 +77,12 @@
                                         <div class="mb-3">
                                             <label class="terminal-label">Keterangan</label>
                                             <input type="text" class="terminal-input" id="t1_keterangan" style="text-transform:uppercase;">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="terminal-label text-info">Pekerja TKBM (Bisa > 1)</label>
+                                            <div id="tkbmCheckboxes" style="background:#111; border:1px solid #333; padding:10px; max-height:100px; overflow-y:auto; border-radius:4px;">
+                                                <small class="text-muted">Memuat data...</small>
+                                            </div>
                                         </div>
                                         <div class="mb-3">
                                             <label class="terminal-label text-success">Berat Timbangan 1 (Kg)</label>
@@ -372,15 +381,56 @@
         } catch(e) { console.error('Load list error:', e); }
     }
 
+    async function loadFormDependencies() {
+        try {
+            // Load Supir
+            const resSupir = await fetch('/masterdata/supir');
+            const dataSupir = await resSupir.json();
+            if (dataSupir.success) {
+                const sel = document.getElementById('t1_idSupir');
+                sel.innerHTML = '<option value="">-- Pilih Supir --</option>';
+                dataSupir.data.forEach(s => {
+                    if(s.status === 'active') sel.innerHTML += `<option value="${s.id}">${s.nama_supir}</option>`;
+                });
+            }
+
+            // Load TKBM
+            const resTkbm = await fetch('/tkbm-api/active');
+            const dataTkbm = await resTkbm.json();
+            const tkbmDiv = document.getElementById('tkbmCheckboxes');
+            if (dataTkbm.success && dataTkbm.data.length > 0) {
+                tkbmDiv.innerHTML = dataTkbm.data.map(t => 
+                    `<div class="form-check">
+                        <input class="form-check-input tkbm-cb" type="checkbox" value="${t.id}" id="tkbm_${t.id}">
+                        <label class="form-check-label text-light" for="tkbm_${t.id}">${t.nama_karyawan}</label>
+                    </div>`
+                ).join('');
+            } else {
+                tkbmDiv.innerHTML = '<small class="text-danger">Belum ada data TKBM aktif</small>';
+            }
+        } catch(e) { console.error('Load deps error:', e); }
+    }
+
+    document.getElementById('t1_idSupir').addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        document.getElementById('t1_namaSupir').value = option ? option.text : '';
+    });
+
     document.getElementById('formTimbang1').addEventListener('submit', async function(e) {
         e.preventDefault();
+        
+        const tkbmWorkers = [];
+        document.querySelectorAll('.tkbm-cb:checked').forEach(cb => tkbmWorkers.push(cb.value));
+
         const data = {
           no_polisi: document.getElementById('t1_noPolisi').value,
+          id_supir: document.getElementById('t1_idSupir').value,
           nama_supir: document.getElementById('t1_namaSupir').value,
           nama_pabrik: document.getElementById('t1_namaPabrik').value,
           jenis_material: document.getElementById('t1_jenisMaterial').value,
           berat: document.getElementById('berat1').value,
-          keterangan: document.getElementById('t1_keterangan').value
+          keterangan: document.getElementById('t1_keterangan').value,
+          tkbm_workers: tkbmWorkers
         };
         const res = await fetch('/pengiriman/timbang1', {
           method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
@@ -590,6 +640,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         loadSessionInfo();
+        loadFormDependencies();
         loadPending();
         loadList();
         setTimeout(initSerialPengiriman, 500);

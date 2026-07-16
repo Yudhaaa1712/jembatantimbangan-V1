@@ -37,15 +37,19 @@
     const data = await res.json();
     const tbody = document.getElementById('userBody');
     if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;">Tidak ada data</td></tr>'; return; }
-    tbody.innerHTML = data.data.map((u,i)=>`<tr>
-      <td>${i+1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
-      <td>${u.role==='admin'?'<span class="badge bg-primary">Admin</span>':'<span class="badge bg-info text-dark">Operator</span>'}</td>
-      <td>${u.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
-      <td>
-        <button class="btn btn-sm btn-warning" onclick="editUser(${u.id},'${u.username}','${u.nama_lengkap}','${u.role}','${u.status}')">Edit</button>
-        ${u.username!=='admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Nonaktifkan</button>`:''}
-      </td>
-    </tr>`).join('');
+    tbody.innerHTML = data.data.map((u,i)=>{
+      const usernameEscaped = u.username.replace(/'/g, "\\'");
+      const namaEscaped = u.nama_lengkap.replace(/'/g, "\\'");
+      return `<tr>
+        <td>${i+1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
+        <td>${u.role==='admin'?'<span class="badge bg-primary">Admin</span>':'<span class="badge bg-info text-dark">Operator</span>'}</td>
+        <td>${u.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editUser(${u.id},'${usernameEscaped}','${namaEscaped}','${u.role}','${u.status}')">Edit</button>
+          ${u.username!=='admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Nonaktifkan</button>`:''}
+        </td>
+      </tr>`;
+    }).join('');
   }
 
   async function showAddUser() {

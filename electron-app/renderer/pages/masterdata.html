@@ -277,18 +277,22 @@
     const data = await res.json();
     const tbody = document.getElementById('userBody');
     if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;">Tidak ada data</td></tr>'; return; }
-    tbody.innerHTML = data.data.map((u,i)=>`<tr>
-      <td>${i+1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
-      <td>${u.role==='admin'?'<span class="badge bg-primary">Admin</span>':'<span class="badge bg-info text-dark">Operator</span>'}</td>
-      <td>${u.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
-      <td>
-        <button class="btn btn-sm btn-warning" onclick="editUser(${u.id},'${u.username}','${u.nama_lengkap}','${u.role}','${u.status}')">Edit</button>
-        ${u.username!=='admin' ? `
-          <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Nonaktifkan</button>
-          <button class="btn btn-sm btn-dark" onclick="hardDeleteUser(${u.id})" style="margin-left:4px;">Hapus Permanen</button>
-        `:''}
-      </td>
-    </tr>`).join('');
+    tbody.innerHTML = data.data.map((u,i)=>{
+      const usernameEscaped = u.username.replace(/'/g, "\\'");
+      const namaEscaped = u.nama_lengkap.replace(/'/g, "\\'");
+      return `<tr>
+        <td>${i+1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
+        <td>${u.role==='admin'?'<span class="badge bg-primary">Admin</span>':'<span class="badge bg-info text-dark">Operator</span>'}</td>
+        <td>${u.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editUser(${u.id},'${usernameEscaped}','${namaEscaped}','${u.role}','${u.status}')">Edit</button>
+          ${u.username!=='admin' ? `
+            <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Nonaktifkan</button>
+            <button class="btn btn-sm btn-dark" onclick="hardDeleteUser(${u.id})" style="margin-left:4px;">Hapus Permanen</button>
+          `:''}
+        </td>
+      </tr>`;
+    }).join('');
   }
 
   async function showAddUser() {
@@ -361,17 +365,20 @@
     const data = await res.json();
     const tbody = document.getElementById('supplierBody');
     if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;">Tidak ada data</td></tr>'; return; }
-    tbody.innerHTML = data.data.map((s,i)=>`<tr>
-      <td>${i+1}</td><td>${s.nama_supplier}</td>
-      <td>Rp ${new Intl.NumberFormat('id-ID').format(s.default_harga||0)}</td>
-      <td>${s.default_potongan||0} %</td>
-      <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang||0)}</td>
-      <td>${s.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
-      <td>
-        <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.id},'${s.nama_supplier}','${s.status}',${s.default_harga||0},${s.default_potongan||0},${s.total_hutang||0})">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.id})">Hapus</button>
-      </td>
-    </tr>`).join('');
+    tbody.innerHTML = data.data.map((s,i)=>{
+      const nameEscaped = s.nama_supplier.replace(/'/g, "\\'");
+      return `<tr>
+        <td>${i+1}</td><td>${s.nama_supplier}</td>
+        <td>Rp ${new Intl.NumberFormat('id-ID').format(s.default_harga||0)}</td>
+        <td>${s.default_potongan||0} %</td>
+        <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang||0)}</td>
+        <td>${s.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.id},'${nameEscaped}','${s.status}',${s.default_harga||0},${s.default_potongan||0},${s.total_hutang||0})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.id})">Hapus</button>
+        </td>
+      </tr>`;
+    }).join('');
   }
 
   async function showAddSupplier() {
@@ -430,18 +437,23 @@
     const data = await res.json();
     const tbody = document.getElementById('supirBody');
     if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;">Tidak ada data</td></tr>'; return; }
-    tbody.innerHTML = data.data.map((s,i)=>`<tr>
-      <td>${i+1}</td>
-      <td>${s.nama_supir}</td>
-      <td>${s.no_telepon||'-'}</td>
-      <td>${s.alamat||'-'}</td>
-      <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang||0)}</td>
-      <td>${s.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
-      <td>
-        <button class="btn btn-sm btn-warning" onclick="editSupir(${s.id},'${s.nama_supir}','${s.no_telepon||''}','${s.alamat||''}','${s.status}',${s.total_hutang||0})">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteSupir(${s.id})">Hapus</button>
-      </td>
-    </tr>`).join('');
+    tbody.innerHTML = data.data.map((s,i)=>{
+      const nameEscaped = s.nama_supir.replace(/'/g, "\\'");
+      const telpEscaped = (s.no_telepon||'').replace(/'/g, "\\'");
+      const alamatEscaped = (s.alamat||'').replace(/'/g, "\\'");
+      return `<tr>
+        <td>${i+1}</td>
+        <td>${s.nama_supir}</td>
+        <td>${s.no_telepon||'-'}</td>
+        <td>${s.alamat||'-'}</td>
+        <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang||0)}</td>
+        <td>${s.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editSupir(${s.id},'${nameEscaped}','${telpEscaped}','${alamatEscaped}','${s.status}',${s.total_hutang||0})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSupir(${s.id})">Hapus</button>
+        </td>
+      </tr>`;
+    }).join('');
   }
 
   async function showAddSupir() {

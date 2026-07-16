@@ -64,6 +64,12 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#tab-history" type="button" role="tab" onclick="loadRiwayat()"><i class="bi bi-clock-history"></i> Riwayat Gaji Supir</button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="payout-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-payout-tkbm" type="button" role="tab" onclick="loadTkbm()"><i class="bi bi-people"></i> Payout TKBM</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="history-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-history-tkbm" type="button" role="tab" onclick="loadRiwayatTkbm()"><i class="bi bi-clock-history"></i> Riwayat TKBM</button>
+      </li>
     </ul>
 
     <div class="tab-content" id="upahTabsContent">
@@ -247,6 +253,80 @@
           </div>
         </div>
       </div>
+      </div>
+      
+      <!-- Tab 4: Payout TKBM -->
+      <div class="tab-pane fade" id="tab-payout-tkbm" role="tabpanel">
+        <div class="card-settings">
+          <h5>Kalkulator &amp; Payout Upah TKBM</h5>
+          <p class="text-muted small">Pilih TKBM dan tentukan periode tanggal untuk memproses gaji borongan kasar.</p>
+          
+          <div class="row g-3 align-items-end mb-4">
+            <div class="col-md-3">
+              <label class="form-label">Pilih TKBM</label>
+              <select id="payoutTkbmSelect" class="form-select">
+                <option value="">-- Pilih TKBM --</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Tanggal Mulai</label>
+              <input type="date" id="payoutTkbmStartDate" class="form-control" value="">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Tanggal Selesai</label>
+              <input type="date" id="payoutTkbmEndDate" class="form-control" value="">
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-primary w-100" onclick="hitungPreviewUpahTkbm()"><i class="bi bi-search"></i> Hitung Preview</button>
+            </div>
+          </div>
+
+          <div id="previewTkbmContainer" style="display: none;">
+            <hr>
+            <div class="table-container mb-4">
+              <table class="data-table">
+                <thead><tr><th>No Tiket</th><th>Tanggal</th><th>Pabrik</th><th>Netto (Kg)</th><th>Jumlah Pekerja</th><th>Gaji Bagian</th></tr></thead>
+                <tbody id="previewTkbmTableBody"></tbody>
+              </table>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="card p-3 bg-light border-0">
+                  <h6>Upah Bruto</h6>
+                  <div class="d-flex justify-content-between mb-2"><span>Total Trip:</span><strong id="previewTkbmTotalTrip">0</strong></div>
+                  <div class="d-flex justify-content-between mb-2"><span>Tarif Borongan Kasar:</span><strong id="previewTkbmTarif">Rp 0</strong></div>
+                  <hr class="my-1">
+                  <div class="d-flex justify-content-between text-success"><span>Gaji Bruto:</span><h5 class="mb-0 fw-bold" id="previewTkbmBruto">Rp 0</h5></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card p-3 bg-light border-0">
+                  <h6>Potongan Lainnya</h6>
+                  <div class="mb-3">
+                    <input type="number" id="inputPotonganTkbm" class="form-control" placeholder="0" oninput="hitungNettoTkbm()">
+                  </div>
+                  <hr class="my-1">
+                  <div class="d-flex justify-content-between text-primary"><span>Gaji Bersih Diterima:</span><h5 class="mb-0 fw-bold" id="previewTkbmNetto">Rp 0</h5></div>
+                </div>
+              </div>
+            </div>
+            <div class="text-end mt-4"><button class="btn btn-success btn-lg" onclick="prosesBayarTkbm()"><i class="bi bi-wallet2"></i> Bayar Upah TKBM</button></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tab 5: Riwayat TKBM -->
+      <div class="tab-pane fade" id="tab-history-tkbm" role="tabpanel">
+        <div class="card-settings">
+          <h5>Riwayat Pembayaran TKBM</h5>
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr><th>Tgl Bayar</th><th>Nama TKBM</th><th>Periode</th><th>Total Trip</th><th>Total Dibayar</th><th>Aksi</th></tr></thead>
+              <tbody id="historyTkbmTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       
     </div>
   </div>
@@ -327,6 +407,7 @@
     window.activePage = 'upah';
     let activeDrivers = [];
     let currentPreviewData = null;
+    let currentHistoryList = [];
 
     function formatRupiah(number) {
       return 'Rp ' + new Intl.NumberFormat('id-ID').format(number);
@@ -401,14 +482,14 @@
       }
 
       try {
-        const url = `/upah-api/preview?id_supir=${idSupir}&start_date=${startDate}&end_date=${endDate}&_t=${Date.now()}`;
+        const url = `/upah-api/supir-gaji-preview?id_supir=${idSupir}&start_date=${startDate}&end_date=${endDate}&_t=${Date.now()}`;
         const res = await fetch(url);
         const r = await res.json();
 
         if (r.success) {
           currentPreviewData = r.data;
           
-          if (r.data.transactions.length === 0) {
+          if (r.data.transaksi.length === 0) {
             Swal.fire({ icon: 'info', text: 'Tidak ada transaksi timbangan yang belum dibayar untuk supir ini di periode tersebut.' });
             document.getElementById('previewResultsContainer').style.display = 'none';
             document.getElementById('noPreviewPlaceholder').style.display = 'block';
@@ -420,7 +501,7 @@
 
           // Populate table
           const tbody = document.getElementById('previewTableBody');
-          tbody.innerHTML = r.data.transactions.map(t => {
+          tbody.innerHTML = r.data.transaksi.map(t => {
             const tgl = new Date(t.tanggal).toLocaleDateString('id-ID');
             return `
               <tr>
@@ -428,22 +509,22 @@
                 <td>${tgl}</td>
                 <td>${t.no_polisi || '-'}</td>
                 <td>${(t.jenis_material || '').toUpperCase()}</td>
-                <td class="text-end fw-bold">${new Intl.NumberFormat('id-ID').format(t.berat_netto || 0)} Kg</td>
-                <td>${t.keterangan || '-'}</td>
+                <td class="text-end fw-bold">${new Intl.NumberFormat('id-ID').format(t.netto_akhir || 0)} Kg</td>
+                <td>${t.nama_pabrik || '-'}</td>
               </tr>
             `;
           }).join('');
 
           // Set summary details
-          document.getElementById('previewTotalNetto').textContent = new Intl.NumberFormat('id-ID').format(r.data.total_netto) + ' Kg';
-          document.getElementById('previewTarifPerKg').textContent = formatRupiah(r.data.tarif_supir);
-          document.getElementById('previewGajiBruto').textContent = formatRupiah(r.data.gaji_bruto);
+          document.getElementById('previewTotalNetto').textContent = new Intl.NumberFormat('id-ID').format(r.data.total_berat_kg) + ' Kg';
+          document.getElementById('previewTarifPerKg').textContent = formatRupiah(r.data.tarif_per_kg);
+          document.getElementById('previewGajiBruto').textContent = formatRupiah(r.data.gaji_kotor);
           
-          document.getElementById('previewSisaHutang').textContent = formatRupiah(r.data.total_hutang);
-          document.getElementById('rawSisaHutang').value = r.data.total_hutang;
+          document.getElementById('previewSisaHutang').textContent = formatRupiah(r.data.supir.total_hutang);
+          document.getElementById('rawSisaHutang').value = r.data.supir.total_hutang;
           
           // Auto fill potongan dengan sisa hutang jika gaji mencukupi, jika tidak maks seharga gaji bruto
-          const autoPotongan = Math.min(r.data.total_hutang, r.data.gaji_bruto);
+          const autoPotongan = Math.min(r.data.supir.total_hutang, r.data.gaji_kotor);
           document.getElementById('inputPotonganHutang').value = autoPotongan;
           
           hitungUpahNetto();
@@ -458,7 +539,7 @@
 
     function hitungUpahNetto() {
       if (!currentPreviewData) return;
-      const bruto = currentPreviewData.gaji_bruto;
+      const bruto = currentPreviewData.gaji_kotor;
       const sisaHutang = parseFloat(document.getElementById('rawSisaHutang').value) || 0;
       let pot = parseFloat(document.getElementById('inputPotonganHutang').value) || 0;
 
@@ -499,11 +580,13 @@
         id_supir: idSupir,
         start_date: startDate,
         end_date: endDate,
+        tarif_per_kg: currentPreviewData.tarif_per_kg,
+        gaji_kotor: currentPreviewData.gaji_kotor,
         potongan_hutang: potongan
       };
 
       try {
-        const res = await fetch('/upah-api/bayar', {
+        const res = await fetch('/upah-api/gaji', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -548,9 +631,11 @@
             tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Tidak ada riwayat pembayaran gaji</td></tr>';
             return;
           }
-          tbody.innerHTML = r.data.map(h => {
+          currentHistoryList = r.data;
+          tbody.innerHTML = r.data.map((h, i) => {
             const tglBayar = new Date(h.tanggal_bayar).toLocaleDateString('id-ID');
             const periodeStr = `${new Date(h.periode_awal).toLocaleDateString('id-ID')} s/d ${new Date(h.periode_akhir).toLocaleDateString('id-ID')}`;
+            const noSlipEscaped = h.no_slip.replace(/'/g, "\\'");
             return `
               <tr>
                 <td>${h.no_slip}</td>
@@ -562,8 +647,8 @@
                 <td class="text-end text-success fw-bold">${formatRupiah(h.total_dibayar)}</td>
                 <td>${h.nama_operator || '-'}</td>
                 <td>
-                  <button class="btn btn-sm btn-info" onclick='showSlipModal(${JSON.stringify(h)})'><i class="bi bi-printer"></i> Slip</button>
-                  <button class="btn btn-sm btn-danger" onclick="batalkanPembayaranGaji(${h.id}, '${h.no_slip}')"><i class="bi bi-trash"></i> Batalkan</button>
+                  <button class="btn btn-sm btn-info" onclick="showSlipModalByIndex(${i})"><i class="bi bi-printer"></i> Slip</button>
+                  <button class="btn btn-sm btn-danger" onclick="batalkanPembayaranGaji(${h.id}, '${noSlipEscaped}')"><i class="bi bi-trash"></i> Batalkan</button>
                 </td>
               </tr>
             `;
@@ -614,6 +699,12 @@
       }
     }
 
+    function showSlipModalByIndex(index) {
+      if (currentHistoryList && currentHistoryList[index]) {
+        showSlipModal(currentHistoryList[index]);
+      }
+    }
+
     function showSlipModal(data) {
       document.getElementById('slipNo').textContent = data.no_slip;
       document.getElementById('slipTanggal').textContent = new Date(data.tanggal_bayar || data.created_at).toLocaleDateString('id-ID');
@@ -636,6 +727,159 @@
       myModal.show();
     }
 
+// --- TKBM PAYOUT LOGIC ---
+    let currentPreviewTkbmData = null;
+
+    async function loadTkbm() {
+      try {
+        const res = await fetch('/tkbm-api/active');
+        const r = await res.json();
+        if (r.success) {
+          const select = document.getElementById('payoutTkbmSelect');
+          select.innerHTML = '<option value="">-- Pilih TKBM --</option>';
+          r.data.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.nama_karyawan;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) { console.error('Error load tkbm:', e); }
+    }
+
+    async function hitungPreviewUpahTkbm() {
+      const idTkbm = document.getElementById('payoutTkbmSelect').value;
+      const startDate = document.getElementById('payoutTkbmStartDate').value;
+      const endDate = document.getElementById('payoutTkbmEndDate').value;
+
+      if (!idTkbm) return Swal.fire({ icon: 'warning', text: 'Pilih TKBM terlebih dahulu!' });
+
+      try {
+        const url = `/upah-api/tkbm-gaji-preview?id_tkbm=${idTkbm}&start_date=${startDate}&end_date=${endDate}&_t=${Date.now()}`;
+        const res = await fetch(url);
+        const r = await res.json();
+
+        if (r.success) {
+          currentPreviewTkbmData = r.data;
+          
+          if (r.data.transaksi.length === 0) {
+            Swal.fire({ icon: 'info', text: 'Tidak ada transaksi timbangan yang belum dibayar untuk TKBM ini di periode tersebut.' });
+            document.getElementById('previewTkbmContainer').style.display = 'none';
+            return;
+          }
+
+          document.getElementById('previewTkbmContainer').style.display = 'block';
+
+          // Populate table
+          const tbody = document.getElementById('previewTkbmTableBody');
+          tbody.innerHTML = r.data.transaksi.map(t => {
+            const tgl = new Date(t.tanggal).toLocaleDateString('id-ID');
+            return `
+              <tr>
+                <td>${t.no_tiket}</td>
+                <td>${tgl}</td>
+                <td>${t.nama_pabrik}</td>
+                <td class="text-end">${new Intl.NumberFormat('id-ID').format(t.netto_ram)}</td>
+                <td class="text-center">${t.jumlah_pekerja} Orang</td>
+                <td class="text-end fw-bold text-success">${formatRupiah(t.gaji_bagian)}</td>
+              </tr>
+            `;
+          }).join('');
+
+          // Set summary details
+          document.getElementById('previewTkbmTotalTrip').textContent = r.data.total_trip;
+          document.getElementById('previewTkbmTarif').textContent = formatRupiah(r.data.tarif_pemuat);
+          document.getElementById('previewTkbmBruto').textContent = formatRupiah(r.data.gaji_kotor);
+          
+          document.getElementById('inputPotonganTkbm').value = 0;
+          hitungNettoTkbm();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal melakukan kalkulasi upah TKBM' });
+      }
+    }
+
+    function hitungNettoTkbm() {
+      if (!currentPreviewTkbmData) return;
+      const bruto = currentPreviewTkbmData.gaji_kotor;
+      let pot = parseFloat(document.getElementById('inputPotonganTkbm').value) || 0;
+      if (pot < 0) { pot = 0; document.getElementById('inputPotonganTkbm').value = 0; }
+      const netto = bruto - pot;
+      document.getElementById('previewTkbmNetto').textContent = formatRupiah(netto);
+    }
+
+    async function prosesBayarTkbm() {
+      if (!currentPreviewTkbmData) return;
+      const confirm = await Swal.fire({ title: 'Bayar Upah?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Bayar' });
+      if (!confirm.isConfirmed) return;
+
+      const payload = {
+        id_tkbm: document.getElementById('payoutTkbmSelect').value,
+        start_date: document.getElementById('payoutTkbmStartDate').value,
+        end_date: document.getElementById('payoutTkbmEndDate').value,
+        tarif_pemuat: currentPreviewTkbmData.tarif_pemuat,
+        gaji_kotor: currentPreviewTkbmData.gaji_kotor,
+        potongan_lainnya: parseFloat(document.getElementById('inputPotonganTkbm').value) || 0
+      };
+
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const r = await res.json();
+        if (r.success) {
+          await Swal.fire({ icon: 'success', text: r.message });
+          document.getElementById('previewTkbmContainer').style.display = 'none';
+          document.getElementById('payoutTkbmSelect').value = '';
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) { Swal.fire({ icon: 'error', text: 'Gagal memproses pembayaran upah TKBM' }); }
+    }
+
+    // --- TKBM HISTORY LOGIC ---
+    async function loadRiwayatTkbm() {
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji/list?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success) {
+          const tbody = document.getElementById('historyTkbmTableBody');
+          if (r.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Belum ada riwayat</td></tr>';
+            return;
+          }
+          tbody.innerHTML = r.data.map((h) => {
+            const tglBayar = new Date(h.created_at).toLocaleDateString('id-ID');
+            const periodeStr = `${new Date(h.periode_mulai).toLocaleDateString('id-ID')} s/d ${new Date(h.periode_akhir).toLocaleDateString('id-ID')}`;
+            return `
+              <tr>
+                <td>${tglBayar}</td>
+                <td><strong>${h.nama_karyawan}</strong></td>
+                <td>${periodeStr}</td>
+                <td class="text-center">${h.total_trip} Trip</td>
+                <td class="text-end text-success fw-bold">${formatRupiah(h.gaji_bersih)}</td>
+                <td>
+                  <button class="btn btn-sm btn-danger" onclick="batalGajiTkbm(${h.id})"><i class="bi bi-trash"></i> Batalkan</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function batalGajiTkbm(id) {
+      const confirm = await Swal.fire({ title: 'Batalkan Gaji TKBM?', text: 'Transaksi timbangan akan dikembalikan statusnya ke belum digaji', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' });
+      if (!confirm.isConfirmed) return;
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji/' + id, { method: 'DELETE' });
+        const r = await res.json();
+        if (r.success) { Swal.fire({ icon: 'success', text: r.message, timer: 1500, showConfirmButton: false }); loadRiwayatTkbm(); }
+        else Swal.fire({ icon: 'error', text: r.message });
+      } catch (e) { console.error(e); }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       await loadSessionInfo();
       await loadPengaturan();
@@ -645,8 +889,13 @@
       const weekAgo = new Date();
       weekAgo.setDate(today.getDate() - 7);
       
-      document.getElementById('payoutStartDate').value = weekAgo.toISOString().split('T')[0];
-      document.getElementById('payoutEndDate').value = today.toISOString().split('T')[0];
+      const startDateStr = weekAgo.toISOString().split('T')[0];
+      const endDateStr = today.toISOString().split('T')[0];
+      
+      document.getElementById('payoutStartDate').value = startDateStr;
+      document.getElementById('payoutEndDate').value = endDateStr;
+      document.getElementById('payoutTkbmStartDate').value = startDateStr;
+      document.getElementById('payoutTkbmEndDate').value = endDateStr;
     });
   </script>
   <script src="/js/sidebar.js"></script>

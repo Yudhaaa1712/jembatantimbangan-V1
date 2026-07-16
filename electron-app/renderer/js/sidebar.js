@@ -40,6 +40,7 @@ function getActivePage() {
   if (path.includes('pengiriman')) return 'pengiriman';
   if (path.includes('keuangan')) return 'keuangan';
   if (path.includes('hutang')) return 'hutang';
+  if (path.includes('tkbm')) return 'tkbm';
   if (path.includes('masterdata')) return 'masterdata';
   if (path.includes('setup')) return 'setup';
   if (path.includes('users')) return 'users';
@@ -71,6 +72,7 @@ function renderSidebar(activePage, features) {
               <div class="ms-3 border-start ps-2 border-secondary">
                 <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=supplier') ? 'active text-warning' : ''}" href="/masterdata?tab=supplier&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-truck-flatbed"></i> Supplier</a>
                 <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=supir') ? 'active text-warning' : ''}" href="/masterdata?tab=supir&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-truck"></i> Supir</a>
+                <a class="nav-item d-block ${activePage === 'tkbm' ? 'active text-warning' : ''}" href="/tkbm?v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-people"></i> Pekerja TKBM</a>
                 <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=material') ? 'active text-warning' : ''}" href="/masterdata?tab=material&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-box-seam"></i> Material</a>
                 <a class="nav-item d-block ${activePage === 'masterdata' && (!window.location.search || window.location.search.includes('tab=users')) && !window.location.search.includes('tab=supplier') && !window.location.search.includes('tab=supir') && !window.location.search.includes('tab=material') ? 'active text-warning' : ''}" href="/masterdata?tab=users&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-people-fill"></i> Pengguna</a>
                 <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=email') ? 'active text-warning' : ''}" href="/masterdata?tab=email&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-envelope-fill"></i> Konfigurasi Email</a>
