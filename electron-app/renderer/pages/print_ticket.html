@@ -316,7 +316,7 @@ Memuat data...
             out += wLine('Netto I', d.netto_awal) + '\n';
 
             if (t2Fields.persen_potongan !== false) {
-                const labelPotongan = d.persen_potongan > 0 ? `Potongan(${d.persen_potongan}%)` : 'Potongan(kg)';
+                const labelPotongan = 'Potongan';
                 out += wLine(labelPotongan, d.kg_potongan) + '\n';
             }
             out += wLine('Netto II', d.netto_akhir) + '\n';
@@ -339,8 +339,12 @@ Memuat data...
                     out += rpLine('Potongan Hutang', d.pot_hutang) + '\n';
                     hasPotongan = true;
                 }
+                if (d.pot_hutang_supplier > 0) {
+                    out += rpLine('Potongan Hutang', d.pot_hutang_supplier) + '\n';
+                    hasPotongan = true;
+                }
                 if (d.pot_muat > 0) {
-                    out += rpLine('Potongan Muat', d.pot_muat) + '\n';
+                    out += rpLine('Upah Bongkar', d.pot_muat) + '\n';
                     hasPotongan = true;
                 }
                 if (hasPotongan) {
@@ -430,12 +434,9 @@ Memuat data...
             const months = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
             const tglStr = `${String(tgl.getDate()).padStart(2, '0')} ${months[tgl.getMonth()]} ${tgl.getFullYear()}`;
 
-            let potText = '';
-            if (d.persen_potongan > 0) potText = `${d.persen_potongan.toFixed(1)}%`;
-            else if (d.kg_potongan > 0) potText = `${d.kg_potongan} kg`;
-            else potText = '0.0%';
+            let potText = `${fmt(d.kg_potongan)} kg`;
 
-            let totalPotonganRp = (d.pot_jalan||0) + (d.pot_pupuk||0) + (d.pot_hutang||0) + (d.pot_muat||0);
+            let totalPotonganRp = (d.pot_jalan||0) + (d.pot_pupuk||0) + (d.pot_hutang||0) + (d.pot_hutang_supplier||0) + (d.pot_muat||0);
 
             const row = (label, val) => padRight(label, 13) + ': ' + padLeft(val, 23);
             const rowRp = (label, val) => padRight(label, 13) + ': Rp ' + padLeft(fmt(val), 20);

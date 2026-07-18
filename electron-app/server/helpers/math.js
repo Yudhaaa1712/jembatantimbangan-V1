@@ -20,12 +20,13 @@ function calculateRowValues(row) {
   const potJln = parseFloat(row.potongan_jalan || 0);
   const potPpk = parseFloat(row.potongan_pupuk_rp || 0);
   const potHut = parseFloat(row.potongan_hutang_rp || 0);
+  const potHutSupplier = parseFloat(row.potongan_hutang_supplier_rp || 0);
   const potMuat = parseFloat(row.potongan_muat_rp || 0);
-  const totPot = potJln + potPpk + potHut + potMuat;
+  const totPot = potJln + potPpk + potHut + potHutSupplier + potMuat;
   const sisa = Math.max(0, totGross - totPot);
   
   return {
-    bruto, tara, netto1, persen, kgPot, netto2, hrg, totGross, potJln, potPpk, potHut, potMuat, totPot, sisa
+    bruto, tara, netto1, persen, kgPot, netto2, hrg, totGross, potJln, potPpk, potHut, potHutSupplier, potMuat, totPot, sisa
   };
 }
 

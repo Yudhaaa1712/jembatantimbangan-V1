@@ -581,7 +581,7 @@ router.post('/ajax', async (req, res) => {
 
       // ── Delete / cancel timbangan 1 ──────────────────────────────────────
       case 'delete_timbangan1': {
-        if (user.role !== 'admin') return jsonResponse(res, false, 'Hanya admin yang bisa membatalkan transaksi');
+        if (user.role !== 'admin' && user.role !== 'operator') return jsonResponse(res, false, 'Hanya admin atau operator yang bisa membatalkan transaksi');
         const id = parseInt(req.body.id);
         const reason = cleanInput(req.body.cancel_reason) || 'Dibatalkan dari Timbangan 1';
         if (!id) return jsonResponse(res, false, 'ID tidak valid');
@@ -762,15 +762,12 @@ router.post('/save-timbangan1', async (req, res) => {
 
     const noTiket = await generateTicketNumber();
 
-    // Find or create supir
+    // Find supir
     let supirId = null;
     if (namaPengemudi && namaPengemudi !== '-') {
       const driverName = namaPengemudi.trim().toUpperCase();
       let supir = await queryOne(`SELECT id FROM supir WHERE UPPER(nama_supir) = ?`, [driverName]);
-      if (!supir) {
-        const sRes = await query(`INSERT INTO supir (nama_supir, total_hutang, status, created_at) VALUES (?, 0, 'active', datetime('now', 'localtime'))`, [driverName]);
-        supirId = sRes.insertId;
-      } else {
+      if (supir) {
         supirId = supir.id;
       }
     }

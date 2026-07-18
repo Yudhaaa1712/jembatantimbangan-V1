@@ -140,6 +140,7 @@ router.get('/receipt/:no_tiket', async (req, res) => {
       pot_pupuk: calc.potPpk,
       pot_jalan: calc.potJln,
       pot_hutang: calc.potHut,
+      pot_hutang_supplier: calc.potHutSupplier,
       pot_muat: calc.potMuat,
       total_pot_rp: calc.totPot,
       total_akhir: calc.sisa,

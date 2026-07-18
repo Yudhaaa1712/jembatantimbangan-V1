@@ -265,6 +265,7 @@
         
         if (r.data.timbangan1_fields) {
           const fields = JSON.parse(r.data.timbangan1_fields);
+          window.t1Fields = fields;
           const fieldMap = {
             no_kendaraan: 'field_no_kendaraan',
             nama_pengemudi: 'field_nama_pengemudi',
@@ -324,21 +325,30 @@
   let pendingLangsirTxId = null;
   let pendingTripCount = 0;
   
-  document.getElementById('noKendaraanInput').addEventListener('input', function() {
-    const val = this.value.trim().toUpperCase();
-    if (!val) {
+  function checkOngoingLangsir() {
+    const plate = document.getElementById('noKendaraanInput').value.trim().toUpperCase();
+    const supir = document.getElementById('namaPengemudiInput').value.trim().toUpperCase();
+    const supplier = document.getElementById('supplierInput').value.trim().toUpperCase();
+    
+    if (!plate && !supir && !supplier) {
       resetLangsirUI();
       return;
     }
     
-    // Check if there is an active langsir ticket for this plate
     fetch('/timbangan/ajax', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'get_pending_tickets' })
     }).then(r => r.json()).then(res => {
       if (res.success && res.data) {
-        const activeTx = res.data.find(t => t.no_polisi.toUpperCase() === val && t.is_langsir === 1);
+        const activeTx = res.data.find(t => {
+          if (t.is_langsir !== 1) return false;
+          const matchPlate = plate && t.no_polisi && t.no_polisi.toUpperCase() === plate;
+          const matchSupir = supir && t.nama_supir && t.nama_supir.toUpperCase() === supir;
+          const matchSupplier = supplier && t.nama_supplier && t.nama_supplier.toUpperCase() === supplier;
+          return matchPlate || matchSupir || matchSupplier;
+        });
+        
         if (activeTx) {
           pendingLangsirTxId = activeTx.id;
           pendingTripCount = activeTx.jumlah_trip_langsir || 1;
@@ -346,8 +356,19 @@
           document.getElementById('isLangsir').checked = true;
           document.getElementById('isLangsir').disabled = true;
           
+          // Fill other fields if currently empty
+          if (!document.getElementById('noKendaraanInput').value.trim() && activeTx.no_polisi) {
+            document.getElementById('noKendaraanInput').value = activeTx.no_polisi;
+          }
+          if (!document.getElementById('namaPengemudiInput').value.trim() && activeTx.nama_supir) {
+            document.getElementById('namaPengemudiInput').value = activeTx.nama_supir;
+          }
+          if (!document.getElementById('supplierInput').value.trim() && activeTx.nama_supplier) {
+            document.getElementById('supplierInput').value = activeTx.nama_supplier;
+          }
+          
           const info = document.getElementById('langsirInfo');
-          info.innerHTML = `Terdapat tiket Langsir berjalan. Ini akan menjadi <b>Trip ke-${pendingTripCount + 1}</b> (Timbang Bruto ke-${pendingTripCount + 1}).`;
+          info.innerHTML = `Trip ke-${pendingTripCount + 1} ${activeTx.nama_supir || ''}`;
           info.style.display = 'block';
           
           document.getElementById('btnSimpanText').textContent = 'TAMBAH TRIP LANGSIR';
@@ -356,7 +377,11 @@
         }
       }
     }).catch(e => console.error(e));
-  });
+  }
+
+  document.getElementById('noKendaraanInput').addEventListener('input', checkOngoingLangsir);
+  document.getElementById('namaPengemudiInput').addEventListener('input', checkOngoingLangsir);
+  document.getElementById('supplierInput').addEventListener('input', checkOngoingLangsir);
   
   function resetLangsirUI() {
     pendingLangsirTxId = null;
@@ -366,7 +391,6 @@
     document.getElementById('btnSimpanText').textContent = 'SIMPAN DATA';
   }
   
-  // ─── Check Supplier & Autofill Price on Input ─────────────────────────────
   document.getElementById('supplierInput').addEventListener('input', function() {
     const val = this.value.trim().toUpperCase();
     const validationEl = document.getElementById('supplierValidationText');
@@ -376,7 +400,7 @@
 
     if (!val) {
       validationEl.style.display = 'none';
-      if (fieldHarga) fieldHarga.style.display = 'none';
+      if (fieldHarga) fieldHarga.style.display = (window.t1Fields && window.t1Fields.harga === false) ? 'none' : '';
       return;
     }
 
@@ -401,7 +425,7 @@
     } else {
       // Unregistered supplier -> do nothing (hide validation element)
       validationEl.style.display = 'none';
-      if (fieldHarga) fieldHarga.style.display = 'none';
+      if (fieldHarga) fieldHarga.style.display = (window.t1Fields && window.t1Fields.harga === false) ? 'none' : '';
     }
   });
 
@@ -516,6 +540,8 @@
     document.getElementById('weightDisplay').textContent = '0 KG';
     document.getElementById('supirHutangWarning').style.display = 'none';
     document.getElementById('supplierValidationText').style.display = 'none';
+    document.getElementById('isLangsir').checked = false;
+    resetLangsirUI();
   });
 
   // ─── Serial Settings Modal ─────────────────────────────────────────────────

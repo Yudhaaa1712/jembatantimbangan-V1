@@ -147,6 +147,15 @@ app.get('/print-ticket/:no_tiket', isLoggedIn, (req, res) => res.sendFile(path.j
 // Print surat jalan pengiriman pabrik
 app.get('/surat-jalan/:id', isLoggedIn, (req, res) => res.sendFile(path.join(pagesDir, 'surat_jalan.html')));
 
+app.post('/timbangan/debug-calc', (req, res) => {
+  try {
+    require('fs').writeFileSync(path.join(__dirname, '..', '..', 'debug_calc.json'), JSON.stringify(req.body, null, 2), 'utf8');
+  } catch(e) {
+    console.error('Debug write error:', e);
+  }
+  res.json({ success: true });
+});
+
 // 404
 app.use((req, res) => {
   res.status(404).sendFile(path.join(pagesDir, '404.html'));

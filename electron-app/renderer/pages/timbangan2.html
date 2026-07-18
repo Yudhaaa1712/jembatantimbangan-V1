@@ -27,10 +27,13 @@
             </div>
           </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px;">
+        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 10px;">
           <select name="no_tiket1" class="terminal-select" id="tiketSelector" required>
             <option value="">-- PILIH TIKET --</option>
           </select>
+          <button type="button" class="terminal-btn terminal-btn-danger" id="cancelTiketBtn" style="display: none; background: #dc2626; color: #fff;">
+            <i class="bi bi-trash-fill"></i> BATALKAN
+          </button>
           <button type="button" class="terminal-btn" id="refreshTiketBtn" onclick="loadPendingTickets()">
             <i class="bi bi-arrow-clockwise"></i> REFRESH
           </button>
@@ -103,7 +106,7 @@
             </div>
             
             <div style="margin-bottom: 10px;" id="t2field_potongan_muat">
-              <label class="terminal-label" style="font-size: 12px; color: #f59e0b;">Potongan Uang Muat</label>
+              <label class="terminal-label" style="font-size: 12px; color: #f59e0b;">Upah Bongkar</label>
               <input type="number" name="potongan_muat_rp" class="terminal-input" id="potonganMuatInput" 
                      step="1" min="0" placeholder="0" style="font-size: 16px; padding: 8px;">
             </div>
@@ -150,7 +153,7 @@
               <div class="result-value" id="hasilPotonganHutangSupplier" style="font-size: 12px; color: #3b82f6;">0</div>
             </div>
             <div class="result-item" id="result_potongan_muat" style="padding: 8px; display: none;">
-              <div class="result-label" style="font-size: 9px;">Potongan Muat</div>
+              <div class="result-label" style="font-size: 9px;">Upah Bongkar</div>
               <div class="result-value" id="hasilPotonganMuat" style="font-size: 12px; color: #ef4444;">0</div>
             </div>
             
@@ -258,8 +261,11 @@
         document.getElementById('supirDebtVal').value = 0;
         document.getElementById('maxSupirDebt').textContent = '0';
         document.getElementById('potonganHutangInput').value = '';
+        document.getElementById('cancelTiketBtn').style.display = 'none';
         return;
     }
+    
+    document.getElementById('cancelTiketBtn').style.display = 'inline-block';
     
     document.getElementById('idTransaksi').value = opt.dataset.id;
     document.getElementById('displayKendaraan').value = opt.dataset.kendaraan;
@@ -365,14 +371,14 @@
       document.getElementById('hasilBruto').textContent = formatRibuan(bruto);
       document.getElementById('hasilTara').textContent = formatRibuan(tara);
       
-      const nettoAwal = bruto - tara;
+      const nettoAwal = Math.max(0, bruto - tara);
       document.getElementById('hasilNettoBT').textContent = formatRibuan(nettoAwal);
       
-      const kgPotongan = Math.round((persen / 100) * nettoAwal);
+      const kgPotongan = Math.max(0, Math.round((persen / 100) * nettoAwal));
       document.getElementById('hasilPotonganPersen').textContent = persen + '%';
       document.getElementById('hasilPotongan').textContent = '= ' + formatRibuan(kgPotongan) + ' Kg';
       
-      const nettoAkhir = Math.round(nettoAwal - kgPotongan);
+      const nettoAkhir = Math.max(0, Math.round(nettoAwal - kgPotongan));
       document.getElementById('hasilNettoAkhir').textContent = formatRibuan(nettoAkhir);
       
       document.getElementById('hasilHargaPerKg').textContent = formatRibuan(harga);
@@ -384,7 +390,7 @@
       
       if (window.isHutangActive) {
         const supirDebt = parseFloat(document.getElementById('supirDebtVal').value) || 0;
-        const maxPotongan = Math.min(supirDebt, totalAwal);
+        const maxPotongan = Math.max(0, Math.min(supirDebt, totalAwal));
         
         let pInput = parseFloat(document.getElementById('potonganHutangInput').value) || 0;
         if (pInput > maxPotongan) {
@@ -399,7 +405,7 @@
       
       let potonganHutangSupplier = 0;
       const supplierDebt = parseFloat(document.getElementById('supplierDebtVal').value) || 0;
-      const maxPotonganSupplier = Math.min(supplierDebt, totalAwal - potonganHutang);
+      const maxPotonganSupplier = Math.max(0, Math.min(supplierDebt, totalAwal - potonganHutang));
       
       let pSupplierInput = parseFloat(document.getElementById('potonganHutangSupplierInput').value) || 0;
       if (pSupplierInput > maxPotonganSupplier) {
@@ -415,8 +421,29 @@
       document.getElementById('result_potongan_muat').style.display = potonganMuat > 0 ? '' : 'none';
       document.getElementById('hasilPotonganMuat').textContent = '- Rp ' + formatRibuan(potonganMuat);
       
-      const totalAkhir = totalAwal - potonganHutang - potonganHutangSupplier - potonganMuat;
+      const totalAkhir = Math.max(0, totalAwal - potonganHutang - potonganHutangSupplier - potonganMuat);
       document.getElementById('hasilTotalHargaFinal').textContent = 'Rp ' + formatRibuan(totalAkhir);
+
+      fetch('/timbangan/debug-calc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          t1Weight,
+          t2Weight,
+          isModeJual,
+          bruto,
+          tara,
+          nettoAwal,
+          kgPotongan,
+          nettoAkhir,
+          totalAwal,
+          totalAkhir,
+          potonganHutang,
+          potonganHutangSupplier,
+          potonganMuat,
+          harga
+        })
+      }).catch(() => {});
   }
 
   // Event Listeners Input Uang / Angka
@@ -464,20 +491,29 @@
       btn.innerHTML = '<i class="bi bi-hourglass-split"></i> MENYIMPAN...';
       
       try {
-          const bruto = parseFloat(document.getElementById('beratT1Hidden').value)||0;
-          const tara = parseFloat(document.getElementById('beratInput2').value)||0;
+          const t1Weight = parseFloat(document.getElementById('beratT1Hidden').value)||0;
+          const t2Weight = parseFloat(document.getElementById('beratInput2').value)||0;
+          
+          const selector = document.getElementById('tiketSelector');
+          const opt = selector.options[selector.selectedIndex];
+          const mode = opt ? (opt.dataset.mode || 'beli') : 'beli';
+          const isModeJual = mode === 'jual';
+
+          const bruto = isModeJual ? t2Weight : t1Weight;
+          const tara = isModeJual ? t1Weight : t2Weight;
+          
           const persen = parseFloat(document.getElementById('persenPotongan').value)||0;
           const harga = parseFloat(document.getElementById('hargaHiddenT2').value)||0;
           
           const keterangan = document.getElementById('keteranganInput').value;
           
-          const netto = bruto - tara;
-          const kgPot = Math.round((persen/100)*netto);
+          const netto = Math.max(0, bruto - tara);
+          const kgPot = Math.max(0, Math.round((persen/100)*netto));
           
           const payload = {
             action:'save_timbangan2',
             id_transaksi: document.getElementById('idTransaksi').value,
-            berat_timbangan2: tara,
+            berat_timbangan2: t2Weight,
             persen_potongan: persen,
             kg_potongan: kgPot,
             harga_per_kg: harga,
@@ -504,6 +540,7 @@
             document.getElementById('maxSupirDebt').textContent = '0';
             document.getElementById('potonganHutangInput').value = '';
             document.getElementById('potonganMuatInput').value = '';
+            document.getElementById('cancelTiketBtn').style.display = 'none';
             window.isWeightLocked2 = false;
             document.getElementById('captureWeight2').innerHTML = '<i class="bi bi-camera-fill"></i> AMBIL BERAT';
             document.getElementById('captureWeight2').className = 'terminal-btn terminal-btn-warning';
@@ -669,6 +706,58 @@
     await loadFieldSettings2();
     loadKasSaldo();
     setTimeout(initSerialConnector2, 500);
+
+    document.getElementById('cancelTiketBtn').addEventListener('click', async function() {
+      const idVal = document.getElementById('idTransaksi').value;
+      const tiketVal = document.getElementById('tiketSelector').value;
+      if (!idVal || !tiketVal) {
+        Swal.fire({ icon: 'warning', text: 'Pilih tiket terlebih dahulu!' });
+        return;
+      }
+
+      const { value: reason } = await Swal.fire({
+        title: 'Batalkan Tiket',
+        text: `Apakah Anda yakin ingin membatalkan tiket ${tiketVal}?`,
+        input: 'text',
+        inputPlaceholder: 'Masukkan alasan pembatalan (opsional)',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Batalkan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc2626',
+      });
+
+      if (reason !== undefined) {
+        try {
+          const payload = {
+            action: 'delete_timbangan1',
+            id: idVal,
+            cancel_reason: reason || 'Dibatalkan dari Timbangan 2'
+          };
+          const res = await fetch('/timbangan/ajax', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+          if (result.success) {
+            Swal.fire({ icon: 'success', text: 'Tiket berhasil dibatalkan', timer: 1500, showConfirmButton: false });
+            document.getElementById('timbangan2Form').reset();
+            document.getElementById('supirDebtVal').value = 0;
+            document.getElementById('maxSupirDebt').textContent = '0';
+            document.getElementById('potonganHutangInput').value = '';
+            document.getElementById('potonganMuatInput').value = '';
+            document.getElementById('cancelTiketBtn').style.display = 'none';
+            hitungKalkulasi();
+            loadPendingTickets();
+          } else {
+            Swal.fire({ icon: 'error', text: result.message });
+          }
+        } catch (err) {
+          console.error(err);
+          Swal.fire({ icon: 'error', text: 'Gagal membatalkan tiket' });
+        }
+      }
+    });
   });
 
   window.addEventListener('beforeunload', function() {
