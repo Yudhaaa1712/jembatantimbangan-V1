@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen Upah - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+  <link rel="stylesheet" href="/assets/css/bw-theme.css">
+  <style>
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .card-settings {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .main-container {
+      padding: 20px;
+    }
+    .nav-tabs .nav-link {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .nav-tabs .nav-link.active {
+      color: var(--accent-dark) !important;
+      border-bottom: 3px solid var(--accent-dark);
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printArea, #printArea * {
+        visibility: visible;
+      }
+      #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header"><h1 class="page-title"><i class="bi bi-cash-coin"></i> Manajemen Upah Supir &amp; Pekerja</h1></div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" id="upahTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="setting-tab" data-bs-toggle="tab" data-bs-target="#tab-setting" type="button" role="tab"><i class="bi bi-gear-fill"></i> Tarif &amp; Pengaturan</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="payout-tab" data-bs-toggle="tab" data-bs-target="#tab-payout" type="button" role="tab" onclick="loadDrivers()"><i class="bi bi-calculator"></i> Kalkulasi &amp; Payout Upah</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#tab-history" type="button" role="tab" onclick="loadRiwayat()"><i class="bi bi-clock-history"></i> Riwayat Gaji Supir</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="payout-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-payout-tkbm" type="button" role="tab" onclick="loadTkbm()"><i class="bi bi-people"></i> Payout TKBM</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="history-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-history-tkbm" type="button" role="tab" onclick="loadRiwayatTkbm()"><i class="bi bi-clock-history"></i> Riwayat TKBM</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="upahTabsContent">
+      
+      <!-- Tab 1: Tarif & Pengaturan -->
+      <div class="tab-pane fade show active" id="tab-setting" role="tabpanel">
+        <div class="card-settings">
+          <h5>Pengaturan Tarif Upah (Per Kg Netto Akhir)</h5>
+          <p class="text-muted small">Tentukan tarif default per Kg netto yang digunakan untuk menghitung gaji otomatis.</p>
+          <form id="formUpah">
+            <div class="row">
+              <div class="col-md-4">
+                <div class="form-group mb-3">
+                  <label class="form-label">Tarif Upah Petani (Rp/Kg)</label>
+                  <input type="number" class="form-control" id="tarifPetani" value="0">
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group mb-3">
+                  <label class="form-label">Tarif Upah Supir (Rp/Kg)</label>
+                  <input type="number" class="form-control" id="tarifSupir" value="0">
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group mb-3">
+                  <label class="form-label">Tarif Upah Pemuat (Rp/Kg)</label>
+                  <input type="number" class="form-control" id="tarifPemuat" value="0">
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="simpanPengaturan()"><i class="bi bi-save"></i> Simpan Pengaturan</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tab 2: Payout Upah -->
+      <div class="tab-pane fade" id="tab-payout" role="tabpanel">
+        <div class="card-settings">
+          <h5>Kalkulator &amp; Preview Upah Supir</h5>
+          <p class="text-muted small">Pilih supir dan tentukan periode tanggal untuk melihat transaksi timbangan yang belum dibayar upahnya.</p>
+          
+          <div class="row g-3 align-items-end mb-4">
+            <div class="col-md-3">
+              <label class="form-label">Pilih Supir</label>
+              <select id="payoutSupirSelect" class="form-select">
+                <option value="">-- Pilih Supir --</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Tanggal Mulai</label>
+              <input type="date" id="payoutStartDate" class="form-control" value="">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Tanggal Selesai</label>
+              <input type="date" id="payoutEndDate" class="form-control" value="">
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-primary w-100" onclick="hitungPreviewUpah()"><i class="bi bi-search"></i> Hitung Preview</button>
+            </div>
+          </div>
+
+          <div id="previewResultsContainer" style="display: none;">
+            <hr>
+            <h5 class="mb-3 text-primary"><i class="bi bi-list-task"></i> Daftar Tiket Timbangan Belum Dibayar</h5>
+            
+            <div class="table-container mb-4">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>No Tiket</th>
+                    <th>Tanggal</th>
+                    <th>No Polisi</th>
+                    <th>Material</th>
+                    <th>Netto Akhir (Kg)</th>
+                    <th>Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody id="previewTableBody">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Summary & Payout Details -->
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="card p-3 bg-light border-0">
+                  <h6>Rincian Upah Bruto</h6>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span>Total Netto:</span>
+                    <strong id="previewTotalNetto">0 Kg</strong>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span>Tarif per Kg:</span>
+                    <strong id="previewTarifPerKg">Rp 0</strong>
+                  </div>
+                  <hr class="my-1">
+                  <div class="d-flex justify-content-between text-success">
+                    <span>Total Gaji Bruto:</span>
+                    <h5 class="mb-0 fw-bold" id="previewGajiBruto">Rp 0</h5>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card p-3 bg-light border-0">
+                  <h6>Potongan &amp; Total Bayar</h6>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span>Sisa Hutang Supir:</span>
+                    <strong class="text-danger" id="previewSisaHutang">Rp 0</strong>
+                    <input type="hidden" id="rawSisaHutang" value="0">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small text-muted mb-1">Potongan Hutang (Maksimal disesuaikan gaji bruto):</label>
+                    <input type="number" id="inputPotonganHutang" class="form-control form-control-sm" placeholder="0" oninput="hitungUpahNetto()">
+                  </div>
+                  <hr class="my-1">
+                  <div class="d-flex justify-content-between text-primary">
+                    <span>Gaji Bersih Diterima:</span>
+                    <h5 class="mb-0 fw-bold" id="previewGajiNetto">Rp 0</h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-end mt-4">
+              <button class="btn btn-success btn-lg" onclick="prosesBayarGaji()"><i class="bi bi-wallet2"></i> Simpan &amp; Bayar Upah</button>
+            </div>
+          </div>
+          
+          <div id="noPreviewPlaceholder" class="text-center py-5 text-muted">
+            <i class="bi bi-calculator-fill display-3"></i>
+            <p class="mt-2">Isi form di atas dan klik tombol "Hitung Preview" untuk memulai perhitungan upah.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Riwayat Pembayaran -->
+      <div class="tab-pane fade" id="tab-history" role="tabpanel">
+        <div class="card-settings">
+          <h5>Riwayat Pembayaran Upah Supir</h5>
+          <p class="text-muted small">Cari dan kelola slip pembayaran gaji supir yang telah selesai diproses.</p>
+          
+          <div class="row g-3 align-items-end mb-4">
+            <div class="col-md-4">
+              <label class="form-label">Cari Nama Supir</label>
+              <input type="text" id="searchHistorySupir" class="form-control" placeholder="Ketik nama supir..." oninput="loadRiwayat()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Dari Tanggal</label>
+              <input type="date" id="historyStartDate" class="form-control" onchange="loadRiwayat()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Sampai Tanggal</label>
+              <input type="date" id="historyEndDate" class="form-control" onchange="loadRiwayat()">
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-outline-secondary w-100" onclick="resetFilterHistory()">Reset</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>No Slip</th>
+                  <th>Tanggal Bayar</th>
+                  <th>Nama Supir</th>
+                  <th>Periode</th>
+                  <th>Total Netto (Kg)</th>
+                  <th>Potongan Hutang</th>
+                  <th>Total Dibayar</th>
+                  <th>Operator</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <!-- JS populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </div>
+      
+      <!-- Tab 4: Payout TKBM -->
+      <div class="tab-pane fade" id="tab-payout-tkbm" role="tabpanel">
+        <div class="card-settings">
+          <h5>Kalkulator &amp; Payout Upah TKBM</h5>
+          <p class="text-muted small">Pilih TKBM dan tentukan periode tanggal untuk memproses gaji borongan kasar.</p>
+          
+          <div class="row g-3 align-items-end mb-4">
+            <div class="col-md-3">
+              <label class="form-label">Pilih TKBM</label>
+              <select id="payoutTkbmSelect" class="form-select">
+                <option value="">-- Pilih TKBM --</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Tanggal Mulai</label>
+              <input type="date" id="payoutTkbmStartDate" class="form-control" value="">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Tanggal Selesai</label>
+              <input type="date" id="payoutTkbmEndDate" class="form-control" value="">
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-primary w-100" onclick="hitungPreviewUpahTkbm()"><i class="bi bi-search"></i> Hitung Preview</button>
+            </div>
+          </div>
+
+          <div id="previewTkbmContainer" style="display: none;">
+            <hr>
+            <div class="table-container mb-4">
+              <table class="data-table">
+                <thead><tr><th>No Tiket</th><th>Tanggal</th><th>Pabrik</th><th>Netto (Kg)</th><th>Jumlah Pekerja</th><th>Gaji Bagian</th></tr></thead>
+                <tbody id="previewTkbmTableBody"></tbody>
+              </table>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="card p-3 bg-light border-0">
+                  <h6>Upah Bruto</h6>
+                  <div class="d-flex justify-content-between mb-2"><span>Total Trip:</span><strong id="previewTkbmTotalTrip">0</strong></div>
+                  <div class="d-flex justify-content-between mb-2"><span>Tarif Borongan Kasar:</span><strong id="previewTkbmTarif">Rp 0</strong></div>
+                  <hr class="my-1">
+                  <div class="d-flex justify-content-between text-success"><span>Gaji Bruto:</span><h5 class="mb-0 fw-bold" id="previewTkbmBruto">Rp 0</h5></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card p-3 bg-light border-0">
+                  <h6>Potongan Lainnya</h6>
+                  <div class="mb-3">
+                    <input type="number" id="inputPotonganTkbm" class="form-control" placeholder="0" oninput="hitungNettoTkbm()">
+                  </div>
+                  <hr class="my-1">
+                  <div class="d-flex justify-content-between text-primary"><span>Gaji Bersih Diterima:</span><h5 class="mb-0 fw-bold" id="previewTkbmNetto">Rp 0</h5></div>
+                </div>
+              </div>
+            </div>
+            <div class="text-end mt-4"><button class="btn btn-success btn-lg" onclick="prosesBayarTkbm()"><i class="bi bi-wallet2"></i> Bayar Upah TKBM</button></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tab 5: Riwayat TKBM -->
+      <div class="tab-pane fade" id="tab-history-tkbm" role="tabpanel">
+        <div class="card-settings">
+          <h5>Riwayat Pembayaran TKBM</h5>
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr><th>Tgl Bayar</th><th>Nama TKBM</th><th>Periode</th><th>Total Trip</th><th>Total Dibayar</th><th>Aksi</th></tr></thead>
+              <tbody id="historyTkbmTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- Printable Slip Modal -->
+  <div class="modal fade" id="slipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Slip Gaji Supir</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="printArea">
+          <div class="text-center mb-3">
+            <h4 class="mb-1" style="font-weight: 800;">CV. ARROYAN</h4>
+            <p class="small text-muted mb-0">Laporan Upah/Gaji Supir Timbangan</p>
+            <hr class="my-2" style="border-top: 2px dashed #000;">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6 small">
+              <strong>No Slip:</strong> <span id="slipNo">SLP-xxx</span><br>
+              <strong>Tanggal:</strong> <span id="slipTanggal">2026-xx-xx</span>
+            </div>
+            <div class="col-6 small text-end">
+              <strong>Nama Supir:</strong> <span id="slipSupir">Nama Supir</span><br>
+              <strong>Periode:</strong> <span id="slipPeriode">xx s/d xx</span>
+            </div>
+          </div>
+          <table class="table table-bordered table-sm small">
+            <thead>
+              <tr class="table-light">
+                <th>Keterangan</th>
+                <th class="text-end">Rincian</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Upah Supir (Netto)</td>
+                <td class="text-end" id="slipNettoKg">0 Kg x Rp 0</td>
+                <td class="text-end" id="slipBruto">Rp 0</td>
+              </tr>
+              <tr class="text-danger">
+                <td>Potongan Hutang</td>
+                <td class="text-end">-</td>
+                <td class="text-end" id="slipPotongan">Rp 0</td>
+              </tr>
+              <tr class="table-info fw-bold">
+                <td>Total Gaji Bersih</td>
+                <td class="text-end">-</td>
+                <td class="text-end" id="slipNettoBayar">Rp 0</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="mt-4 row text-center small">
+            <div class="col-6">
+              <p class="mb-5">Supir</p>
+              <strong>(........................)</strong>
+            </div>
+            <div class="col-6">
+              <p class="mb-5">Operator</p>
+              <strong>(<span id="slipOperator">Admin</span>)</strong>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> Cetak Slip</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+    window.activePage = 'upah';
+    let activeDrivers = [];
+    let currentPreviewData = null;
+    let currentHistoryList = [];
+
+    function formatRupiah(number) {
+      return 'Rp ' + new Intl.NumberFormat('id-ID').format(number);
+    }
+
+    async function loadPengaturan() {
+      try {
+        const res = await fetch('/upah-api/pengaturan?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success && r.data) {
+          document.getElementById('tarifPetani').value = r.data.tarif_per_kg || 0;
+          document.getElementById('tarifSupir').value = r.data.tarif_supir || 0;
+          document.getElementById('tarifPemuat').value = r.data.tarif_pemuat || 0;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function simpanPengaturan() {
+      const payload = {
+        tarif_petani: document.getElementById('tarifPetani').value,
+        tarif_supir: document.getElementById('tarifSupir').value,
+        tarif_pemuat: document.getElementById('tarifPemuat').value
+      };
+      
+      try {
+        const res = await fetch('/upah-api/pengaturan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const r = await res.json();
+        if (r.success) {
+          Swal.fire({icon: 'success', title: 'Berhasil', text: r.message});
+        } else {
+          Swal.fire({icon: 'error', title: 'Gagal', text: r.message});
+        }
+      } catch (e) {
+        Swal.fire({icon: 'error', title: 'Error', text: e.message});
+      }
+    }
+
+    // --- TAB 2: PAYOUT LCGIC ---
+    async function loadDrivers() {
+      try {
+        const res = await fetch('/hutang-supir-api/supir-aktif?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success) {
+          activeDrivers = r.data;
+          const select = document.getElementById('payoutSupirSelect');
+          select.innerHTML = '<option value="">-- Pilih Supir --</option>';
+          activeDrivers.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = `${d.nama_supir} (${formatRupiah(d.total_hutang)})`;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.error('Error load drivers:', e);
+      }
+    }
+
+    async function hitungPreviewUpah() {
+      const idSupir = document.getElementById('payoutSupirSelect').value;
+      const startDate = document.getElementById('payoutStartDate').value;
+      const endDate = document.getElementById('payoutEndDate').value;
+
+      if (!idSupir) {
+        return Swal.fire({ icon: 'warning', text: 'Pilih supir terlebih dahulu!' });
+      }
+
+      try {
+        const url = `/upah-api/supir-gaji-preview?id_supir=${idSupir}&start_date=${startDate}&end_date=${endDate}&_t=${Date.now()}`;
+        const res = await fetch(url);
+        const r = await res.json();
+
+        if (r.success) {
+          currentPreviewData = r.data;
+          
+          if (r.data.transaksi.length === 0) {
+            Swal.fire({ icon: 'info', text: 'Tidak ada transaksi timbangan yang belum dibayar untuk supir ini di periode tersebut.' });
+            document.getElementById('previewResultsContainer').style.display = 'none';
+            document.getElementById('noPreviewPlaceholder').style.display = 'block';
+            return;
+          }
+
+          document.getElementById('noPreviewPlaceholder').style.display = 'none';
+          document.getElementById('previewResultsContainer').style.display = 'block';
+
+          // Populate table
+          const tbody = document.getElementById('previewTableBody');
+          tbody.innerHTML = r.data.transaksi.map(t => {
+            const tgl = new Date(t.tanggal).toLocaleDateString('id-ID');
+            return `
+              <tr>
+                <td>${t.no_tiket}</td>
+                <td>${tgl}</td>
+                <td>${t.no_polisi || '-'}</td>
+                <td>${(t.jenis_material || '').toUpperCase()}</td>
+                <td class="text-end fw-bold">${new Intl.NumberFormat('id-ID').format(t.netto_akhir || 0)} Kg</td>
+                <td>${t.nama_pabrik || '-'}</td>
+              </tr>
+            `;
+          }).join('');
+
+          // Set summary details
+          document.getElementById('previewTotalNetto').textContent = new Intl.NumberFormat('id-ID').format(r.data.total_berat_kg) + ' Kg';
+          document.getElementById('previewTarifPerKg').textContent = formatRupiah(r.data.tarif_per_kg);
+          document.getElementById('previewGajiBruto').textContent = formatRupiah(r.data.gaji_kotor);
+          
+          document.getElementById('previewSisaHutang').textContent = formatRupiah(r.data.supir.total_hutang);
+          document.getElementById('rawSisaHutang').value = r.data.supir.total_hutang;
+          
+          // Auto fill potongan dengan sisa hutang jika gaji mencukupi, jika tidak maks seharga gaji bruto
+          const autoPotongan = Math.min(r.data.supir.total_hutang, r.data.gaji_kotor);
+          document.getElementById('inputPotonganHutang').value = autoPotongan;
+          
+          hitungUpahNetto();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal melakukan kalkulasi upah' });
+      }
+    }
+
+    function hitungUpahNetto() {
+      if (!currentPreviewData) return;
+      const bruto = currentPreviewData.gaji_kotor;
+      const sisaHutang = parseFloat(document.getElementById('rawSisaHutang').value) || 0;
+      let pot = parseFloat(document.getElementById('inputPotonganHutang').value) || 0;
+
+      const maxPot = Math.min(sisaHutang, bruto);
+      if (pot > maxPot) {
+        pot = maxPot;
+        document.getElementById('inputPotonganHutang').value = pot;
+      }
+      if (pot < 0) {
+        pot = 0;
+        document.getElementById('inputPotonganHutang').value = pot;
+      }
+
+      const netto = bruto - pot;
+      document.getElementById('previewGajiNetto').textContent = formatRupiah(netto);
+    }
+
+    async function prosesBayarGaji() {
+      if (!currentPreviewData) return;
+      
+      const idSupir = document.getElementById('payoutSupirSelect').value;
+      const startDate = document.getElementById('payoutStartDate').value;
+      const endDate = document.getElementById('payoutEndDate').value;
+      const potongan = parseFloat(document.getElementById('inputPotonganHutang').value) || 0;
+
+      const confirm = await Swal.fire({
+        title: 'Konfirmasi Pembayaran Gaji',
+        text: 'Apakah Anda yakin ingin memproses pembayaran upah supir ini? Tindakan ini akan mencatat kas keluar dan mengurangi hutang supir.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Bayar Upah',
+        cancelButtonText: 'Batal'
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      const payload = {
+        id_supir: idSupir,
+        start_date: startDate,
+        end_date: endDate,
+        tarif_per_kg: currentPreviewData.tarif_per_kg,
+        gaji_kotor: currentPreviewData.gaji_kotor,
+        potongan_hutang: potongan
+      };
+
+      try {
+        const res = await fetch('/upah-api/gaji', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const r = await res.json();
+
+        if (r.success) {
+          await Swal.fire({ icon: 'success', title: 'Berhasil!', text: r.message });
+          // Reset preview
+          document.getElementById('previewResultsContainer').style.display = 'none';
+          document.getElementById('noPreviewPlaceholder').style.display = 'block';
+          document.getElementById('payoutSupirSelect').value = '';
+          // Load drivers again to update their debt indicators in dropdown list
+          await loadDrivers();
+          // Open print slip dialog
+          if (r.data && r.data.id) {
+            showSlipModal(r.data);
+          }
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal memproses pembayaran upah' });
+      }
+    }
+
+    // --- TAB 3: RIWAYAT GAJI ---
+    async function loadRiwayat() {
+      const search = document.getElementById('searchHistorySupir').value;
+      const start = document.getElementById('historyStartDate').value;
+      const end = document.getElementById('historyEndDate').value;
+
+      try {
+        const url = `/upah-api/riwayat?search=${encodeURIComponent(search)}&start_date=${start}&end_date=${end}&_t=${Date.now()}`;
+        const res = await fetch(url);
+        const r = await res.json();
+
+        if (r.success) {
+          const tbody = document.getElementById('historyTableBody');
+          if (r.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Tidak ada riwayat pembayaran gaji</td></tr>';
+            return;
+          }
+          currentHistoryList = r.data;
+          tbody.innerHTML = r.data.map((h, i) => {
+            const tglBayar = new Date(h.tanggal_bayar).toLocaleDateString('id-ID');
+            const periodeStr = `${new Date(h.periode_awal).toLocaleDateString('id-ID')} s/d ${new Date(h.periode_akhir).toLocaleDateString('id-ID')}`;
+            const noSlipEscaped = h.no_slip.replace(/'/g, "\\'");
+            return `
+              <tr>
+                <td>${h.no_slip}</td>
+                <td>${tglBayar}</td>
+                <td><strong>${h.nama_supir}</strong></td>
+                <td>${periodeStr}</td>
+                <td class="text-end fw-bold">${new Intl.NumberFormat('id-ID').format(h.total_netto)} Kg</td>
+                <td class="text-end text-danger">${formatRupiah(h.potongan_hutang)}</td>
+                <td class="text-end text-success fw-bold">${formatRupiah(h.total_dibayar)}</td>
+                <td>${h.nama_operator || '-'}</td>
+                <td>
+                  <button class="btn btn-sm btn-info" onclick="showSlipModalByIndex(${i})"><i class="bi bi-printer"></i> Slip</button>
+                  <button class="btn btn-sm btn-danger" onclick="batalkanPembayaranGaji(${h.id}, '${noSlipEscaped}')"><i class="bi bi-trash"></i> Batalkan</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function resetFilterHistory() {
+      document.getElementById('searchHistorySupir').value = '';
+      document.getElementById('historyStartDate').value = '';
+      document.getElementById('historyEndDate').value = '';
+      loadRiwayat();
+    }
+
+    async function batalkanPembayaranGaji(id, noSlip) {
+      const confirm = await Swal.fire({
+        title: 'Batalkan Gaji?',
+        html: `Apakah Anda yakin ingin membatalkan Slip <strong>${noSlip}</strong>?<br><small class="text-muted">Transaksi timbangan akan dikembalikan menjadi belum digaji, saldo kas akan berkurang, dan hutang supir akan dikembalikan seperti semula.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Ya, Batalkan Gaji',
+        cancelButtonText: 'Batal'
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        const res = await fetch('/upah-api/batal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        const r = await res.json();
+
+        if (r.success) {
+          Swal.fire({ icon: 'success', text: r.message, timer: 2000, showConfirmButton: false });
+          loadRiwayat();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Error membatalkan gaji' });
+      }
+    }
+
+    function showSlipModalByIndex(index) {
+      if (currentHistoryList && currentHistoryList[index]) {
+        showSlipModal(currentHistoryList[index]);
+      }
+    }
+
+    function showSlipModal(data) {
+      document.getElementById('slipNo').textContent = data.no_slip;
+      document.getElementById('slipTanggal').textContent = new Date(data.tanggal_bayar || data.created_at).toLocaleDateString('id-ID');
+      document.getElementById('slipSupir').textContent = data.nama_supir;
+      
+      const start = new Date(data.periode_awal).toLocaleDateString('id-ID');
+      const end = new Date(data.periode_akhir).toLocaleDateString('id-ID');
+      document.getElementById('slipPeriode').textContent = `${start} s/d ${end}`;
+      
+      const tSupir = data.tarif_supir || (data.total_netto > 0 ? Math.round((data.total_dibayar + data.potongan_hutang) / data.total_netto) : 0);
+      document.getElementById('slipNettoKg').textContent = `${new Intl.NumberFormat('id-ID').format(data.total_netto)} Kg x ${formatRupiah(tSupir)}`;
+      
+      const bruto = data.total_netto * tSupir;
+      document.getElementById('slipBruto').textContent = formatRupiah(bruto);
+      document.getElementById('slipPotongan').textContent = '- ' + formatRupiah(data.potongan_hutang);
+      document.getElementById('slipNettoBayar').textContent = formatRupiah(data.total_dibayar);
+      document.getElementById('slipOperator').textContent = data.nama_operator || 'Admin';
+
+      const myModal = new bootstrap.Modal(document.getElementById('slipModal'));
+      myModal.show();
+    }
+
+// --- TKBM PAYOUT LOGIC ---
+    let currentPreviewTkbmData = null;
+
+    async function loadTkbm() {
+      try {
+        const res = await fetch('/tkbm-api/active');
+        const r = await res.json();
+        if (r.success) {
+          const select = document.getElementById('payoutTkbmSelect');
+          select.innerHTML = '<option value="">-- Pilih TKBM --</option>';
+          r.data.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.nama_karyawan;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) { console.error('Error load tkbm:', e); }
+    }
+
+    async function hitungPreviewUpahTkbm() {
+      const idTkbm = document.getElementById('payoutTkbmSelect').value;
+      const startDate = document.getElementById('payoutTkbmStartDate').value;
+      const endDate = document.getElementById('payoutTkbmEndDate').value;
+
+      if (!idTkbm) return Swal.fire({ icon: 'warning', text: 'Pilih TKBM terlebih dahulu!' });
+
+      try {
+        const url = `/upah-api/tkbm-gaji-preview?id_tkbm=${idTkbm}&start_date=${startDate}&end_date=${endDate}&_t=${Date.now()}`;
+        const res = await fetch(url);
+        const r = await res.json();
+
+        if (r.success) {
+          currentPreviewTkbmData = r.data;
+          
+          if (r.data.transaksi.length === 0) {
+            Swal.fire({ icon: 'info', text: 'Tidak ada transaksi timbangan yang belum dibayar untuk TKBM ini di periode tersebut.' });
+            document.getElementById('previewTkbmContainer').style.display = 'none';
+            return;
+          }
+
+          document.getElementById('previewTkbmContainer').style.display = 'block';
+
+          // Populate table
+          const tbody = document.getElementById('previewTkbmTableBody');
+          tbody.innerHTML = r.data.transaksi.map(t => {
+            const tgl = new Date(t.tanggal).toLocaleDateString('id-ID');
+            return `
+              <tr>
+                <td>${t.no_tiket}</td>
+                <td>${tgl}</td>
+                <td>${t.nama_pabrik}</td>
+                <td class="text-end">${new Intl.NumberFormat('id-ID').format(t.netto_ram)}</td>
+                <td class="text-center">${t.jumlah_pekerja} Orang</td>
+                <td class="text-end fw-bold text-success">${formatRupiah(t.gaji_bagian)}</td>
+              </tr>
+            `;
+          }).join('');
+
+          // Set summary details
+          document.getElementById('previewTkbmTotalTrip').textContent = r.data.total_trip;
+          document.getElementById('previewTkbmTarif').textContent = formatRupiah(r.data.tarif_pemuat);
+          document.getElementById('previewTkbmBruto').textContent = formatRupiah(r.data.gaji_kotor);
+          
+          document.getElementById('inputPotonganTkbm').value = 0;
+          hitungNettoTkbm();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal melakukan kalkulasi upah TKBM' });
+      }
+    }
+
+    function hitungNettoTkbm() {
+      if (!currentPreviewTkbmData) return;
+      const bruto = currentPreviewTkbmData.gaji_kotor;
+      let pot = parseFloat(document.getElementById('inputPotonganTkbm').value) || 0;
+      if (pot < 0) { pot = 0; document.getElementById('inputPotonganTkbm').value = 0; }
+      const netto = bruto - pot;
+      document.getElementById('previewTkbmNetto').textContent = formatRupiah(netto);
+    }
+
+    async function prosesBayarTkbm() {
+      if (!currentPreviewTkbmData) return;
+      const confirm = await Swal.fire({ title: 'Bayar Upah?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Bayar' });
+      if (!confirm.isConfirmed) return;
+
+      const payload = {
+        id_tkbm: document.getElementById('payoutTkbmSelect').value,
+        start_date: document.getElementById('payoutTkbmStartDate').value,
+        end_date: document.getElementById('payoutTkbmEndDate').value,
+        tarif_pemuat: currentPreviewTkbmData.tarif_pemuat,
+        gaji_kotor: currentPreviewTkbmData.gaji_kotor,
+        potongan_lainnya: parseFloat(document.getElementById('inputPotonganTkbm').value) || 0
+      };
+
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const r = await res.json();
+        if (r.success) {
+          await Swal.fire({ icon: 'success', text: r.message });
+          document.getElementById('previewTkbmContainer').style.display = 'none';
+          document.getElementById('payoutTkbmSelect').value = '';
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) { Swal.fire({ icon: 'error', text: 'Gagal memproses pembayaran upah TKBM' }); }
+    }
+
+    // --- TKBM HISTORY LOGIC ---
+    async function loadRiwayatTkbm() {
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji/list?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success) {
+          const tbody = document.getElementById('historyTkbmTableBody');
+          if (r.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Belum ada riwayat</td></tr>';
+            return;
+          }
+          tbody.innerHTML = r.data.map((h) => {
+            const tglBayar = new Date(h.created_at).toLocaleDateString('id-ID');
+            const periodeStr = `${new Date(h.periode_mulai).toLocaleDateString('id-ID')} s/d ${new Date(h.periode_akhir).toLocaleDateString('id-ID')}`;
+            return `
+              <tr>
+                <td>${tglBayar}</td>
+                <td><strong>${h.nama_karyawan}</strong></td>
+                <td>${periodeStr}</td>
+                <td class="text-center">${h.total_trip} Trip</td>
+                <td class="text-end text-success fw-bold">${formatRupiah(h.gaji_bersih)}</td>
+                <td>
+                  <button class="btn btn-sm btn-danger" onclick="batalGajiTkbm(${h.id})"><i class="bi bi-trash"></i> Batalkan</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function batalGajiTkbm(id) {
+      const confirm = await Swal.fire({ title: 'Batalkan Gaji TKBM?', text: 'Transaksi timbangan akan dikembalikan statusnya ke belum digaji', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' });
+      if (!confirm.isConfirmed) return;
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji/' + id, { method: 'DELETE' });
+        const r = await res.json();
+        if (r.success) { Swal.fire({ icon: 'success', text: r.message, timer: 1500, showConfirmButton: false }); loadRiwayatTkbm(); }
+        else Swal.fire({ icon: 'error', text: r.message });
+      } catch (e) { console.error(e); }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadSessionInfo();
+      await loadPengaturan();
+      
+      // Auto set date filter in payout tab: start_date is 1 week ago, end_date is today
+      const today = new Date();
+      const weekAgo = new Date();
+      weekAgo.setDate(today.getDate() - 7);
+      
+      const startDateStr = weekAgo.toISOString().split('T')[0];
+      const endDateStr = today.toISOString().split('T')[0];
+      
+      document.getElementById('payoutStartDate').value = startDateStr;
+      document.getElementById('payoutEndDate').value = endDateStr;
+      document.getElementById('payoutTkbmStartDate').value = startDateStr;
+      document.getElementById('payoutTkbmEndDate').value = endDateStr;
+    });
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+</html>
