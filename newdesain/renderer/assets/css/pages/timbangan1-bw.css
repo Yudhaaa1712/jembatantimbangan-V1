@@ -1,0 +1,175 @@
+/**
+ * Timbangan 1 CSS - Neo-Brutalism Theme
+ */
+
+/* Container Style */
+.container-fluid {
+    background: var(--bg-primary);
+    padding: 12px;
+    max-height: 100vh;
+    overflow: hidden;
+    color: #000000;
+}
+
+/* Main Card */
+.card.border-0.bg-dark {
+    background: #ffffff !important;
+    border-radius: 0px !important;
+    border: 3px solid #000000 !important;
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,1) !important;
+}
+
+/* Header Style */
+.card-header.bg-gradient {
+    background: #ffe600 !important; /* Neo Yellow */
+    border-radius: 0px !important;
+    padding: 16px 20px !important;
+    border-bottom: 3px solid #000000 !important;
+}
+
+.card-header h4 {
+    font-size: 1.5rem !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    text-shadow: none !important;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Serial Config Badge */
+#serialConfigStatus {
+    background: #000000 !important;
+    color: #ffe600 !important;
+    font-size: 0.8rem !important;
+    padding: 6px 12px !important;
+    border-radius: 0px;
+    border: 2px solid #000000;
+    box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+    font-weight: 800;
+}
+
+#openSerialSettings {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+    padding: 8px 16px !important;
+    font-weight: 800 !important;
+    border-radius: 0px !important;
+    box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+    transition: all 0.07s ease !important;
+    text-transform: uppercase;
+}
+
+#openSerialSettings:hover {
+    background: #ffe600 !important;
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0px 0px rgba(0,0,0,1);
+}
+
+/* Card Body */
+.card-body {
+    padding: 20px !important;
+    background: #ffffff;
+}
+
+/* Form Labels */
+.form-label {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: #000000 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-label.text-danger {
+    color: #000000 !important;
+}
+
+.form-label.text-danger::after {
+    content: " *";
+    color: #ff007f; /* Neo Pink asterisk */
+    font-size: 12px;
+}
+
+/* Form Controls */
+.form-control,
+.form-select {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    border-radius: 0px !important;
+    color: #000000 !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    padding: 14px 16px !important;
+    transition: all 0.07s ease !important;
+    height: auto !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #000000 !important;
+    background: #ffe600 !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.form-control::placeholder {
+    color: #555555 !important;
+    font-weight: 700 !important;
+}
+
+/* Input Group */
+.input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-group-text {
+    background: #000000 !important;
+    color: white !important;
+    font-weight: 900 !important;
+    font-size: 18px !important;
+    padding: 14px 20px !important;
+    border: 2px solid #000000 !important;
+    border-radius: 0px !important;
+    letter-spacing: 1px;
+}
+
+.input-group .form-control {
+    border-radius: 0px !important;
+}
+
+/* Display Panel */
+.display-panel {
+    background: #000000 !important;
+    border: 4px solid #000000 !important;
+    border-radius: 0px !important;
+    padding: 20px !important;
+    text-align: center !important;
+    min-height: 180px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,1) !important;
+}
+
+.display-value {
+    color: #ffe600 !important; /* Neo Yellow */
+    font-size: 48px !important;
+    font-weight: 900 !important;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    letter-spacing: 2px;
+}
+
+.display-status {
+    color: #00ff66 !important; /* Neo Green */
+    font-size: 14px !important;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 5px;
+}

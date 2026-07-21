@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neo-bg: #f4f4f0;
+  --color-neo-yellow: #ffe600;
+  --color-neo-pink: #ff007f;
+  --color-neo-blue: #0066ff;
+  --color-neo-green: #00ff66;
+  --color-neo-orange: #ff6600;
+}

@@ -1,16 +1,16 @@
 {
-  "t1Weight": 3232,
+  "t1Weight": 32040,
   "t2Weight": 0,
   "isModeJual": false,
-  "bruto": 3232,
+  "bruto": 32040,
   "tara": 0,
-  "nettoAwal": 3232,
+  "nettoAwal": 32040,
   "kgPotongan": 0,
-  "nettoAkhir": 3232,
-  "totalAwal": 10772256,
-  "totalAkhir": 10772256,
+  "nettoAkhir": 32040,
+  "totalAwal": 96120000,
+  "totalAkhir": 96120000,
   "potonganHutang": 0,
   "potonganHutangSupplier": 0,
   "potonganMuat": 0,
-  "harga": 3333
+  "harga": 3000
 }

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen Hutang - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+  <link rel="stylesheet" href="/assets/css/bw-theme.css">
+  <link rel="stylesheet" href="/assets/css/pages/masterdata-bw.css">
+  <style>
+    .list-group-item-custom {
+      background-color: #ffffff;
+      color: var(--text-primary);
+      border: 1px solid var(--border-light);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .list-group-item-custom:hover {
+      background-color: var(--hover-light);
+    }
+
+    .list-group-item-custom.active {
+      background-color: var(--accent-dark) !important;
+      border-color: var(--border-color) !important;
+      color: #ffffff !important;
+    }
+
+    .list-group-item-custom.active .text-muted {
+      color: #e2e8f0 !important;
+    }
+
+    .history-container {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header d-flex justify-content-between align-items-center">
+      <h1 class="page-title"><i class="bi bi-wallet2"></i> Laporan &amp; Manajemen Hutang</h1>
+      <button class="btn btn-outline-success" id="exportExcelBtn">
+        <i class="bi bi-file-earmark-excel-fill"></i> Export Rekap Excel
+      </button>
+    </div>
+
+    <!-- Toggle Mode Hutang -->
+    <div class="d-flex justify-content-center mb-3">
+      <div class="btn-group" role="group">
+        <input type="radio" class="btn-check" name="modeHutang" id="btnHutangSupir" value="supir" checked autocomplete="off">
+        <label class="btn btn-outline-primary px-4 fw-bold" for="btnHutangSupir"><i class="bi bi-truck"></i> Hutang Supir</label>
+
+        <input type="radio" class="btn-check" name="modeHutang" id="btnHutangSupplier" value="supplier" autocomplete="off">
+        <label class="btn btn-outline-primary px-4 fw-bold" for="btnHutangSupplier"><i class="bi bi-people-fill"></i> Hutang Supplier</label>
+      </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+      <!-- List Column -->
+      <div class="col-md-4">
+        <div class="card shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fs-6" id="listColumnTitle">Daftar Supir</h5>
+            <button class="btn btn-sm btn-primary" id="btnRegisterSupir"><i class="bi bi-person-plus-fill"></i> Tambah</button>
+          </div>
+          <div class="card-body p-2">
+            <input type="text" id="searchSupir" class="form-control form-control-sm mb-2" placeholder="Cari nama...">
+            <div class="list-group list-group-flush" id="supirListGroup" style="max-height: 500px; overflow-y: auto;">
+              <!-- Dynamic list -->
+              <div class="text-muted text-center p-3">Memuat data...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Column -->
+      <div class="col-md-8">
+        <div class="card shadow-sm h-100" id="detailCard" style="display: none;">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fs-6" id="detailSupirName">Detail Hutang</h5>
+            <div>
+              <button class="btn btn-sm btn-success me-1" id="btnBayar"><i class="bi bi-cash-stack"></i> Bayar Hutang</button>
+              <button class="btn btn-sm btn-warning" id="btnTambah"><i class="bi bi-plus-circle"></i> Tambah Hutang</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row mb-3 p-3 rounded" style="background: var(--bg-secondary); border: 1px solid var(--border-light);">
+              <div class="col-6">
+                <span class="text-muted small">Total Sisa Hutang</span>
+                <h3 class="text-danger fw-bold mb-0" id="detailTotalHutang">Rp 0</h3>
+              </div>
+              <div class="col-6 text-end">
+                <span class="text-muted small">Status</span>
+                <h4 id="detailStatus" class="mb-0 mt-1"><span class="badge bg-success">Aktif</span></h4>
+              </div>
+            </div>
+
+            <h5 class="fs-6 mb-2"><i class="bi bi-clock-history"></i> Histori Pembayaran &amp; Hutang</h5>
+            <div class="history-container table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Jenis</th>
+                    <th>Jumlah</th>
+                    <th>Sisa Saldo</th>
+                    <th>Keterangan</th>
+                    <th>Operator</th>
+                  </tr>
+                </thead>
+                <tbody id="historyBody">
+                  <!-- Dynamic history rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm h-100 d-flex align-items-center justify-content-center text-muted p-5" id="noSelectionPlaceholder">
+          <div class="text-center">
+            <i class="bi bi-wallet-fill display-1 text-secondary"></i>
+            <p class="mt-3" id="placeholderText">Pilih nama supir dari daftar untuk melihat detail histori hutang.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+    window.activePage = 'hutang';
+    let currentMode = 'supir'; // 'supir' atau 'supplier'
+    let dataList = [];
+    let selectedId = null;
+
+    function formatRupiah(number) {
+      return 'Rp ' + new Intl.NumberFormat('id-ID').format(number);
+    }
+
+    function getModeConfig() {
+      if (currentMode === 'supir') {
+        return {
+          title: 'Supir',
+          nameField: 'nama_supir',
+          listApi: '/hutang-supir-api/supir-aktif',
+          historyApi: (id) => `/hutang-supir-api/supir/${id}/history`,
+          bayarApi: '/hutang-supir-api/bayar',
+          tambahApi: '/hutang-supir-api/tambah',
+          addApi: '/hutang-supir-api/supir/add',
+          exportApi: '/hutang-supir-api/export-excel',
+          idField: 'id_supir'
+        };
+      } else {
+        return {
+          title: 'Supplier',
+          nameField: 'nama_supplier',
+          listApi: '/hutang-supplier-api/supplier-aktif',
+          historyApi: (id) => `/hutang-supplier-api/supplier/${id}/history`,
+          bayarApi: '/hutang-supplier-api/bayar',
+          tambahApi: '/hutang-supplier-api/tambah',
+          addApi: '/hutang-supplier-api/supplier/add',
+          exportApi: '/hutang-supplier-api/export-excel',
+          idField: 'id_supplier'
+        };
+      }
+    }
+
+    async function loadData() {
+      const config = getModeConfig();
+      // Update titles
+      document.getElementById('listColumnTitle').textContent = 'Daftar ' + config.title;
+      document.getElementById('placeholderText').textContent = `Pilih nama ${config.title.toLowerCase()} dari daftar untuk melihat detail histori hutang.`;
+      
+      try {
+        const res = await fetch(config.listApi + '?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success) {
+          dataList = r.data;
+          renderList();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function renderList() {
+      const searchVal = document.getElementById('searchSupir').value.toUpperCase();
+      const container = document.getElementById('supirListGroup');
+      container.innerHTML = '';
+      const config = getModeConfig();
+
+      const filtered = dataList.filter(s => s[config.nameField].toUpperCase().includes(searchVal));
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center p-3">Nama tidak ditemukan</div>';
+        return;
+      }
+
+      filtered.forEach(s => {
+        const item = document.createElement('div');
+        item.className = `list-group-item list-group-item-custom d-flex justify-content-between align-items-center ${selectedId === s.id ? 'active' : ''}`;
+        item.onclick = () => selectItem(s.id);
+
+        item.innerHTML = `
+          <div>
+            <strong class="d-block">${s[config.nameField]}</strong>
+            <span class="small text-muted">${s.no_telepon || '-'}</span>
+          </div>
+          <span class="badge ${s.total_hutang > 0 ? 'bg-danger' : 'bg-success'} rounded-pill">
+            ${formatRupiah(s.total_hutang)}
+          </span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function selectItem(id) {
+      selectedId = id;
+      renderList();
+      const config = getModeConfig();
+
+      const item = dataList.find(s => s.id === id);
+      if (!item) return;
+
+      // Show details panel
+      document.getElementById('noSelectionPlaceholder').style.display = 'none';
+      document.getElementById('detailCard').style.display = 'block';
+
+      document.getElementById('detailSupirName').innerHTML = `<i class="bi bi-person-fill"></i> Detail Hutang: ${item[config.nameField]}`;
+      document.getElementById('detailTotalHutang').textContent = formatRupiah(item.total_hutang);
+      document.getElementById('detailStatus').innerHTML = item.status === 'active'
+        ? '<span class="badge bg-success">Aktif</span>'
+        : '<span class="badge bg-secondary">Nonaktif</span>';
+
+      // Load History
+      const historyBody = document.getElementById('historyBody');
+      historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Memuat histori...</td></tr>';
+
+      try {
+        const res = await fetch(config.historyApi(id) + '?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success) {
+          if (r.data.length === 0) {
+            historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Belum ada histori transaksi</td></tr>';
+            return;
+          }
+          historyBody.innerHTML = r.data.map(h => {
+            const badge = h.jenis === 'tambah'
+              ? '<span class="badge bg-danger">Hutang</span>'
+              : '<span class="badge bg-success">Bayar</span>';
+            const tgl = new Date(h.tanggal).toLocaleDateString('id-ID');
+            return `
+              <tr>
+                <td>${tgl}</td>
+                <td class="text-center">${badge}</td>
+                <td class="text-end fw-bold">${formatRupiah(h.jumlah)}</td>
+                <td class="text-end text-warning">${formatRupiah(h.saldo_setelah)}</td>
+                <td>${h.keterangan || '-'}</td>
+                <td>${h.nama_operator || '-'}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          historyBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">${r.message}</td></tr>`;
+        }
+      } catch (e) {
+        historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal memuat data</td></tr>';
+      }
+    }
+
+    // Handle search input
+    document.getElementById('searchSupir').addEventListener('input', renderList);
+
+    // Toggle Mode Hutang
+    document.querySelectorAll('input[name="modeHutang"]').forEach(rad => {
+      rad.addEventListener('change', function() {
+        currentMode = this.value;
+        selectedId = null;
+        document.getElementById('detailCard').style.display = 'none';
+        document.getElementById('noSelectionPlaceholder').style.display = 'flex';
+        
+        const config = getModeConfig();
+        document.getElementById('exportExcelBtn').onclick = () => {
+          window.location.href = config.exportApi;
+        };
+        
+        loadData();
+      });
+    });
+
+    // Handle Bayar Hutang
+    document.getElementById('btnBayar').addEventListener('click', async () => {
+      if (!selectedId) return;
+      const config = getModeConfig();
+      const item = dataList.find(s => s.id === selectedId);
+      if (!item) return;
+
+      const { value: formValues } = await Swal.fire({
+        title: `Bayar Hutang: ${item[config.nameField]}`,
+        html: `
+        <div class="mb-3 text-start">
+          <label class="form-label">Jumlah Pembayaran (Rp)</label>
+          <input id="swal-bayar-jumlah" type="number" class="form-control" placeholder="0" max="${item.total_hutang}">
+        </div>
+        <div class="mb-3 text-start">
+          <label class="form-label">Keterangan</label>
+          <input id="swal-bayar-ket" class="form-control" value="Pembayaran manual">
+        </div>
+        <div class="mb-3 text-start">
+          <label class="form-label">Tanggal</label>
+          <input id="swal-bayar-tgl" type="date" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+        </div>
+      `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Bayar',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const jumlah = parseFloat(document.getElementById('swal-bayar-jumlah').value);
+          if (isNaN(jumlah) || jumlah <= 0) {
+            Swal.showValidationMessage('Jumlah pembayaran harus valid dan lebih dari 0');
+            return false;
+          }
+          const payload = {
+            jumlah: jumlah,
+            keterangan: document.getElementById('swal-bayar-ket').value,
+            tanggal: document.getElementById('swal-bayar-tgl').value
+          };
+          payload[config.idField] = selectedId;
+          return payload;
+        }
+      });
+
+      if (formValues) {
+        try {
+          const res = await fetch(config.bayarApi, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formValues)
+          });
+          const r = await res.json();
+          if (r.success) {
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+            await loadData();
+            await selectItem(selectedId);
+          } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+          }
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal memproses transaksi' });
+        }
+      }
+    });
+
+    // Handle Tambah Hutang
+    document.getElementById('btnTambah').addEventListener('click', async () => {
+      if (!selectedId) return;
+      const config = getModeConfig();
+      const item = dataList.find(s => s.id === selectedId);
+      if (!item) return;
+
+      const { value: formValues } = await Swal.fire({
+        title: `Tambah Hutang: ${item[config.nameField]}`,
+        html: `
+        <div class="mb-3 text-start">
+          <label class="form-label">Jumlah Penambahan Hutang (Rp)</label>
+          <input id="swal-tambah-jumlah" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="mb-3 text-start">
+          <label class="form-label">Keterangan</label>
+          <input id="swal-tambah-ket" class="form-control" value="Penambahan manual">
+        </div>
+        <div class="mb-3 text-start">
+          <label class="form-label">Tanggal</label>
+          <input id="swal-tambah-tgl" type="date" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+        </div>
+      `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Tambah',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const jumlah = parseFloat(document.getElementById('swal-tambah-jumlah').value);
+          if (isNaN(jumlah) || jumlah <= 0) {
+            Swal.showValidationMessage('Jumlah penambahan harus valid dan lebih dari 0');
+            return false;
+          }
+          const payload = {
+            jumlah: jumlah,
+            keterangan: document.getElementById('swal-tambah-ket').value,
+            tanggal: document.getElementById('swal-tambah-tgl').value
+          };
+          payload[config.idField] = selectedId;
+          return payload;
+        }
+      });
+
+      if (formValues) {
+        try {
+          const res = await fetch(config.tambahApi, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formValues)
+          });
+          const r = await res.json();
+          if (r.success) {
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+            await loadData();
+            await selectItem(selectedId);
+          } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+          }
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal memproses transaksi' });
+        }
+      }
+    });
+
+    // Handle Register Baru
+    document.getElementById('btnRegisterSupir').addEventListener('click', async () => {
+      const config = getModeConfig();
+      const { value: formValues } = await Swal.fire({
+        title: `Pendaftaran ${config.title} Baru`,
+        html: `
+        <div class="mb-3 text-start">
+          <label class="form-label">Nama</label>
+          <input id="swal-reg-nama" class="form-control" placeholder="Nama">
+        </div>
+        <div class="mb-3 text-start">
+          <label class="form-label">Hutang Awal (Rp - Opsional)</label>
+          <input id="swal-reg-hutang" type="number" class="form-control" value="0">
+        </div>
+      `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Daftarkan',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const nama = document.getElementById('swal-reg-nama').value.trim();
+          if (!nama) {
+            Swal.showValidationMessage('Nama harus diisi');
+            return false;
+          }
+          const payload = {
+            initial_debt: parseFloat(document.getElementById('swal-reg-hutang').value) || 0
+          };
+          if (currentMode === 'supir') {
+            payload.nama_supir = nama;
+            payload.no_telepon = '';
+            payload.alamat = '';
+          } else {
+            payload.nama_supplier = nama;
+          }
+          return payload;
+        }
+      });
+
+      if (formValues) {
+        try {
+          const res = await fetch(config.addApi, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formValues)
+          });
+          const r = await res.json();
+          if (r.success) {
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+            await loadData();
+          } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+          }
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Error', text: `Gagal mendaftarkan ${config.title.toLowerCase()} baru` });
+        }
+      }
+    });
+
+    document.getElementById('exportExcelBtn').onclick = () => {
+      window.location.href = getModeConfig().exportApi;
+    };
+
+    document.addEventListener('DOMContentLoaded', async function () {
+      await loadSessionInfo();
+      await loadData();
+    });
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+
+</html>

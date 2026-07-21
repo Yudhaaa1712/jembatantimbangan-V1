@@ -1,0 +1,464 @@
+/**
+ * Keuangan Page - Neo-Brutalism Theme
+ */
+
+/* ─── Page Layout ─────────────────────────────────────────────────────────── */
+.keuangan-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.page-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 4px solid #000000;
+}
+
+.page-title-bar h2 {
+  font-size: 28px;
+  font-weight: 900;
+  color: #000000;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.page-title-bar .bulan-label {
+  font-size: 13px;
+  color: #000000;
+  font-weight: 800;
+  background: #ffe600; /* Neo Yellow */
+  padding: 8px 16px;
+  border: 2px solid #000000;
+  border-radius: 0px;
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+  text-transform: uppercase;
+}
+
+/* ─── Saldo Cards ─────────────────────────────────────────────────────────── */
+.saldo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.saldo-card {
+  background: #ffffff;
+  border: 3px solid #000000;
+  border-radius: 0px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+  transition: all 0.07s ease;
+}
+
+.saldo-card:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 3px 3px 0px 0px rgba(0,0,0,1);
+}
+
+.saldo-card.saldo-utama {
+  background: #ffe600; /* Neo Yellow */
+  color: #000000;
+  border-color: #000000;
+}
+
+.saldo-card .saldo-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: #000000;
+}
+
+.saldo-card .saldo-value {
+  font-size: 28px;
+  font-weight: 900;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  line-height: 1.2;
+}
+
+.saldo-card.saldo-utama .saldo-value {
+  color: #000000;
+}
+
+.saldo-card.debit-card .saldo-value {
+  color: #000000;
+  background: #00ff66; /* Neo Green background for value display */
+  border: 2px solid #000000;
+  display: inline-block;
+  padding: 2px 10px;
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+}
+
+.saldo-card.kredit-card .saldo-value {
+  color: #ffffff;
+  background: #ff007f; /* Neo Pink background */
+  border: 2px solid #000000;
+  display: inline-block;
+  padding: 2px 10px;
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+}
+
+/* ─── Filter & Actions Bar ────────────────────────────────────────────────── */
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #000000;
+}
+
+.filter-group select {
+  padding: 8px 14px;
+  border: 2px solid #000000;
+  border-radius: 0px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  color: #000000;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+  transition: all 0.07s ease;
+}
+
+.filter-group select:focus {
+  outline: none;
+  background: #ffe600;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-tambah-saldo {
+  background: #00ff66; /* Neo Green */
+  color: #000000;
+  border: 2px solid #000000;
+  padding: 10px 18px;
+  border-radius: 0px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+  transition: all 0.07s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-tambah-saldo:hover {
+  background: #33ff85;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px rgba(0,0,0,1);
+}
+
+.btn-pengeluaran {
+  background: #ff007f; /* Neo Pink */
+  color: #ffffff;
+  border: 2px solid #000000;
+  padding: 10px 18px;
+  border-radius: 0px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+  transition: all 0.07s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-pengeluaran:hover {
+  background: #ff3399;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px rgba(0,0,0,1);
+}
+
+.btn-export {
+  background: #ffffff;
+  color: #000000;
+  border: 2px solid #000000;
+  padding: 10px 18px;
+  border-radius: 0px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+  transition: all 0.07s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-export:hover {
+  background: #f4f4f0;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px rgba(0,0,0,1);
+}
+
+/* ─── Ledger Table ────────────────────────────────────────────────────────── */
+.ledger-wrapper {
+  border: 2px solid #000000;
+  border-radius: 0px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+}
+
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ledger-table thead th {
+  background: #0066ff; /* Neo Blue */
+  color: #ffffff;
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  border-bottom: 2px solid #000000;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ledger-table thead th.text-right {
+  text-align: right;
+}
+
+.ledger-table thead th.text-center {
+  text-align: center;
+}
+
+.ledger-table tbody td {
+  padding: 10px 16px;
+  border-bottom: 2px solid #000000;
+  color: #000000;
+  vertical-align: middle;
+  font-weight: 700;
+}
+
+.ledger-table tbody tr:nth-child(even) {
+  background: #f4f4f0;
+}
+
+.ledger-table tbody tr:hover {
+  background: #ffe600; /* Neo Yellow on Hover */
+}
+
+.ledger-table tbody tr.row-debit {
+  background: #ffffff;
+}
+
+.ledger-table tbody tr.row-debit:hover {
+  background: #ffe600;
+}
+
+.ledger-table tbody td.col-no {
+  text-align: center;
+  font-weight: 800;
+  color: #000000;
+  width: 50px;
+  border-right: 2px solid #000000;
+}
+
+.ledger-table tbody td.col-tanggal {
+  width: 110px;
+  font-weight: 800;
+  white-space: nowrap;
+  border-right: 2px solid #000000;
+}
+
+.ledger-table tbody td.col-keterangan {
+  font-weight: 800;
+  text-transform: uppercase;
+  border-right: 2px solid #000000;
+}
+
+.ledger-table tbody td.col-debit {
+  text-align: right;
+  font-weight: 900;
+  color: #00cc52;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  white-space: nowrap;
+  border-right: 2px solid #000000;
+}
+
+.ledger-table tbody td.col-kredit {
+  text-align: right;
+  font-weight: 900;
+  color: #ff007f;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  white-space: nowrap;
+  border-right: 2px solid #000000;
+}
+
+.ledger-table tbody td.col-saldo {
+  text-align: right;
+  font-weight: 900;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  white-space: nowrap;
+  border-right: 2px solid #000000;
+}
+
+.ledger-table tbody td.col-aksi {
+  text-align: center;
+  width: 60px;
+}
+
+.btn-hapus-entry {
+  background: #ff007f;
+  border: 2px solid #000000;
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 0px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 1px 1px 0px 0px rgba(0,0,0,1);
+  transition: all 0.07s ease;
+}
+
+.btn-hapus-entry:hover {
+  background: #ff3399;
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+/* ─── Footer Row ──────────────────────────────────────────────────────────── */
+.ledger-table tfoot td {
+  padding: 14px 16px;
+  background: #000000;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 14px;
+  border-top: 3px solid #000000;
+}
+
+.ledger-table tfoot td.foot-debit {
+  text-align: right;
+  color: #00ff66;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.ledger-table tfoot td.foot-kredit {
+  text-align: right;
+  color: #ff007f;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.ledger-table tfoot td.foot-saldo {
+  text-align: right;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 16px;
+}
+
+/* ─── Empty State ─────────────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #000000;
+}
+
+.empty-state i {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.empty-state p {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* ─── Saldo Awal Banner ───────────────────────────────────────────────────── */
+.saldo-awal-row td {
+  background: #fffb99 !important;
+  font-style: normal;
+  font-weight: 800;
+  color: #000000 !important;
+  border-bottom: 2px solid #000000 !important;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .saldo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-buttons {
+    justify-content: stretch;
+  }
+
+  .action-buttons button {
+    flex: 1;
+  }
+
+  .ledger-table {
+    font-size: 11px;
+  }
+
+  .ledger-table thead th,
+  .ledger-table tbody td {
+    padding: 8px 10px;
+  }
+
+  .saldo-card .saldo-value {
+    font-size: 20px;
+  }
+}
+
+/* ─── Scrollable table ────────────────────────────────────────────────────── */
+.ledger-scroll {
+  max-height: calc(100vh - 380px);
+  overflow-y: auto;
+}
+
+.ledger-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ledger-scroll::-webkit-scrollbar-track {
+  background: #f4f4f0;
+}
+
+.ledger-scroll::-webkit-scrollbar-thumb {
+  background: #000000;
+  border-radius: 0px;
+  border: 2px solid #f4f4f0;
+}

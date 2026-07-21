@@ -7,7 +7,7 @@ const { pool } = require('../config/database');
 
 /**
  * Generate unique ticket number atomically
- * Format: PREFIX-DDMMYY-XXX (e.g., TKT-210726-001)
+ * Format: PREFIX-YYMMDD-XXX (e.g., TKT-260529-001)
  * Replaces PHP generate_ticket_number() with transaction locking
  */
 async function generateTicketNumber() {

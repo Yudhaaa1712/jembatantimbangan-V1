@@ -35,7 +35,7 @@
         }
 
         body {
-            background: #e0e0e0;
+            background: #f4f4f0;
             display: flex;
             justify-content: center;
             padding: 20px;
@@ -44,7 +44,8 @@
         .receipt-container {
             background: white;
             padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border: 3px solid #000000;
+            box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
             max-width: 100%;
             overflow-x: auto;
             display: inline-block;
@@ -66,15 +67,24 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
+            padding: 12px 24px;
+            background-color: #00ff66; /* Neo Green */
+            color: black;
+            border: 2px solid #000000;
+            border-radius: 0px;
             cursor: pointer;
-            font-family: sans-serif;
+            font-family: 'Inter', sans-serif;
             font-size: 16px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-weight: 900;
+            text-transform: uppercase;
+            box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 1);
+            transition: all 0.07s ease;
+        }
+
+        .print-btn:hover {
+            background-color: #33ff85;
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 1);
         }
     </style>
 </head>
@@ -96,17 +106,6 @@ Memuat data...
             let spaces = width - String(left).length - String(right).length;
             if (spaces < 1) spaces = 1;
             return left + ' '.repeat(spaces) + right;
-        }
-        function leftAndCenterLine(leftStr, centerStr, width = 80) {
-            const left = String(leftStr || '');
-            const center = String(centerStr || '');
-            const centerPos = Math.floor((width - center.length) / 2);
-            if (left.length >= centerPos) {
-                return left + '  ' + center;
-            } else {
-                const gap = centerPos - left.length;
-                return left + ' '.repeat(gap) + center;
-            }
         }
         function wrapText(text, width) {
             let lines = String(text).split('\n');
@@ -140,6 +139,39 @@ Memuat data...
         function rightCol(label, val, padLbl = 19) {
             return padRight(label, padLbl) + ': ' + val;
         }
+        function formatThreeCols(left, center, right, width) {
+            left = String(left || '');
+            center = String(center || '');
+            right = String(right || '');
+
+            const spaceLeft = Math.floor((width - center.length) / 2) - left.length;
+            const spaceRight = width - (left.length + Math.max(0, spaceLeft) + center.length + right.length);
+
+            if (spaceLeft > 0 && spaceRight > 0) {
+                return left + ' '.repeat(spaceLeft) + center + ' '.repeat(spaceRight) + right;
+            } else {
+                return padRight(left + ' ' + center, Math.max(0, width - right.length)) + right;
+            }
+        }
+        function formatIndoDateFull(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '-';
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        }
+        function formatLeftAndCenter(left, center, width) {
+            left = String(left || '');
+            center = String(center || '');
+            const centerPos = Math.floor((width - center.length) / 2);
+            const spaceBetween = centerPos - left.length;
+            if (spaceBetween > 0) {
+                return left + ' '.repeat(spaceBetween) + center;
+            } else {
+                return left + '   ' + center;
+            }
+        }
         function centerText(text, width) {
             if (!text) return '';
             let lines = wrapText(text, width);
@@ -153,22 +185,14 @@ Memuat data...
 
         const fmt = n => n ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(n)) : '0';
         function wLine(label, val) {
-            const l = padRight(label, 18);
-            const v = padLeft(fmt(val), 14);
+            const l = padRight(label, 17);
+            const v = padLeft(String(Math.round(val || 0)), 16);
             return l + ': ' + v + ' kg';
         }
         function rpLine(label, val) {
-            const l = padRight(label, 18);
+            const l = padRight(label, 17);
             const v = padLeft('Rp ' + fmt(val), 19);
             return l + ': ' + v;
-        }
-        function formatIndonesianDate(dateInput) {
-            if (!dateInput) return '-';
-            const d = new Date(dateInput);
-            if (isNaN(d.getTime())) return '-';
-            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
         }
 
         async function loadPrintSettings() {
@@ -178,12 +202,12 @@ Memuat data...
                 if (r.success && r.data) {
                     const s = r.data;
                     window.setupSettings = s;
-                    const offsetX = parseFloat(s.print_offset_x) !== undefined && !isNaN(parseFloat(s.print_offset_x)) ? parseFloat(s.print_offset_x) : 0.5;
+                    const offsetX = parseFloat(s.print_offset_x) !== undefined && !isNaN(parseFloat(s.print_offset_x)) ? parseFloat(s.print_offset_x) : 2.5;
                     const offsetY = parseFloat(s.print_offset_y) !== undefined && !isNaN(parseFloat(s.print_offset_y)) ? parseFloat(s.print_offset_y) : 0;
-                    const contentWidth = parseFloat(s.print_content_width) || 22;
+                    const contentWidth = parseFloat(s.print_content_width) || 19;
                     const paperW = parseFloat(s.print_paper_width) || 9.5;
                     const paperH = parseFloat(s.print_paper_height) || 11;
-                    const fontSize = parseFloat(s.print_font_size) || 13;
+                    const fontSize = parseFloat(s.print_font_size) || 11;
                     const lineWidth = parseInt(s.print_line_width) || 80;
 
                     const style = document.createElement('style');
@@ -257,11 +281,10 @@ Memuat data...
                 try { activeFeatures = JSON.parse(s.active_features); } catch(e) {}
             }
 
-            const garisSingle = '─'.repeat(W);
-            const garisDouble = '═'.repeat(W);
-            const cName = d.company?.company_name || 'PERUSAHAAN JAYA';
+            const garis = '─'.repeat(W);
+            const cName = d.company?.company_name || 'NAMA PERUSAHAAN';
             const cAddr = d.company?.company_address || 'ALAMAT PERUSAHAAN';
-            const cPhone = d.company?.company_phone || '08123456789';
+            const cPhone = d.company?.company_phone || 'TELEPON PERUSAHAAN';
             const header1 = centerLine(cName, W);
             const header2 = centerLine(cAddr, W);
             const header3 = centerLine(cPhone, W);
@@ -277,61 +300,63 @@ Memuat data...
             };
 
             const jamMasuk = extractTimeOnly(d.waktu_timbangan1);
-            let jamKeluar = '-';
+            const tglMasuk = d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+
+            let jamKeluar = '-', tglKeluar = '-';
             if (d.status === 'selesai' && d.waktu_keluar) {
                 jamKeluar = extractTimeOnly(d.waktu_keluar);
-            } else if (d.waktu_timbangan2) {
-                jamKeluar = extractTimeOnly(d.waktu_timbangan2);
+                tglKeluar = d.waktu_keluar ? new Date(d.tanggal || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
             }
-
-            const dateFormatted = formatIndonesianDate(d.tanggal || d.waktu_timbangan1 || d.waktu_keluar);
 
             let out = '';
             out += header1 + '\n';
             out += header2 + '\n';
             out += header3 + '\n';
-            out += garisSingle + '\n';
-            out += leftAndCenterLine(d.no_tiket || '', dateFormatted, W) + '\n';
-            out += garisDouble + '\n';
+            out += garis + '\n';
+            const displayTglText = formatIndoDateFull(d.waktu_keluar || d.tanggal || Date.now());
+            out += formatLeftAndCenter(d.no_tiket, displayTglText, W) + '\n';
+            out += '═'.repeat(W) + '\n';
             
-            if (t1Fields.material !== false) {
-                out += padRight('Nama Barang', 18) + ': ' + barang + '\n';
+            if (t1Fields.no_kendaraan !== false) {
+                out += padRight('No. Kendaraan', 17) + ': ' + noPolisi + '\n';
             }
 
-            out += padRight('Jam Masuk', 18) + ': ' + jamMasuk + '\n';
-            out += padRight('Jam Keluar', 18) + ': ' + jamKeluar + '\n';
+            if (t1Fields.material !== false) {
+                out += padRight('Nama Barang', 17) + ': ' + barang + '\n';
+            }
+
+            out += padRight('Jam Masuk', 17) + ': ' + jamMasuk + '\n';
+            if (d.status === 'selesai' && d.waktu_keluar) {
+                out += padRight('Jam Keluar', 17) + ': ' + jamKeluar + '\n';
+            }
 
             if (t1Fields.nama_pengemudi !== false) {
-                out += padRight('Nama Supir', 18) + ': ' + (d.nama_supir || '-').toUpperCase() + '\n';
-            }
-
-            if (t1Fields.nama_suplier !== false) {
-                out += padRight('Supplier', 18) + ': ' + supplier + '\n';
-            }
-
-            if (t1Fields.no_kendaraan !== false && d.no_polisi) {
-                out += padRight('No. Kendaraan', 18) + ': ' + noPolisi + '\n';
+                out += padRight('Nama Supir', 17) + ': ' + (d.nama_supir || '-').toUpperCase() + '\n';
             }
 
             if (d.keterangan && d.keterangan.trim() !== '' && (t1Fields.keterangan !== false || t2Fields.keterangan !== false)) {
-                out += padRight('Keterangan', 18) + ': ' + d.keterangan.toUpperCase() + '\n';
+                out += padRight('Keterangan', 17) + ': ' + d.keterangan.toUpperCase() + '\n';
             }
 
-            out += '\n';
+            if (t1Fields.nama_suplier !== false) {
+                out += padRight('Supplier', 17) + ': ' + supplier + '\n\n';
+            } else {
+                out += '\n';
+            }
 
             if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
-                out += padRight('Tipe Tiket', 18) + ': LANGSIR (' + d.jumlah_trip_langsir + ' TRIP)\n';
+                out += padRight('Tipe Tiket', 17) + ': LANGSIR (' + d.jumlah_trip_langsir + ' TRIP)\n';
                 const tripsStr = d.langsir_trips.map(t => Math.round(t.berat_bruto)).join(', ');
-                const wrappedTrips = wrapText(tripsStr, W - 20);
+                const wrappedTrips = wrapText(tripsStr, W - 19);
                 if (wrappedTrips.length > 0) {
-                    out += padRight('Bruto Trip', 18) + ': ' + wrappedTrips[0] + '\n';
+                    out += padRight('Bruto Trip', 17) + ': ' + wrappedTrips[0] + '\n';
                     for (let i = 1; i < wrappedTrips.length; i++) {
-                        out += padRight('', 18) + '  ' + wrappedTrips[i] + '\n';
+                        out += padRight('', 17) + '  ' + wrappedTrips[i] + '\n';
                     }
                 }
                 out += '─'.repeat(W) + '\n';
-                out += wLine('Bruto', d.bruto) + '\n';
-                out += wLine('Tara', d.tara) + '\n';
+                out += wLine('Total Bruto', d.bruto) + '\n';
+                out += wLine(`Tara`, d.tara) + '\n';
             } else {
                 out += wLine('Bruto', d.bruto) + '\n';
                 out += wLine('Tara', d.tara) + '\n';
@@ -340,34 +365,43 @@ Memuat data...
             out += wLine('Netto I', d.netto_awal) + '\n';
 
             if (t2Fields.persen_potongan !== false) {
-                out += wLine('Potongan', d.kg_potongan) + '\n';
+                const labelPotongan = 'Potongan';
+                out += wLine(labelPotongan, d.kg_potongan) + '\n';
             }
             out += wLine('Netto II', d.netto_akhir) + '\n';
 
             const showPrice = (t1Fields.harga !== false || t2Fields.harga !== false);
             if (showPrice) {
-                out += '\n';
+                out += '─'.repeat(38) + '\n';
                 out += rpLine('Harga/Kg', d.harga_per_kg) + '\n';
                 out += rpLine('Total Harga', d.total_awal) + '\n';
-
+                let hasPotongan = false;
                 if (d.pot_jalan > 0) {
                     out += rpLine('Potongan Jalan', d.pot_jalan) + '\n';
+                    hasPotongan = true;
                 }
                 if (d.pot_pupuk > 0) {
                     out += rpLine('Potongan Pupuk', d.pot_pupuk) + '\n';
+                    hasPotongan = true;
                 }
                 if (d.pot_hutang > 0) {
                     out += rpLine('Pot. Hutang Supir', d.pot_hutang) + '\n';
+                    hasPotongan = true;
                 }
                 if (d.pot_hutang_supplier > 0) {
-                    out += rpLine('Pot. Hut. Supplier', d.pot_hutang_supplier) + '\n';
+                    out += rpLine('Pot. Hutang Supp', d.pot_hutang_supplier) + '\n';
+                    hasPotongan = true;
                 }
                 if (d.pot_muat > 0) {
                     out += rpLine('Upah Bongkar', d.pot_muat) + '\n';
+                    hasPotongan = true;
                 }
-                
-                out += '─'.repeat(39) + '\n';
+                if (hasPotongan) {
+                    out += '─'.repeat(38) + '\n';
+                }
                 out += rpLine('Total Bayar', d.total_akhir) + '\n';
+
+
             }
             out += '\n\n';
 
@@ -378,9 +412,9 @@ Memuat data...
             const sigRightType = sSetting.print_sig_right_type || 'supir';
 
             const getSigValue = (type) => {
-                if (type === 'operator') return `( ${(d.nama_operator || 'ADMINISTRATOR').toUpperCase()} )`;
-                if (type === 'supir') return `( ${(d.nama_supir || 'YUDHA').toUpperCase()} )`;
-                if (type === 'supplier') return `( ${(d.nama_supplier || 'SUPPLIER').toUpperCase()} )`;
+                if (type === 'operator') return `( ${(d.nama_operator || '             ').toUpperCase()} )`;
+                if (type === 'supir') return `( ${(d.nama_supir || '             ').toUpperCase()} )`;
+                if (type === 'supplier') return `( ${(d.nama_supplier || '             ').toUpperCase()} )`;
                 if (type === 'kosong') return '(             )';
                 return '';
             };
@@ -461,11 +495,15 @@ Memuat data...
             out += centerText(cAddr, W) + '\n';
             out += centerText('No HP. ' + cPhone, W) + '\n';
             out += garisTebal + '\n';
-            out += centerText(jamMasuk, W) + '\n';
+            const tglFormatA6 = formatIndoDateFull(d.waktu_keluar || d.tanggal || Date.now());
+            out += formatLeftAndCenter(d.no_tiket, tglFormatA6, W) + '\n';
             out += garisTipis + '\n';
-            out += row('TANGGAL', tglStr) + '\n';
             out += row('NAMA', supplier) + '\n';
             out += row('JENIS BARANG', barang) + '\n';
+            out += row('JAM MASUK', extractTimeOnly(d.waktu_timbangan1)) + '\n';
+            if (d.status === 'selesai' && d.waktu_keluar) {
+                out += row('JAM KELUAR', extractTimeOnly(d.waktu_keluar)) + '\n';
+            }
             out += garisTipis + '\n';
             
             if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
