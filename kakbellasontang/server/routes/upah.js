@@ -5,6 +5,21 @@ const { isLoggedIn, requireRole } = require('../middleware/auth');
 
 router.use(isLoggedIn);
 
+// ─── Helper date filter (sama seperti transaksi.js & pengiriman.js) ──────────
+function buildDateCondition(dateFilter, startDate, endDate) {
+  switch (dateFilter) {
+    case 'today':      return { sql: `pp.tanggal = date('now', 'localtime')`, params: [] };
+    case 'yesterday':  return { sql: `pp.tanggal = date('now', 'localtime', '-1 day')`, params: [] };
+    case 'week':       return { sql: `pp.tanggal >= date('now', 'localtime', '-7 days')`, params: [] };
+    case 'half_month': return { sql: `pp.tanggal >= date('now', 'localtime', '-15 days')`, params: [] };
+    case 'month':      return { sql: `strftime('%m', pp.tanggal) = strftime('%m', 'now', 'localtime') AND strftime('%Y', pp.tanggal) = strftime('%Y', 'now', 'localtime')`, params: [] };
+    case 'half_year':  return { sql: `pp.tanggal >= date('now', 'localtime', '-6 months')`, params: [] };
+    case 'year':       return { sql: `strftime('%Y', pp.tanggal) = strftime('%Y', 'now', 'localtime')`, params: [] };
+    case 'custom_range': return { sql: `pp.tanggal BETWEEN ? AND ?`, params: [startDate, endDate] };
+    default:           return { sql: `pp.tanggal = date('now', 'localtime')`, params: [] };
+  }
+}
+
 // Ambil daftar pengaturan tarif upah
 router.get('/pengaturan', async (req, res) => {
   try {
@@ -99,21 +114,25 @@ router.get('/supir-gaji-preview', async (req, res) => {
 router.get('/rekap-supir-pabrik', async (req, res) => {
   try {
     const supirQuery = cleanInput(req.query.id_supir || req.query.nama_supir || '');
-    const startDate = cleanInput(req.query.start_date || '');
-    const endDate = cleanInput(req.query.end_date || '');
+    const dateFilter = req.query.date_filter || 'month';
+    const startDate  = req.query.start_date || new Date().toISOString().split('T')[0];
+    const endDate    = req.query.end_date   || new Date().toISOString().split('T')[0];
+
+    const { sql: dateSql, params: dateParams } = buildDateCondition(dateFilter, startDate, endDate);
 
     let sql = `
-      SELECT 
+      SELECT
         pp.id, pp.no_surat_jalan, pp.tanggal, pp.nama_pabrik, pp.nama_supir, pp.id_supir,
         pp.berat_bruto, pp.berat_tara, pp.netto_ram, pp.netto_pabrik,
         COALESCE(pp.harga_per_kg, 0) as harga_per_kg,
         COALESCE(pp.pinjaman, 0) as pinjaman,
         COALESCE(pp.biaya_es_jalan, 0) as biaya_es_jalan,
+        COALESCE(pp.status_bayar, 'belum_bayar') as status_bayar,
         pp.status
       FROM pengiriman_pabrik pp
-      WHERE 1=1
+      WHERE ${dateSql}
     `;
-    const params = [];
+    const params = [...dateParams];
 
     if (supirQuery) {
       if (!isNaN(parseInt(supirQuery))) {
@@ -125,15 +144,6 @@ router.get('/rekap-supir-pabrik', async (req, res) => {
         sql += ` AND LOWER(pp.nama_supir) LIKE LOWER(?)`;
         params.push(`%${supirQuery}%`);
       }
-    }
-
-    if (startDate) {
-      sql += ` AND pp.tanggal >= ?`;
-      params.push(startDate);
-    }
-    if (endDate) {
-      sql += ` AND pp.tanggal <= ?`;
-      params.push(endDate);
     }
 
     sql += ` ORDER BY pp.tanggal ASC, pp.id ASC`;
@@ -172,6 +182,7 @@ router.get('/rekap-supir-pabrik', async (req, res) => {
         pinjaman: pinjaman,
         biaya_es_jalan: esJalan,
         hasil_bersih: hBersih,
+        status_bayar: r.status_bayar || 'belum_bayar',
         status: r.status
       };
     });
@@ -212,6 +223,27 @@ router.post('/update-rekap-item', async (req, res) => {
     );
 
     return jsonResponse(res, true, 'Item rekap berhasil diperbarui');
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// POST /upah-api/toggle-status-bayar — Tandai item rekap Lunas / Belum Bayar
+router.post('/toggle-status-bayar', async (req, res) => {
+  try {
+    const id = parseInt(req.body.id);
+    const statusBayar = req.body.status_bayar === 'lunas' ? 'lunas' : 'belum_bayar';
+
+    if (!id) {
+      return jsonResponse(res, false, 'ID Pengiriman tidak valid');
+    }
+
+    await query(
+      `UPDATE pengiriman_pabrik SET status_bayar = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`,
+      [statusBayar, id]
+    );
+
+    return jsonResponse(res, true, statusBayar === 'lunas' ? 'Ditandai Lunas' : 'Ditandai Belum Bayar', { id, status_bayar: statusBayar });
   } catch (err) {
     return jsonResponse(res, false, err.message);
   }

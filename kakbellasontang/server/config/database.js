@@ -89,6 +89,10 @@ try {
     db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN biaya_es_jalan REAL DEFAULT 0").run();
     console.log('[DB Migration] Added biaya_es_jalan column to pengiriman_pabrik table');
   }
+  if (!tableInfo.some(col => col.name === 'status_bayar')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN status_bayar TEXT DEFAULT 'belum_bayar'").run();
+    console.log('[DB Migration] Added status_bayar column to pengiriman_pabrik table');
+  }
 } catch (e) {
   console.error('[DB Migration] Error migrating pengiriman_pabrik table:', e);
 }

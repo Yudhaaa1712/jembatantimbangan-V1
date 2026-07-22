@@ -10,6 +10,21 @@ const { isLoggedIn } = require('../middleware/auth');
 
 router.use(isLoggedIn);
 
+// ─── Helper date filter (sama seperti transaksi.js) ──────────────────────────
+function buildDateCondition(dateFilter, startDate, endDate) {
+  switch (dateFilter) {
+    case 'today':      return { sql: `pp.tanggal = date('now', 'localtime')`, params: [] };
+    case 'yesterday':  return { sql: `pp.tanggal = date('now', 'localtime', '-1 day')`, params: [] };
+    case 'week':       return { sql: `pp.tanggal >= date('now', 'localtime', '-7 days')`, params: [] };
+    case 'half_month': return { sql: `pp.tanggal >= date('now', 'localtime', '-15 days')`, params: [] };
+    case 'month':      return { sql: `strftime('%m', pp.tanggal) = strftime('%m', 'now', 'localtime') AND strftime('%Y', pp.tanggal) = strftime('%Y', 'now', 'localtime')`, params: [] };
+    case 'half_year':  return { sql: `pp.tanggal >= date('now', 'localtime', '-6 months')`, params: [] };
+    case 'year':       return { sql: `strftime('%Y', pp.tanggal) = strftime('%Y', 'now', 'localtime')`, params: [] };
+    case 'custom_range': return { sql: `pp.tanggal BETWEEN ? AND ?`, params: [startDate, endDate] };
+    default:           return { sql: `pp.tanggal = date('now', 'localtime')`, params: [] };
+  }
+}
+
 // ─── Generate No Surat Jalan ─────────────────────────────────────────────────
 async function generateNoSuratJalan() {
   const today = new Date();
@@ -19,7 +34,11 @@ async function generateNoSuratJalan() {
     String(today.getDate()).padStart(2, '0')
   ].join('');
 
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0')
+  ].join('-');
   const pattern = `SJ-${datePrefix}%`;
 
   const row = await queryOne(
@@ -35,12 +54,19 @@ async function generateNoSuratJalan() {
 // ─── GET /pengiriman/list — Daftar pengiriman ────────────────────────────────
 router.get('/list', async (req, res) => {
   try {
+    const dateFilter = req.query.date_filter || 'today';
+    const startDate  = req.query.start_date || new Date().toISOString().split('T')[0];
+    const endDate    = req.query.end_date   || new Date().toISOString().split('T')[0];
+
+    const { sql: dateSql, params: dateParams } = buildDateCondition(dateFilter, startDate, endDate);
+
     const rows = await query(
       `SELECT pp.*, u.nama_lengkap as operator_nama
        FROM pengiriman_pabrik pp
        LEFT JOIN users u ON pp.operator_id = u.id
-       WHERE pp.tanggal >= date('now', 'localtime', '-30 days')
-       ORDER BY pp.created_at ASC, pp.id ASC`
+       WHERE ${dateSql}
+       ORDER BY pp.created_at ASC, pp.id ASC`,
+      dateParams
     );
     return jsonResponse(res, true, 'Data pengiriman', rows);
   } catch (err) {
@@ -266,11 +292,19 @@ router.post('/delete', async (req, res) => {
 // ─── GET /pengiriman/export-excel — Export to Excel ────────────────────────
 router.get('/export-excel', async (req, res) => {
   try {
+    const dateFilter = req.query.date_filter || 'today';
+    const startDate  = req.query.start_date || new Date().toISOString().split('T')[0];
+    const endDate    = req.query.end_date   || new Date().toISOString().split('T')[0];
+
+    const { sql: dateSql, params: dateParams } = buildDateCondition(dateFilter, startDate, endDate);
+
     const rows = await query(
       `SELECT pp.*, u.nama_lengkap as operator_nama
        FROM pengiriman_pabrik pp
        LEFT JOIN users u ON pp.operator_id = u.id
-       ORDER BY pp.tanggal DESC, pp.created_at DESC`
+       WHERE ${dateSql}
+       ORDER BY pp.tanggal DESC, pp.created_at DESC`,
+      dateParams
     );
 
     const settingRow = await queryOne(`SELECT setting_value FROM settings WHERE setting_key = 'company_name'`);
