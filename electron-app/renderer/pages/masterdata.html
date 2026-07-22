@@ -29,6 +29,20 @@
       </div>
     </div>
 
+    <!-- Pabrik (PKS) Tab -->
+    <div id="tab-pabrik" style="display:none;">
+      <div class="d-flex justify-content-between mb-2">
+        <input type="text" id="searchPabrik" class="form-control" style="max-width:300px;" placeholder="Cari pabrik..." oninput="loadPabrik()">
+        <button class="btn btn-success btn-sm" onclick="showAddPabrik()"><i class="bi bi-plus"></i> Tambah Pabrik (PKS)</button>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead><tr><th>No</th><th>Nama Pabrik (PKS)</th><th>Tarif Angkut / Kg (Rp)</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody id="pabrikBody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Supplier Tab -->
     <div id="tab-supplier" style="display:none;">
       <div class="d-flex justify-content-between mb-2">
@@ -505,6 +519,101 @@
     else Swal.fire({icon:'error',title:'Gagal',text:r.message});
   }
 
+  // --- PABRIK (PKS) LOGIC ---
+  async function loadPabrik() {
+    const search = document.getElementById('searchPabrik') ? document.getElementById('searchPabrik').value : '';
+    const res = await fetch('/masterdata/pabrik?search=' + encodeURIComponent(search));
+    const data = await res.json();
+    const tbody = document.getElementById('pabrikBody');
+    if (!data.success || data.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Tidak ada data pabrik</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.data.map((p, i) => {
+      const nameEscaped = p.nama_pabrik.replace(/'/g, "\\'");
+      return `<tr>
+        <td>${i + 1}</td>
+        <td><strong>${p.nama_pabrik}</strong></td>
+        <td><strong class="text-primary">Rp ${new Intl.NumberFormat('id-ID').format(p.tarif_angkut || 0)} / Kg</strong></td>
+        <td>${p.status === 'active' ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editPabrik(${p.id}, '${nameEscaped}', '${p.status}', ${p.tarif_angkut || 0})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deletePabrik(${p.id})">Hapus</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function showAddPabrik() {
+    const { value: form } = await Swal.fire({
+      title: 'Tambah Pabrik (PKS)',
+      html: `
+        <input id="pName" class="swal2-input" placeholder="Nama Pabrik (misal: RSM, RSI, INTAN)" style="text-transform:uppercase;">
+        <input id="pTarif" type="text" inputmode="numeric" class="swal2-input format-rupiah" placeholder="Tarif Angkut / Kg (Rp)">
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      preConfirm: () => ({
+        nama_pabrik: document.getElementById('pName').value,
+        tarif_angkut: parseRupiah(document.getElementById('pTarif').value)
+      })
+    });
+    if (!form) return;
+    const res = await fetch('/masterdata/pabrik', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form)
+    });
+    const r = await res.json();
+    if (r.success) {
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+      loadPabrik();
+    } else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+  }
+
+  async function editPabrik(id, nama, status, tarif) {
+    const { value: form } = await Swal.fire({
+      title: 'Edit Pabrik (PKS)',
+      html: `
+        <input id="epName" class="swal2-input" value="${nama}" placeholder="Nama Pabrik" style="text-transform:uppercase;">
+        <input id="epTarif" type="text" inputmode="numeric" class="swal2-input format-rupiah" value="${formatRupiah(tarif)}" placeholder="Tarif Angkut / Kg (Rp)">
+        <select id="epStatus" class="swal2-input">
+          <option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option>
+          <option value="inactive" ${status === 'inactive' ? 'selected' : ''}>Nonaktif</option>
+        </select>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      preConfirm: () => ({
+        nama_pabrik: document.getElementById('epName').value,
+        tarif_angkut: parseRupiah(document.getElementById('epTarif').value),
+        status: document.getElementById('epStatus').value
+      })
+    });
+    if (!form) return;
+    const res = await fetch(`/masterdata/pabrik/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form)
+    });
+    const r = await res.json();
+    if (r.success) {
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+      loadPabrik();
+    } else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+  }
+
+  async function deletePabrik(id) {
+    const conf = await Swal.fire({ icon: 'warning', title: 'Nonaktifkan pabrik ini?', showCancelButton: true, confirmButtonColor: '#dc2626' });
+    if (!conf.isConfirmed) return;
+    const res = await fetch(`/masterdata/pabrik/${id}`, { method: 'DELETE' });
+    const r = await res.json();
+    if (r.success) {
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+      loadPabrik();
+    } else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+  }
+
   // --- EMAIL SMTP LOGIC ---
   async function loadSmtpConfig() {
     try {
@@ -573,6 +682,7 @@
     const tab = params.get('tab') || 'supplier';
     
     document.getElementById('tab-users').style.display = 'none';
+    document.getElementById('tab-pabrik').style.display = 'none';
     document.getElementById('tab-supplier').style.display = 'none';
     document.getElementById('tab-supir').style.display = 'none';
     document.getElementById('tab-material').style.display = 'none';
@@ -582,6 +692,10 @@
         document.getElementById('tab-users').style.display = 'block';
         document.getElementById('mdTitle').textContent = 'Master Data - Pengguna';
         await loadUsers();
+    } else if (tab === 'pabrik') {
+        document.getElementById('tab-pabrik').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Pabrik (PKS) & Tarif';
+        await loadPabrik();
     } else if (tab === 'supir') {
         document.getElementById('tab-supir').style.display = 'block';
         document.getElementById('mdTitle').textContent = 'Master Data - Supir';

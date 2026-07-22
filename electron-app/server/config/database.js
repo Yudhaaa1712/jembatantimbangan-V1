@@ -66,7 +66,7 @@ try {
   console.error('[DB Migration] Error migrating supplier table:', e);
 }
 
-// Migration: Check if id_supir and id_gaji_supir exist in pengiriman_pabrik
+// Migration: Check if id_supir, id_gaji_supir, harga_per_kg, pinjaman, biaya_es_jalan exist in pengiriman_pabrik
 try {
   const tableInfo = db.prepare("PRAGMA table_info(pengiriman_pabrik)").all();
   if (!tableInfo.some(col => col.name === 'id_supir')) {
@@ -76,6 +76,18 @@ try {
   if (!tableInfo.some(col => col.name === 'id_gaji_supir')) {
     db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN id_gaji_supir INTEGER").run();
     console.log('[DB Migration] Added id_gaji_supir column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'harga_per_kg')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN harga_per_kg REAL DEFAULT 0").run();
+    console.log('[DB Migration] Added harga_per_kg column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'pinjaman')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN pinjaman REAL DEFAULT 0").run();
+    console.log('[DB Migration] Added pinjaman column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'biaya_es_jalan')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN biaya_es_jalan REAL DEFAULT 0").run();
+    console.log('[DB Migration] Added biaya_es_jalan column to pengiriman_pabrik table');
   }
 } catch (e) {
   console.error('[DB Migration] Error migrating pengiriman_pabrik table:', e);
@@ -121,6 +133,33 @@ try {
   console.log('[DB Migration] Checked/Created hutang_supplier_history table');
 } catch (e) {
   console.error('[DB Migration] Error migrating hutang_supplier_history table:', e);
+}
+
+// Migration: Check and create pabrik table
+try {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS pabrik (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nama_pabrik TEXT NOT NULL UNIQUE,
+      tarif_angkut REAL DEFAULT 0,
+      status TEXT CHECK(status IN ('active','inactive')) DEFAULT 'active',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT
+    )
+  `).run();
+  
+  const countRow = db.prepare("SELECT COUNT(*) as cnt FROM pabrik").get();
+  if (countRow && countRow.cnt === 0) {
+    const insertStmt = db.prepare("INSERT INTO pabrik (nama_pabrik, tarif_angkut, status) VALUES (?, ?, 'active')");
+    insertStmt.run('RSM', 110);
+    insertStmt.run('RSI', 95);
+    insertStmt.run('INTAN', 80);
+    insertStmt.run('SAI', 95);
+    console.log('[DB Migration] Seeded default pabrik data (RSM, RSI, INTAN, SAI)');
+  }
+  console.log('[DB Migration] Checked/Created pabrik table');
+} catch (e) {
+  console.error('[DB Migration] Error migrating pabrik table:', e);
 }
 
 // Migration: Check new columns in transaksi_timbangan

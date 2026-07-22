@@ -51,8 +51,6 @@
 .container-fluid {
     background: var(--bg-primary);
     padding: 12px;
-    max-height: 100vh;
-    overflow: hidden;
     color: var(--text-primary);
 }
 
@@ -574,19 +572,8 @@ button[type="reset"]:hover,
 }
 
 /* ============================================
-   NO SCROLL - FITS ONE PAGE
+   SCROLL - Allow page scrolling
    ============================================ */
-
-html,
-body {
-    overflow: hidden !important;
-    height: 100vh;
-}
-
-.container-fluid.vh-100 {
-    max-height: 100vh !important;
-    overflow: hidden !important;
-}
 
 .card-body {
     overflow-y: auto;

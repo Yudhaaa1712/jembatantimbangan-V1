@@ -55,27 +55,30 @@
 
     <!-- Tab Navigation -->
     <ul class="nav nav-tabs mb-4" id="upahTabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="setting-tab" data-bs-toggle="tab" data-bs-target="#tab-setting" type="button" role="tab"><i class="bi bi-gear-fill"></i> Tarif &amp; Pengaturan</button>
+      <li class="nav-item" role="presentation" style="display: none;">
+        <button class="nav-link" id="setting-tab" data-bs-toggle="tab" data-bs-target="#tab-setting" type="button" role="tab"><i class="bi bi-gear-fill"></i> Tarif &amp; Pengaturan</button>
       </li>
-      <li class="nav-item" role="presentation">
+      <li class="nav-item" role="presentation" style="display: none;">
         <button class="nav-link" id="payout-tab" data-bs-toggle="tab" data-bs-target="#tab-payout" type="button" role="tab" onclick="loadDrivers()"><i class="bi bi-calculator"></i> Kalkulasi &amp; Payout Upah</button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="rekap-pabrik-tab" data-bs-toggle="tab" data-bs-target="#tab-rekap-pabrik" type="button" role="tab" onclick="initRekapPabrikTab()"><i class="bi bi-file-earmark-excel-fill"></i> Rekap Gaji Supir per Pabrik (PKS)</button>
+      </li>
+      <li class="nav-item" role="presentation" style="display: none;">
         <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#tab-history" type="button" role="tab" onclick="loadRiwayat()"><i class="bi bi-clock-history"></i> Riwayat Gaji Supir</button>
       </li>
-      <li class="nav-item" role="presentation">
+      <li class="nav-item" role="presentation" style="display: none;">
         <button class="nav-link" id="payout-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-payout-tkbm" type="button" role="tab" onclick="loadTkbm()"><i class="bi bi-people"></i> Payout TKBM</button>
       </li>
-      <li class="nav-item" role="presentation">
+      <li class="nav-item" role="presentation" style="display: none;">
         <button class="nav-link" id="history-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-history-tkbm" type="button" role="tab" onclick="loadRiwayatTkbm()"><i class="bi bi-clock-history"></i> Riwayat TKBM</button>
       </li>
     </ul>
 
     <div class="tab-content" id="upahTabsContent">
       
-      <!-- Tab 1: Tarif & Pengaturan -->
-      <div class="tab-pane fade show active" id="tab-setting" role="tabpanel">
+      <!-- Tab 1: Tarif & Pengaturan (Nonaktif) -->
+      <div class="tab-pane fade" id="tab-setting" role="tabpanel">
         <div class="card-settings">
           <h5>Pengaturan Tarif Upah (Per Kg Netto Akhir)</h5>
           <p class="text-muted small">Tentukan tarif default per Kg netto yang digunakan untuk menghitung gaji otomatis.</p>
@@ -203,6 +206,84 @@
           <div id="noPreviewPlaceholder" class="text-center py-5 text-muted">
             <i class="bi bi-calculator-fill display-3"></i>
             <p class="mt-2">Isi form di atas dan klik tombol "Hitung Preview" untuk memulai perhitungan upah.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Rekap Gaji Supir per Pabrik (PKS) - Format Excel -->
+      <div class="tab-pane fade show active" id="tab-rekap-pabrik" role="tabpanel">
+        <div class="card-settings mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 class="mb-1"><i class="bi bi-truck"></i> Rekap Gaji Supir per Pabrik (PKS)</h5>
+              <p class="text-muted small mb-0">Lihat &amp; cetak rekap tonase, ongkos angkut per PKS, potongan pinjaman, dan potongan Es + Jalan per supir.</p>
+            </div>
+            <div>
+              <button class="btn btn-outline-success me-2" onclick="exportRekapPabrikExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+              <button class="btn btn-primary" onclick="cetakRekapPabrik()"><i class="bi bi-printer"></i> Cetak Rekap</button>
+            </div>
+          </div>
+
+          <div class="row g-3 align-items-end mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Pilih / Cari Supir</label>
+              <select id="rekapPabrikSupirSelect" class="form-select">
+                <option value="">-- Semua Supir --</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Tanggal Mulai</label>
+              <input type="date" id="rekapPabrikStartDate" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Tanggal Selesai</label>
+              <input type="date" id="rekapPabrikEndDate" class="form-control">
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-primary w-100" onclick="loadRekapPabrikData()"><i class="bi bi-search"></i> Tampilkan</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="rekapPabrikPrintArea" class="card-settings">
+          <div class="text-center mb-3 d-none d-print-block">
+            <h3 id="printTitleSupir" class="fw-bold text-uppercase mb-0">REKAP ANGKUTAN SUPIR</h3>
+            <p id="printSubTitlePeriode" class="text-muted small mb-0"></p>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle" id="rekapPabrikTable">
+              <thead class="table-dark text-center">
+                <tr>
+                  <th style="width: 50px;">NO</th>
+                  <th>TGL</th>
+                  <th>PKS</th>
+                  <th>DRIVER</th>
+                  <th class="text-end">TONASE ANGKUT</th>
+                  <th class="text-end">HARGA/KG</th>
+                  <th class="text-end">HASIL</th>
+                  <th class="text-end">PINJAMAN</th>
+                  <th class="text-end">ES+JALAN</th>
+                  <th class="text-end">H.BERSIH</th>
+                  <th class="text-center d-print-none" style="width: 70px;">AKSI</th>
+                </tr>
+              </thead>
+              <tbody id="rekapPabrikTableBody">
+                <tr><td colspan="11" class="text-center text-muted">Pilih filter dan klik Tampilkan</td></tr>
+              </tbody>
+              <tfoot id="rekapPabrikTableFooter" class="table-secondary fw-bold" style="display: none;">
+                <tr>
+                  <td colspan="4" class="text-center">JUMLAH</td>
+                  <td id="footTotalTonase" class="text-end">0</td>
+                  <td></td>
+                  <td id="footTotalHasil" class="text-end">0</td>
+                  <td id="footTotalPinjaman" class="text-end">0</td>
+                  <td id="footTotalEsJalan" class="text-end">0</td>
+                  <td id="footTotalHasilBersih" class="text-end text-success">0</td>
+                  <td class="d-print-none"></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       </div>
@@ -880,6 +961,310 @@
       } catch (e) { console.error(e); }
     }
 
+    // --- REKAP GAJI SUPIR PER PABRIK (EXCEL FORMAT) ---
+    let currentRekapData = [];
+
+    async function initRekapPabrikTab() {
+      await loadDriversForRekap();
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+      if (!document.getElementById('rekapPabrikStartDate').value) {
+        document.getElementById('rekapPabrikStartDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('rekapPabrikEndDate').value = today.toISOString().split('T')[0];
+      }
+      await loadRekapPabrikData();
+    }
+
+    async function loadDriversForRekap() {
+      try {
+        const resSupir = await fetch('/masterdata/supir');
+        const r = await resSupir.json();
+        if (r.success) {
+          const select = document.getElementById('rekapPabrikSupirSelect');
+          const val = select.value;
+          select.innerHTML = '<option value="">-- Semua Supir --</option>' + 
+            r.data.map(s => `<option value="${s.id}">${s.nama_supir}</option>`).join('');
+          select.value = val;
+        }
+      } catch (e) { console.error('Error load drivers for rekap:', e); }
+    }
+
+    async function loadRekapPabrikData() {
+      const supir = document.getElementById('rekapPabrikSupirSelect').value;
+      const startDate = document.getElementById('rekapPabrikStartDate').value;
+      const endDate = document.getElementById('rekapPabrikEndDate').value;
+
+      try {
+        const queryParams = new URLSearchParams({
+          id_supir: supir,
+          start_date: startDate,
+          end_date: endDate,
+          _t: Date.now()
+        });
+
+        const res = await fetch('/upah-api/rekap-supir-pabrik?' + queryParams.toString());
+        const r = await res.json();
+
+        if (r.success) {
+          currentRekapData = r.data.items || [];
+          renderRekapPabrikTable(currentRekapData, r.data.summary);
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal memuat data rekap supir' });
+      }
+    }
+
+    function renderRekapPabrikTable(items, summary) {
+      const tbody = document.getElementById('rekapPabrikTableBody');
+      const tfoot = document.getElementById('rekapPabrikTableFooter');
+
+      if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">Data pengiriman tidak ditemukan pada periode ini</td></tr>';
+        tfoot.style.display = 'none';
+        return;
+      }
+
+      let html = '';
+      items.forEach((item, idx) => {
+        const tgl = item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+        
+        html += `
+          <tr>
+            <td class="text-center">${idx + 1}</td>
+            <td>${tgl}</td>
+            <td class="fw-bold">${item.nama_pabrik}</td>
+            <td>${item.nama_supir}</td>
+            <td class="text-end font-monospace">${item.tonase_angkut.toLocaleString('id-ID', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+            <td class="text-end font-monospace">${item.harga_per_kg > 0 ? item.harga_per_kg.toLocaleString('id-ID') : '<span class="text-muted">0</span>'}</td>
+            <td class="text-end font-monospace">${item.hasil > 0 ? formatRupiah(item.hasil) : '0'}</td>
+            <td class="text-end font-monospace">${item.pinjaman > 0 ? formatRupiah(item.pinjaman) : ''}</td>
+            <td class="text-end font-monospace">${item.biaya_es_jalan > 0 ? formatRupiah(item.biaya_es_jalan) : ''}</td>
+            <td class="text-end font-monospace fw-bold text-success">${formatRupiah(item.hasil_bersih)}</td>
+            <td class="text-center d-print-none">
+              <button class="btn btn-sm btn-primary" onclick="bukaModalEditRekap(${item.id})">Lihat</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+      tfoot.style.display = 'table-footer-group';
+
+      document.getElementById('footTotalTonase').textContent = summary.total_tonase.toLocaleString('id-ID', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+      document.getElementById('footTotalHasil').textContent = formatRupiah(summary.total_hasil);
+      document.getElementById('footTotalPinjaman').textContent = summary.total_pinjaman > 0 ? formatRupiah(summary.total_pinjaman) : '0';
+      document.getElementById('footTotalEsJalan').textContent = summary.total_es_jalan > 0 ? formatRupiah(summary.total_es_jalan) : '0';
+      document.getElementById('footTotalHasilBersih').textContent = formatRupiah(summary.total_hasil_bersih);
+    }
+
+    function bukaModalEditRekap(id) {
+      const item = currentRekapData.find(x => x.id === id);
+      if (!item) return;
+
+      document.getElementById('editRekapId').value = item.id;
+      document.getElementById('editRekapInfo').value = `${item.no_surat_jalan} - ${item.nama_pabrik} (${item.nama_supir})`;
+      document.getElementById('editRekapHargaKg').value = item.harga_per_kg ? formatRupiah(item.harga_per_kg) : '';
+      document.getElementById('editRekapPinjaman').value = item.pinjaman ? formatRupiah(item.pinjaman) : '';
+      document.getElementById('editRekapEsJalan').value = item.biaya_es_jalan ? formatRupiah(item.biaya_es_jalan) : '';
+
+      const modal = new bootstrap.Modal(document.getElementById('modalEditRekapRow'));
+      modal.show();
+    }
+
+    async function simpanEditRekapRow() {
+      const id = document.getElementById('editRekapId').value;
+      const harga_per_kg = parseRupiah(document.getElementById('editRekapHargaKg').value);
+      const pinjaman = parseRupiah(document.getElementById('editRekapPinjaman').value);
+      const biaya_es_jalan = parseRupiah(document.getElementById('editRekapEsJalan').value);
+
+      try {
+        const res = await fetch('/upah-api/update-rekap-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, harga_per_kg, pinjaman, biaya_es_jalan })
+        });
+        const r = await res.json();
+        if (r.success) {
+          const modalEl = document.getElementById('modalEditRekapRow');
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          if (modal) modal.hide();
+
+          Swal.fire({ icon: 'success', text: 'Data berhasil diperbarui', timer: 1200, showConfirmButton: false });
+          loadRekapPabrikData();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal memperbarui data' });
+      }
+    }
+
+    function cetakRekapPabrik() {
+      window.print();
+    }
+
+    function exportRekapPabrikExcel() {
+      const supirSelect = document.getElementById('rekapPabrikSupirSelect');
+      const supirText = supirSelect && supirSelect.selectedIndex >= 0 ? supirSelect.options[supirSelect.selectedIndex].text : 'SEMUA SUPIR';
+      const startDate = document.getElementById('rekapPabrikStartDate')?.value || '';
+      const endDate = document.getElementById('rekapPabrikEndDate')?.value || '';
+
+      const formatDateID = (dStr) => {
+        if (!dStr) return '-';
+        const d = new Date(dStr);
+        if (isNaN(d.getTime())) return dStr;
+        return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      };
+
+      const fmtRp = (val) => {
+        const num = parseFloat(val) || 0;
+        return 'Rp ' + num.toLocaleString('id-ID');
+      };
+
+      const fmtKg = (val) => {
+        const num = parseFloat(val) || 0;
+        return num.toLocaleString('id-ID', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+      };
+
+      const fmtInt = (val) => {
+        const num = parseFloat(val) || 0;
+        return num.toLocaleString('id-ID');
+      };
+
+      const periodeText = (startDate && endDate) 
+        ? `${formatDateID(startDate)} s/d ${formatDateID(endDate)}`
+        : (startDate ? `Mulai ${formatDateID(startDate)}` : (endDate ? `Sampai ${formatDateID(endDate)}` : 'Semua Periode'));
+
+      let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Rekap Gaji Supir per Pabrik</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 11pt; }
+        .title-box { text-align: center; margin-bottom: 15px; }
+        .title { font-size: 16pt; font-weight: bold; color: #1E293B; }
+        .subtitle { font-size: 11pt; color: #475569; margin-top: 4px; }
+        .meta-table { width: 100%; margin-bottom: 12px; font-size: 10pt; font-weight: bold; }
+        .data-table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+        .data-table th, .data-table td { border: 1px solid #333333; padding: 6px 8px; vertical-align: middle; }
+        .data-table th { background-color: #1E3A8A; color: #FFFFFF; font-weight: bold; text-align: center; height: 28px; }
+        .data-table tbody tr:nth-child(even) { background-color: #F8FAFC; }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        .num-format { text-align: right; mso-number-format:"\\#\\,\\#\\#0\\.000"; }
+        .currency-format { text-align: right; mso-number-format:"\\"Rp \\"\\#\\,\\#\\#0;\\"Rp \\"\\-\\#\\,\\#\\#0;\\"-\\""; }
+        .int-format { text-align: right; mso-number-format:"\\#\\,\\#\\#0"; }
+        .footer-row td { background-color: #E2E8F0; font-weight: bold; border-top: 2px solid #000000; border-bottom: 2px solid #000000; }
+        .text-success { color: #166534; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="title-box">
+        <div class="title">REKAP GAJI SUPIR PER PABRIK (PKS)</div>
+        <div class="subtitle">PERIODE: ${periodeText.toUpperCase()}</div>
+    </div>
+    
+    <table class="meta-table">
+        <tr>
+            <td style="border:none; text-align:left;">Supir / Driver: ${supirText}</td>
+            <td style="border:none; text-align:right;">Tanggal Export: ${new Date().toLocaleDateString('id-ID')}</td>
+        </tr>
+    </table>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 45px;">NO</th>
+                <th style="width: 100px;">TGL</th>
+                <th style="width: 160px;">PKS</th>
+                <th style="width: 160px;">DRIVER</th>
+                <th style="width: 130px;">TONASE ANGKUT</th>
+                <th style="width: 110px;">HARGA / KG</th>
+                <th style="width: 130px;">HASIL (RP)</th>
+                <th style="width: 130px;">PINJAMAN (RP)</th>
+                <th style="width: 130px;">ES + JALAN (RP)</th>
+                <th style="width: 140px;">H. BERSIH (RP)</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+      if (!currentRekapData || currentRekapData.length === 0) {
+        html += `
+            <tr>
+                <td colspan="10" class="text-center" style="padding: 20px; color: #64748B;">Tidak ada data pengiriman pada periode ini</td>
+            </tr>`;
+      } else {
+        let totalTonase = 0, totalHasil = 0, totalPinjaman = 0, totalEsJalan = 0, totalHasilBersih = 0;
+
+        currentRekapData.forEach((item, idx) => {
+          const tgl = item.tanggal ? formatDateID(item.tanggal) : '-';
+          const tonase = parseFloat(item.tonase_angkut) || 0;
+          const harga = parseFloat(item.harga_per_kg) || 0;
+          const hasil = parseFloat(item.hasil) || 0;
+          const pinjaman = parseFloat(item.pinjaman) || 0;
+          const esJalan = parseFloat(item.biaya_es_jalan) || 0;
+          const hasilBersih = parseFloat(item.hasil_bersih) || 0;
+
+          totalTonase += tonase;
+          totalHasil += hasil;
+          totalPinjaman += pinjaman;
+          totalEsJalan += esJalan;
+          totalHasilBersih += hasilBersih;
+
+          html += `
+            <tr>
+                <td class="text-center">${idx + 1}</td>
+                <td class="text-center">${tgl}</td>
+                <td class="text-left">${item.nama_pabrik || '-'}</td>
+                <td class="text-left">${item.nama_supir || '-'}</td>
+                <td class="num-format">${fmtKg(tonase)}</td>
+                <td class="int-format">${fmtInt(harga)}</td>
+                <td class="currency-format">${fmtRp(hasil)}</td>
+                <td class="currency-format">${pinjaman > 0 ? fmtRp(pinjaman) : 'Rp 0'}</td>
+                <td class="currency-format">${esJalan > 0 ? fmtRp(esJalan) : 'Rp 0'}</td>
+                <td class="currency-format text-success">${fmtRp(hasilBersih)}</td>
+            </tr>`;
+        });
+
+        html += `
+        </tbody>
+        <tfoot>
+            <tr class="footer-row">
+                <td colspan="4" class="text-center">JUMLAH TOTAL</td>
+                <td class="num-format">${fmtKg(totalTonase)}</td>
+                <td></td>
+                <td class="currency-format">${fmtRp(totalHasil)}</td>
+                <td class="currency-format">${totalPinjaman > 0 ? fmtRp(totalPinjaman) : 'Rp 0'}</td>
+                <td class="currency-format">${totalEsJalan > 0 ? fmtRp(totalEsJalan) : 'Rp 0'}</td>
+                <td class="currency-format text-success">${fmtRp(totalHasilBersih)}</td>
+            </tr>
+        </tfoot>`;
+      }
+
+      html += `
+    </table>
+</body>
+</html>`;
+
+      const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cleanSupirName = supirText.replace(/[^a-zA-Z0-9]/g, '_');
+      a.download = `Rekap_Gaji_Supir_Pabrik_${cleanSupirName}_${new Date().toISOString().split('T')[0]}.xls`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       await loadSessionInfo();
       await loadPengaturan();
@@ -892,12 +1277,54 @@
       const startDateStr = weekAgo.toISOString().split('T')[0];
       const endDateStr = today.toISOString().split('T')[0];
       
-      document.getElementById('payoutStartDate').value = startDateStr;
-      document.getElementById('payoutEndDate').value = endDateStr;
-      document.getElementById('payoutTkbmStartDate').value = startDateStr;
-      document.getElementById('payoutTkbmEndDate').value = endDateStr;
+      if (document.getElementById('payoutStartDate')) document.getElementById('payoutStartDate').value = startDateStr;
+      if (document.getElementById('payoutEndDate')) document.getElementById('payoutEndDate').value = endDateStr;
+      if (document.getElementById('payoutTkbmStartDate')) document.getElementById('payoutTkbmStartDate').value = startDateStr;
+      if (document.getElementById('payoutTkbmEndDate')) document.getElementById('payoutTkbmEndDate').value = endDateStr;
+
+      // Auto load tab Rekap Gaji Supir per Pabrik (PKS)
+      await initRekapPabrikTab();
     });
   </script>
+
+  <!-- Modal Edit Row Rekap -->
+  <div class="modal fade" id="modalEditRekapRow" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Data Ongkos &amp; Potongan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEditRekapRow">
+            <input type="hidden" id="editRekapId">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Info Surat Jalan / Pabrik</label>
+              <input type="text" id="editRekapInfo" class="form-control" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Harga / Kg (Rp)</label>
+              <input type="text" inputmode="numeric" id="editRekapHargaKg" class="form-control format-rupiah" placeholder="Contoh: 110">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Potongan Pinjaman / Kasbon (Rp)</label>
+              <input type="text" inputmode="numeric" id="editRekapPinjaman" class="form-control format-rupiah" placeholder="0">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Potongan Es + Jalan Poros (Rp)</label>
+              <input type="text" inputmode="numeric" id="editRekapEsJalan" class="form-control format-rupiah" placeholder="0">
+              <div class="form-text">Masukkan manual nominal potongan Es + Jalan jika ada untuk angkutan ini.</div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" onclick="simpanEditRekapRow()"><i class="bi bi-save"></i> Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/js/sidebar.js"></script>
 </body>
 </html>

@@ -420,7 +420,7 @@
             <div class="print-info-panel mt-3">
               <div class="print-info-item">
                 <label>Geser X:</label>
-                <input type="number" id="printOffsetX" step="0.1" min="0" value="2.5" onchange="onInfoInputChange()">
+                <input type="number" id="printOffsetX" step="0.1" min="0" value="0" onchange="onInfoInputChange()">
                 <span class="unit">cm</span>
               </div>
               <div class="print-info-item">
@@ -701,7 +701,7 @@
     // ─── Print Settings Visual Editor ──────────────────────────────────────────
     const PRINT_DEFAULTS = {
       print_mode: 'text',
-      print_offset_x: 2.5,
+      print_offset_x: 0,
       print_offset_y: 0,
       print_content_width: 19,
       print_paper_width: 9.5,

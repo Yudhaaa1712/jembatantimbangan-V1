@@ -70,11 +70,12 @@ function renderSidebar(activePage, features) {
             </a>
             <div class="collapse ${activePage === 'masterdata' ? 'show' : ''}" id="masterdataSubmenu">
               <div class="ms-3 border-start ps-2 border-secondary">
+                <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=pabrik') ? 'active text-warning' : ''}" href="/masterdata?tab=pabrik&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-building"></i> Pabrik (PKS) &amp; Tarif</a>
                 <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=supplier') ? 'active text-warning' : ''}" href="/masterdata?tab=supplier&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-truck-flatbed"></i> Supplier</a>
                 <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=supir') ? 'active text-warning' : ''}" href="/masterdata?tab=supir&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-truck"></i> Supir</a>
                 <a class="nav-item d-block ${activePage === 'tkbm' ? 'active text-warning' : ''}" href="/tkbm?v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-people"></i> Pekerja TKBM</a>
                 <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=material') ? 'active text-warning' : ''}" href="/masterdata?tab=material&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-box-seam"></i> Material</a>
-                <a class="nav-item d-block ${activePage === 'masterdata' && (!window.location.search || window.location.search.includes('tab=users')) && !window.location.search.includes('tab=supplier') && !window.location.search.includes('tab=supir') && !window.location.search.includes('tab=material') ? 'active text-warning' : ''}" href="/masterdata?tab=users&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-people-fill"></i> Pengguna</a>
+                <a class="nav-item d-block ${activePage === 'masterdata' && (!window.location.search || window.location.search.includes('tab=users')) && !window.location.search.includes('tab=pabrik') && !window.location.search.includes('tab=supplier') && !window.location.search.includes('tab=supir') && !window.location.search.includes('tab=material') ? 'active text-warning' : ''}" href="/masterdata?tab=users&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-people-fill"></i> Pengguna</a>
                 <a class="nav-item d-block ${activePage === 'masterdata' && window.location.search.includes('tab=email') ? 'active text-warning' : ''}" href="/masterdata?tab=email&v=122" style="font-size: 12px; padding: 6px 12px;"><i class="bi bi-envelope-fill"></i> Konfigurasi Email</a>
               </div>
             </div>
@@ -104,3 +105,53 @@ async function doLogout() {
   await fetch('/auth/logout', { method: 'POST' });
   window.location.href = '/auth/login';
 }
+
+// ─── GLOBAL RUPIAH FORMATTER HELPER ──────────────────────────────────────────
+
+function formatRupiah(angka, prefix) {
+  if (angka === null || angka === undefined || angka === '') return '';
+  let number_string = angka.toString().replace(/[^,\d]/g, ''),
+    split = number_string.split(','),
+    sisa = split[0].length % 3,
+    rupiah = split[0].substr(0, sisa),
+    ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+  if (ribuan) {
+    let separator = sisa ? '.' : '';
+    rupiah += separator + ribuan.join('.');
+  }
+
+  rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+  return prefix == undefined ? rupiah : (rupiah ? 'Rp ' + rupiah : '');
+}
+
+function parseRupiah(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return val;
+  const clean = val.toString().replace(/Rp/gi, '').replace(/\./g, '').replace(',', '.').trim();
+  return parseFloat(clean) || 0;
+}
+
+window.formatRupiah = formatRupiah;
+window.parseRupiah = parseRupiah;
+window.getRawNumber = parseRupiah;
+
+// Auto-attach Rupiah formatting to input fields
+document.addEventListener('input', function(e) {
+  if (e.target && (e.target.classList.contains('format-rupiah') || e.target.getAttribute('data-rupiah') === 'true')) {
+    let cursorPosition = e.target.selectionStart;
+    let oldLength = e.target.value.length;
+    
+    let rawVal = e.target.value;
+    let hasPrefix = e.target.getAttribute('data-prefix') === 'true';
+    let formatted = formatRupiah(rawVal, hasPrefix ? 'Rp ' : undefined);
+    
+    e.target.value = formatted;
+    
+    let newLength = formatted.length;
+    cursorPosition = cursorPosition + (newLength - oldLength);
+    try {
+      e.target.setSelectionRange(cursorPosition, cursorPosition);
+    } catch(err) {}
+  }
+});

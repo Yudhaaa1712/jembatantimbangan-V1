@@ -117,6 +117,10 @@ router.post('/timbang1', async (req, res) => {
     const jenis_material = req.body.jenis_material || 'tbs';
     const tkbmWorkers = req.body.tkbm_workers || []; // array of id_tkbm
 
+    const hargaKg = parseFloat(req.body.harga_per_kg) || 0;
+    const pinjaman = parseFloat(req.body.pinjaman) || 0;
+    const biayaEsJalan = parseFloat(req.body.biaya_es_jalan) || 0;
+
     if (berat1 <= 0) {
       return jsonResponse(res, false, 'Berat Timbangan 1 harus lebih dari 0');
     }
@@ -128,9 +132,9 @@ router.post('/timbang1', async (req, res) => {
       const result = tx.execute(
         `INSERT INTO pengiriman_pabrik 
          (no_surat_jalan, tanggal, no_polisi, id_supir, nama_supir, nama_pabrik, 
-          berat_timbangan1, waktu_timbangan1, keterangan, jenis_material, status, operator_id, created_at)
-         VALUES (?, CURDATE(), ?, ?, ?, ?, ?, NOW(), ?, ?, 'timbang_1', ?, NOW())`,
-        [noSJ, noPolisi, idSupir, namaSupir, namaPabrik, berat1, keterangan, jenis_material, req.session.user_id]
+          berat_timbangan1, waktu_timbangan1, keterangan, jenis_material, harga_per_kg, pinjaman, biaya_es_jalan, status, operator_id, created_at)
+         VALUES (?, CURDATE(), ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, 'timbang_1', ?, NOW())`,
+        [noSJ, noPolisi, idSupir, namaSupir, namaPabrik, berat1, keterangan, jenis_material, hargaKg, pinjaman, biayaEsJalan, req.session.user_id]
       );
       
       const insertId = result[0].insertId;

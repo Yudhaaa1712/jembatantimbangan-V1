@@ -3,147 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pengiriman Pabrik - Weighbridge</title>
+    <title>Pengiriman Pabrik - Weighbridge Arroyan</title>
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/all.min.css">
     <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
     <link rel="stylesheet" href="/assets/css/bw-theme.css">
-    <link rel="stylesheet" href="/assets/css/pages/timbangan1-bw.css">
     <style>
-      .susut-badge { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
-      .susut-normal { background: #fef3c7; color: #92400e; }
-      .susut-surplus { background: #d1fae5; color: #065f46; }
-      .display-panel-sm { background: #000; border: 2px solid #333; border-radius: 8px; padding: 10px; text-align: center; }
-      .display-panel-sm .display-value { font-size: 28px; font-weight: 900; color: #0f0; font-family: monospace; }
-      .display-panel-sm .display-status { font-size: 11px; color: #a0a0a0; margin-bottom: 5px; }
-      .dark-terminal-card {
-        background: #0f172a !important;
-        border: 1px solid #1e293b !important;
-        border-radius: 12px;
-        padding: 20px;
-        color: #f8fafc;
+      body {
+        background-color: #f1f5f9;
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        color: #0f172a;
       }
-      .terminal-table { width: 100%; font-size: 12px; border-collapse: collapse; background: #0f172a !important; }
-      .terminal-table th { background: #1e293b !important; border-bottom: 2px solid #334155 !important; padding: 10px 8px; color: #38bdf8 !important; text-transform: uppercase; font-weight: 700; }
-      .terminal-table td { background: #0f172a !important; border-bottom: 1px solid #1e293b !important; padding: 8px; vertical-align: middle; color: #f8fafc !important; }
-      .terminal-table tr:hover td { background: #1e293b !important; }
-      .dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px; }
-      .dash-box { border: 1px solid #333; border-radius: 6px; padding: 10px; text-align: center; background: #0a0a0a; }
-      .dash-box .dash-title { font-size: 10px; text-transform: uppercase; color: #a0a0a0; }
-      .dash-box .dash-val { font-size: 20px; font-weight: bold; color: #fff; margin-top: 5px; }
-      .dash-box.sisa .dash-val { color: #0f0; font-size: 24px; }
+      .page-header-box {
+        background: #1e293b;
+        color: #ffffff;
+        padding: 20px 24px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      .page-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+        color: #ffffff;
+      }
+      .card-modern {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        margin-bottom: 24px;
+        overflow: hidden;
+      }
+      .card-header-modern {
+        padding: 16px 20px;
+        background: #e2e8f0;
+        border-bottom: 1px solid #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .card-body-modern {
+        padding: 20px;
+        background: #ffffff;
+      }
+      .stat-card {
+        background: #ffffff;
+        border-radius: 10px;
+        padding: 16px 20px;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+      }
+      .stat-val {
+        font-size: 22px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 4px;
+      }
+      .stat-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #475569;
+        font-weight: 700;
+      }
+      .nav-tabs-modern {
+        border-bottom: 2px solid #cbd5e1;
+        background: #f8fafc;
+        padding: 6px 12px 0 12px;
+      }
+      .nav-tabs-modern .nav-link {
+        font-weight: 700;
+        font-size: 14px;
+        color: #475569;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 20px;
+      }
+      .nav-tabs-modern .nav-link.active {
+        color: #1d4ed8;
+        border-bottom-color: #1d4ed8;
+        background: transparent;
+      }
+      .weight-display-card {
+        background: #0f172a;
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        border: 2px solid #334155;
+      }
+      .weight-num {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 48px;
+        font-weight: 900;
+        color: #22c55e;
+      }
+      .form-label-custom {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 6px;
+      }
+      .form-control-custom, .form-select-custom {
+        background-color: #ffffff;
+        color: #0f172a;
+        border: 1px solid #94a3b8;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .form-control-custom:focus, .form-select-custom:focus {
+        border-color: #1d4ed8;
+        box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+      }
+      .susut-badge { font-size: 12px; padding: 4px 10px; border-radius: 6px; font-weight: 700; }
+      .susut-normal { background: #fef3c7; color: #78350f; border: 1px solid #fde68a; }
+      .susut-surplus { background: #d1fae5; color: #064e3b; border: 1px solid #a7f3d0; }
+      .table-modern {
+        width: 100%;
+        margin-bottom: 0;
+        background: #ffffff;
+      }
+      .table-modern th {
+        background: #1e293b;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 12px 14px;
+        border-bottom: 2px solid #0f172a;
+      }
+      .table-modern td {
+        padding: 12px 14px;
+        vertical-align: middle;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 14px;
+        color: #0f172a;
+      }
+      .table-modern tbody tr:nth-child(even) {
+        background-color: #f8fafc;
+      }
+      .table-modern tbody tr:hover {
+        background-color: #f1f5f9;
+      }
     </style>
 </head>
 <body>
     <div id="site-header"></div>
-    <div class="container-fluid py-4">
-        
-        <!-- BAGIAN ATAS: FORM PENGIRIMAN -->
-        <div class="row mb-4">
-            <!-- Kiri: Form Tabs -->
-            <div class="col-md-7">
-                <div class="terminal-box h-100" style="padding:0; overflow:hidden;">
-                    <ul class="nav nav-tabs" id="pengirimanTabs" role="tablist" style="border-bottom: 1px solid #333; background: #0a0a0a;">
+    <div class="container-fluid py-4 px-4">
+
+        <!-- HEADER BANNER -->
+        <div class="page-header-box d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">Pengiriman Pabrik</h1>
+                <p class="mb-0 text-light small">Kelola data timbangan pengiriman TBS &amp; Brondolan ke Pabrik Kelapa Sawit (PKS)</p>
+            </div>
+            <div>
+                <span class="badge bg-primary px-3 py-2 fs-6">Timbangan Pabrik</span>
+            </div>
+        </div>
+
+        <!-- METRIC CARDS / DASHBOARD STOK -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">Total Stok TBS</div>
+                    <div class="stat-val" id="dashStokTbs">0 <small class="fs-6 text-muted">Kg</small></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">Total Stok Brondolan</div>
+                    <div class="stat-val" id="dashStokBrondolan">0 <small class="fs-6 text-muted">Kg</small></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">Total Dikirim Ke Pabrik</div>
+                    <div class="stat-val text-primary" id="dashTotalKeluar">0 <small class="fs-6 text-muted">Kg</small></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card border-success border-2">
+                    <div class="stat-label text-success">Sisa Buah Saat Ini</div>
+                    <div class="stat-val text-success" id="dashSisaBuah">0 <small class="fs-6 text-muted">Kg</small></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FORM & INDIKATOR TIMBANGAN -->
+        <div class="row g-4 mb-4">
+            <!-- Form Tabs (Left) -->
+            <div class="col-lg-7">
+                <div class="card-modern h-100">
+                    <ul class="nav nav-tabs nav-tabs-modern" id="pengirimanTabs" role="tablist">
                         <li class="nav-item" role="presentation" style="flex:1;">
-                            <button class="nav-link active w-100 fw-bold" id="timbang1-tab" data-bs-toggle="tab" data-bs-target="#timbang1" type="button" role="tab" style="border-radius:0; border:none; border-right:1px solid #333; color:#0f0; background:transparent;">TIMBANG 1 (KENDARAAN MASUK)</button>
+                            <button class="nav-link active w-100 text-center" id="timbang1-tab" data-bs-toggle="tab" data-bs-target="#timbang1" type="button" role="tab">TIMBANG 1 (KENDARAAN MASUK)</button>
                         </li>
                         <li class="nav-item" role="presentation" style="flex:1;">
-                            <button class="nav-link w-100 fw-bold" id="timbang2-tab" data-bs-toggle="tab" data-bs-target="#timbang2" type="button" role="tab" style="border-radius:0; border:none; color:#a0a0a0; background:transparent;">TIMBANG 2 (KENDARAAN KELUAR)</button>
+                            <button class="nav-link w-100 text-center" id="timbang2-tab" data-bs-toggle="tab" data-bs-target="#timbang2" type="button" role="tab">TIMBANG 2 (KENDARAAN KELUAR)</button>
                         </li>
                     </ul>
-                    
-                    <div class="tab-content p-3">
+
+                    <div class="tab-content card-body-modern">
                         <!-- TAB TIMBANG 1 -->
                         <div class="tab-pane fade show active" id="timbang1" role="tabpanel">
                             <form id="formTimbang1">
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label class="terminal-label">No. Polisi</label>
-                                            <input type="text" class="terminal-input" id="t1_noPolisi" style="text-transform:uppercase;">
+                                            <label class="form-label-custom">No. Polisi</label>
+                                            <input type="text" class="form-control form-control-custom text-uppercase" id="t1_noPolisi" placeholder="Contoh: BM 1234 XX" required>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label">Supir Pengirim</label>
-                                            <input type="text" class="terminal-input" id="t1_namaSupir" placeholder="INPUT NAMA SUPIR..." style="text-transform:uppercase;" required>
+                                            <label class="form-label-custom">Supir Pengirim</label>
+                                            <select class="form-select form-select-custom" id="t1_idSupir" required>
+                                                <option value="">-- Pilih Supir --</option>
+                                            </select>
+                                            <input type="hidden" id="t1_namaSupir">
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label">Pabrik Tujuan</label>
-                                            <input type="text" class="terminal-input" id="t1_namaPabrik" style="text-transform:uppercase;">
+                                            <label class="form-label-custom">Pabrik Tujuan (PKS)</label>
+                                            <select class="form-select form-select-custom" id="t1_namaPabrik" required>
+                                                <option value="">-- Pilih Pabrik (PKS) --</option>
+                                            </select>
+                                        </div>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-4">
+                                                <label class="form-label-custom text-primary">Harga/Kg (Rp)</label>
+                                                <input type="text" inputmode="numeric" class="form-control form-control-custom format-rupiah" id="t1_hargaPerKg" placeholder="0">
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="form-label-custom text-danger">Pinjaman (Rp)</label>
+                                                <input type="text" inputmode="numeric" class="form-control form-control-custom format-rupiah" id="t1_pinjaman" placeholder="0">
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="form-label-custom text-dark">Es+Jalan (Rp)</label>
+                                                <input type="text" inputmode="numeric" class="form-control form-control-custom format-rupiah" id="t1_biayaEsJalan" placeholder="0">
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label class="terminal-label">Jenis Material</label>
-                                            <select class="terminal-select" id="t1_jenisMaterial" required>
+                                            <label class="form-label-custom">Jenis Material</label>
+                                            <select class="form-select form-select-custom" id="t1_jenisMaterial" required>
                                                 <option value="tbs">TBS</option>
                                                 <option value="brondolan">BRONDOLAN</option>
                                             </select>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label">Keterangan</label>
-                                            <input type="text" class="terminal-input" id="t1_keterangan" style="text-transform:uppercase;">
+                                            <label class="form-label-custom">Keterangan</label>
+                                            <input type="text" class="form-control form-control-custom text-uppercase" id="t1_keterangan" placeholder="Catatan tambahan...">
                                         </div>
-                                        <div class="mb-3" style="display:none;">
-                                            <label class="terminal-label text-info">Pekerja TKBM (Bisa > 1)</label>
-                                            <div id="tkbmCheckboxes" style="background:#111; border:1px solid #333; padding:10px; max-height:100px; overflow-y:auto; border-radius:4px;">
+                                        <div class="mb-3 d-none">
+                                            <label class="form-label-custom text-primary">Pekerja TKBM (Bisa > 1)</label>
+                                            <div id="tkbmCheckboxes" class="bg-white p-2 border rounded" style="max-height:100px; overflow-y:auto; border-color:#94a3b8;">
                                                 <small class="text-muted">Memuat data...</small>
                                             </div>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label text-success">Berat Timbangan 1 (Kg)</label>
-                                            <input type="number" class="terminal-input" id="berat1" min="0" step="1" required placeholder="Input manual atau tangkap...">
+                                            <label class="form-label-custom text-success fw-bold">Berat Timbangan 1 (Kg)</label>
+                                            <input type="number" class="form-control form-control-custom fw-bold fs-5 border-success text-success" id="berat1" min="0" step="1" required placeholder="0">
                                         </div>
                                     </div>
-                                    <div class="col-12 mt-2">
-                                        <button type="submit" class="terminal-btn terminal-btn-success w-100 fw-bold" style="padding:12px; font-size:16px;">
-                                            <i class="fas fa-save me-2"></i> SIMPAN TIMBANG 1
+                                    <div class="col-12 mt-3">
+                                        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">
+                                            SIMPAN TIMBANG 1
                                         </button>
                                     </div>
                                 </div>
                             </form>
                         </div>
-                        
+
                         <!-- TAB TIMBANG 2 -->
                         <div class="tab-pane fade" id="timbang2" role="tabpanel">
                             <form id="formTimbang2">
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label class="terminal-label text-warning">Pilih Kendaraan Pending</label>
-                                            <select class="terminal-select" id="t2_idPengiriman" required>
+                                            <label class="form-label-custom text-dark">Pilih Kendaraan Pending</label>
+                                            <select class="form-select form-select-custom border-dark" id="t2_idPengiriman" required>
                                                 <option value="">-- Pilih Kendaraan / No SJ --</option>
                                             </select>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label">No. Polisi</label>
-                                            <input type="text" class="terminal-input" id="t2_noPolisi" readonly style="background:#111; color:#fff;">
+                                            <label class="form-label-custom">No. Polisi</label>
+                                            <input type="text" class="form-control form-control-custom bg-light" id="t2_noPolisi" readonly>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label">Nama Supir</label>
-                                            <input type="text" class="terminal-input" id="t2_namaSupir" readonly style="background:#111; color:#fff;">
+                                            <label class="form-label-custom">Nama Supir</label>
+                                            <input type="text" class="form-control form-control-custom bg-light" id="t2_namaSupir" readonly>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label class="terminal-label">Pabrik & Material</label>
-                                            <input type="text" class="terminal-input" id="t2_pabrikMaterial" readonly style="background:#111; color:#fff;">
+                                            <label class="form-label-custom">Pabrik &amp; Material</label>
+                                            <input type="text" class="form-control form-control-custom bg-light" id="t2_pabrikMaterial" readonly>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label" style="color:#a0a0a0;">Berat Timbangan 1 (Kg)</label>
-                                            <input type="number" class="terminal-input" id="t2_berat1" readonly style="background:#111; color:#fff;">
+                                            <label class="form-label-custom text-muted">Berat Timbangan 1 (Kg)</label>
+                                            <input type="number" class="form-control form-control-custom bg-light" id="t2_berat1" readonly>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label text-success">Berat Timbangan 2 (Kg)</label>
-                                            <input type="number" class="terminal-input" id="berat2" min="0" step="1" required placeholder="Input manual atau tangkap...">
+                                            <label class="form-label-custom text-success fw-bold">Berat Timbangan 2 (Kg)</label>
+                                            <input type="number" class="form-control form-control-custom fw-bold fs-5 border-success text-success" id="berat2" min="0" step="1" required placeholder="0">
                                         </div>
                                         <div class="mb-3">
-                                            <label class="terminal-label" style="color:#0f0;">Netto (Kg)</label>
-                                            <input type="number" class="terminal-input" id="nettoPreview" readonly style="background:#050505; color:#0f0; border-color:#0f0; font-weight:bold;">
+                                            <label class="form-label-custom text-primary fw-bold">Netto RAM (Kg)</label>
+                                            <input type="number" class="form-control form-control-custom fw-bold fs-5 bg-light text-primary border-primary" id="nettoPreview" readonly placeholder="0">
                                         </div>
                                     </div>
-                                    <div class="col-12 mt-2">
-                                        <button type="submit" class="terminal-btn terminal-btn-success w-100 fw-bold" id="btnSubmitTimbang2" disabled style="padding:12px; font-size:16px;">
-                                            <i class="fas fa-print me-2"></i> SIMPAN & CETAK SURAT JALAN
+                                    <div class="col-12 mt-3">
+                                        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" id="btnSubmitTimbang2" disabled>
+                                            SIMPAN &amp; CETAK SURAT JALAN
                                         </button>
                                     </div>
                                 </div>
@@ -152,112 +326,93 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Kanan: Indikator Timbangan -->
-            <div class="col-md-5">
-                <div class="terminal-box h-100 d-flex flex-column justify-content-center">
-                    <label class="terminal-label text-center d-block mb-3"><i class="fas fa-weight"></i> INDIKATOR TIMBANGAN</label>
-                    <div class="display-panel-sm mb-4">
-                        <div class="display-status" id="weightStatusPengiriman">Menunggu koneksi...</div>
-                        <div class="display-value" id="weightDisplayPengiriman" style="font-size:48px;">0 KG</div>
-                        <div class="d-flex gap-2 mt-3">
-                            <button type="button" class="terminal-btn w-50" id="toggleConnectionPengiriman">SAMBUNGKAN</button>
-                            <button type="button" class="terminal-btn terminal-btn-warning w-50" id="captureWeightPengiriman">AMBIL BERAT</button>
+
+            <!-- Indikator Timbangan (Right) -->
+            <div class="col-lg-5">
+                <div class="card-modern h-100 d-flex flex-column justify-content-center p-4">
+                    <div class="text-center mb-3">
+                        <span class="badge bg-secondary px-3 py-2 fs-6">INDIKATOR TIMBANGAN LIVE</span>
+                    </div>
+
+                    <div class="weight-display-card mb-4">
+                        <div class="mb-2">
+                            <span class="badge bg-dark border border-secondary px-3 py-1 text-light" id="weightStatusPengiriman">Menunggu koneksi...</span>
                         </div>
+                        <div class="weight-num" id="weightDisplayPengiriman">0 KG</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary w-50 py-2 fw-bold" id="toggleConnectionPengiriman">SAMBUNGKAN</button>
+                        <button type="button" class="btn btn-warning w-50 py-2 fw-bold text-dark" id="captureWeightPengiriman">AMBIL BERAT</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- BAGIAN TENGAH: DASHBOARD SISA BUAH -->
-        <label class="terminal-label d-block text-center mb-2"><i class="fas fa-boxes"></i> Informasi Stok Buah di Gudang</label>
-        <div class="dash-grid mb-4">
-            <div class="dash-box">
-                <div class="dash-title">Total Stok TBS</div>
-                <div class="dash-val" id="dashStokTbs">0 <small style="font-size:12px;">Kg</small></div>
+        <!-- RIWAYAT PENGIRIMAN -->
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h5 class="mb-0 fw-bold text-dark">Riwayat Pengiriman Pabrik</h5>
+                <div>
+                    <a href="/pengiriman/export-excel" class="btn btn-sm btn-success me-2 fw-bold">Export Excel</a>
+                    <button class="btn btn-sm btn-primary fw-bold" onclick="loadList()">Refresh</button>
+                </div>
             </div>
-            <div class="dash-box">
-                <div class="dash-title">Total Stok Brondolan</div>
-                <div class="dash-val" id="dashStokBrondolan">0 <small style="font-size:12px;">Kg</small></div>
-            </div>
-            <div class="dash-box">
-                <div class="dash-title">Total Dikirim Ke Pabrik</div>
-                <div class="dash-val text-warning" id="dashTotalKeluar">0 <small style="font-size:12px;">Kg</small></div>
-            </div>
-            <div class="dash-box sisa">
-                <div class="dash-title">SISA BUAH SAAT INI</div>
-                <div class="dash-val" id="dashSisaBuah">0 <small style="font-size:14px;">Kg</small></div>
+            <div class="table-responsive">
+                <table class="table-modern">
+                    <thead>
+                        <tr>
+                            <th>No. SJ</th>
+                            <th>Tanggal</th>
+                            <th>Kendaraan &amp; Supir</th>
+                            <th>Pabrik Tujuan</th>
+                            <th>Material</th>
+                            <th class="text-end">Netto RAM</th>
+                            <th class="text-end">Netto Pabrik</th>
+                            <th class="text-center">Susut</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center" style="width: 90px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="10" class="text-center py-4 text-dark fw-bold">Memuat data...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- BAGIAN BAWAH: TABEL RIWAYAT -->
-        <div class="row">
-            <div class="col-12">
-                <div class="terminal-box dark-terminal-card">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <label class="terminal-label mb-0" style="color:#38bdf8;"><i class="fas fa-history"></i> Riwayat Pengiriman Pabrik</label>
-                        <div>
-                            <a href="/pengiriman/export-excel" class="terminal-btn terminal-btn-success text-decoration-none me-2"><i class="fas fa-file-excel"></i> Export Excel</a>
-                            <button class="terminal-btn" onclick="loadList()"><i class="fas fa-sync-alt"></i> Refresh Data</button>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="terminal-table">
-                            <thead>
-                                <tr>
-                                    <th>No. SJ</th>
-                                    <th>Tanggal</th>
-                                    <th>No. Polisi</th>
-                                    <th>Nama Supir</th>
-                                    <th>Pabrik Tujuan</th>
-                                    <th>Material</th>
-                                    <th class="text-end">Netto RAM</th>
-                                    <th class="text-end">Netto Pabrik</th>
-                                    <th class="text-center">Susut</th>
-                                    <th class="text-center">Status</th>
-                                    <th class="text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                                <tr><td colspan="11" class="text-center py-4" style="color:#fff;">Memuat data...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Modal Input Berat Pabrik -->
-    <div class="modal fade" id="modalPabrik" tabindex="-1">
+    <div class="modal fade" id="modalPabrik" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content" style="background:#1a1a2e; color:#e0e0e0;">
-                <div class="modal-header border-0">
-                    <h5 class="modal-title text-white"><i class="fas fa-industry"></i> Input Berat Pabrik</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-content">
+                <div class="modal-header bg-slate-100">
+                    <h5 class="modal-title fw-bold text-dark">Input Berat Pabrik</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="modalId">
                     <div class="mb-3">
-                        <label class="form-label" style="color:#a0a0a0; font-size:12px; text-transform:uppercase;">No. Surat Jalan</label>
-                        <input type="text" class="form-control" id="modalNoSJ" readonly style="background:#0f0f23; border:1px solid #333; color:#fff;">
+                        <label class="form-label-custom">No. Surat Jalan</label>
+                        <input type="text" class="form-control form-control-custom bg-light" id="modalNoSJ" readonly>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="color:#a0a0a0; font-size:12px; text-transform:uppercase;">Netto RAM (Kg)</label>
-                        <input type="number" class="form-control" id="modalNettoRam" readonly style="background:#0f0f23; border:1px solid #333; color:#fff;">
+                        <label class="form-label-custom">Netto RAM (Kg)</label>
+                        <input type="number" class="form-control form-control-custom bg-light" id="modalNettoRam" readonly>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="color:#a0a0a0; font-size:12px; text-transform:uppercase;">Netto Pabrik (Kg)</label>
-                        <input type="number" class="form-control" id="modalNettoPabrik" min="0" step="1" style="background:#0f0f23; border:1px solid #333; color:#fff;">
+                        <label class="form-label-custom text-primary fw-bold">Netto Pabrik (Kg)</label>
+                        <input type="number" class="form-control form-control-custom border-primary fw-bold" id="modalNettoPabrik" min="0" step="1" placeholder="Masukkan netto dari timbangan pabrik">
                     </div>
-                    <div class="p-3 rounded" id="modalSusutPreview" style="border:2px solid #333; background:#0f0f23; text-align:center;">
-                        <div style="color:#a0a0a0; font-size:10px; text-transform:uppercase;">Susut</div>
-                        <div id="modalSusutValue" style="font-size:20px; font-weight:700; color:#fbbf24;">- Kg (- %)</div>
+                    <div class="p-3 rounded border text-center" id="modalSusutPreview" style="background:#f8fafc;">
+                        <div class="text-dark small text-uppercase fw-bold">Susut</div>
+                        <div id="modalSusutValue" class="fs-4 fw-bold text-dark">- Kg (- %)</div>
                     </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-success" onclick="submitPabrik()"><i class="fas fa-check"></i> Simpan</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-success fw-bold" onclick="submitPabrik()">Simpan Berat Pabrik</button>
                 </div>
             </div>
         </div>
@@ -270,7 +425,7 @@
     <script>
     window.activePage = 'pengiriman';
 
-  function updateNetto() {
+    function updateNetto() {
         const b1 = parseFloat(document.getElementById('t2_berat1').value) || 0;
         const b2 = parseFloat(document.getElementById('berat2').value) || 0;
         const netto = Math.abs(b1 - b2);
@@ -287,7 +442,7 @@
             if (r.success) {
                 pendingTickets = r.data;
                 const select = document.getElementById('t2_idPengiriman');
-                const currentSelected = select.value; // Remember selected value
+                const currentSelected = select.value;
                 
                 select.innerHTML = '<option value="">-- Pilih Kendaraan / No SJ --</option>';
                 pendingTickets.forEach(t => {
@@ -298,7 +453,7 @@
                 });
                 
                 if (currentSelected) {
-                    select.value = currentSelected; // Restore selected value
+                    select.value = currentSelected;
                 }
             }
         } catch(e) {}
@@ -332,10 +487,10 @@
           const res = await fetch('/pengiriman/summary');
           const r = await res.json();
           if (r.success) {
-            document.getElementById('dashStokTbs').innerHTML = Number(r.data.sisa_tbs).toLocaleString('id-ID') + ' <small>Kg</small>';
-            document.getElementById('dashStokBrondolan').innerHTML = Number(r.data.sisa_brondolan).toLocaleString('id-ID') + ' <small>Kg</small>';
-            document.getElementById('dashTotalKeluar').innerHTML = Number(r.data.total_keluar).toLocaleString('id-ID') + ' <small>Kg</small>';
-            document.getElementById('dashSisaBuah').innerHTML = Number(r.data.sisa_buah).toLocaleString('id-ID') + ' <small>Kg</small>';
+            document.getElementById('dashStokTbs').innerHTML = Number(r.data.sisa_tbs).toLocaleString('id-ID') + ' <small class="fs-6 text-muted">Kg</small>';
+            document.getElementById('dashStokBrondolan').innerHTML = Number(r.data.sisa_brondolan).toLocaleString('id-ID') + ' <small class="fs-6 text-muted">Kg</small>';
+            document.getElementById('dashTotalKeluar').innerHTML = Number(r.data.total_keluar).toLocaleString('id-ID') + ' <small class="fs-6 text-muted">Kg</small>';
+            document.getElementById('dashSisaBuah').innerHTML = Number(r.data.sisa_buah).toLocaleString('id-ID') + ' <small class="fs-6 text-muted">Kg</small>';
           }
         } catch(e) { console.error('Load summary error:', e); }
     }
@@ -348,38 +503,39 @@
           const r = await res.json();
           const tbody = document.getElementById('tableBody');
           if (!r.success || !r.data.length) {
-            tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4" style="color:#94a3b8;">Belum ada data pengiriman</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-dark fw-bold">Belum ada data pengiriman</td></tr>';
             return;
           }
           tbody.innerHTML = r.data.map(d => {
             const tgl = d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID') : '-';
             const nettoRam = Number(d.netto_ram).toLocaleString('id-ID');
-            const nettoPabrik = d.netto_pabrik !== null ? Number(d.netto_pabrik).toLocaleString('id-ID') : '<span style="color:#94a3b8;">Belum</span>';
+            const nettoPabrik = d.netto_pabrik !== null ? Number(d.netto_pabrik).toLocaleString('id-ID') : '<span class="text-muted">Belum</span>';
             let susutHtml = '-';
             if (d.susut !== null) {
               const cls = d.susut >= 0 ? 'susut-normal' : 'susut-surplus';
               susutHtml = `<span class="susut-badge ${cls}">${Number(d.susut).toLocaleString('id-ID')} Kg (${Number(d.persen_susut).toFixed(1)}%)</span>`;
             }
-            const statusBadge = d.status === 'selesai' ? '<span class="badge bg-success">Selesai</span>' : 
-                                d.status === 'timbang_2' ? '<span class="badge bg-warning text-dark">Pending Pabrik</span>' : 
-                                '<span class="badge bg-secondary">Pending Timbang 2</span>';
+            const statusBadge = d.status === 'selesai' ? '<span class="badge bg-success px-2 py-1 fs-6">Selesai</span>' : 
+                                d.status === 'timbang_2' ? '<span class="badge bg-warning text-dark px-2 py-1 fs-6">Pending Pabrik</span>' : 
+                                '<span class="badge bg-secondary px-2 py-1 fs-6">Pending Timbang 2</span>';
             const jenis = (d.jenis_material || 'tbs').toUpperCase();
 
-            let aksiHtml = `<button class="terminal-btn terminal-btn-success" style="padding:2px 6px; font-size:10px;" onclick="printSJ(${d.id})">Cetak</button> `;
+            let aksiHtml = `<div class="d-flex flex-column align-items-center gap-1 mx-auto" style="width: 80px;">`;
+            aksiHtml += `<button class="btn btn-sm btn-success w-100 py-0 fw-bold" style="font-size: 10px; line-height: 1.6;" onclick="printSJ(${d.id})">Cetak</button>`;
             if (d.status === 'timbang_2') {
-              aksiHtml += `<button class="terminal-btn terminal-btn-warning" style="padding:2px 6px; font-size:10px; color:#000;" onclick="openModalPabrik(${d.id},'${d.no_surat_jalan}',${d.netto_ram})">Input Berat Pabrik</button> `;
+              aksiHtml += `<button class="btn btn-sm btn-warning text-dark w-100 py-0 fw-bold" style="font-size: 10px; line-height: 1.6; white-space: nowrap;" onclick="openModalPabrik(${d.id},'${d.no_surat_jalan}',${d.netto_ram})">Input Pabrik</button>`;
             }
-            aksiHtml += `<button class="terminal-btn terminal-btn-danger" style="padding:2px 6px; font-size:10px;" onclick="hapus(${d.id})">Hapus</button>`;
+            aksiHtml += `<button class="btn btn-sm btn-danger w-100 py-0 fw-bold" style="font-size: 10px; line-height: 1.6;" onclick="hapus(${d.id})">Hapus</button>`;
+            aksiHtml += `</div>`;
 
-            return `<tr style="color: #f8fafc;">
-              <td><strong style="color:#38bdf8;">${d.no_surat_jalan}</strong></td>
-              <td style="color: #cbd5e1;">${tgl}</td>
-              <td><strong style="color: #ffffff;">${d.no_polisi || '-'}</strong></td>
-              <td style="color: #e2e8f0;">${d.nama_supir || '-'}</td>
-              <td style="color: #cbd5e1;">${d.nama_pabrik}</td>
-              <td><span class="badge ${jenis === 'TBS' ? 'bg-success' : 'bg-primary'}">${jenis}</span></td>
-              <td class="text-end fw-bold" style="color:#34d399;">${nettoRam}</td>
-              <td class="text-end fw-bold" style="color:#60a5fa;">${nettoPabrik}</td>
+            return `<tr>
+              <td><strong class="text-dark">${d.no_surat_jalan}</strong></td>
+              <td class="text-dark fw-semibold">${tgl}</td>
+              <td><span class="fw-bold text-dark">${d.no_polisi}</span> <small class="d-block text-secondary">${d.nama_supir}</small></td>
+              <td class="fw-bold text-dark">${d.nama_pabrik}</td>
+              <td><span class="badge ${jenis === 'TBS' ? 'bg-success' : 'bg-primary'} fs-6">${jenis}</span></td>
+              <td class="text-end font-monospace fw-bold text-dark">${nettoRam}</td>
+              <td class="text-end font-monospace fw-bold text-dark">${nettoPabrik}</td>
               <td class="text-center">${susutHtml}</td>
               <td class="text-center">${statusBadge}</td>
               <td class="text-center">${aksiHtml}</td>
@@ -390,35 +546,61 @@
 
     async function loadFormDependencies() {
         try {
-            // Load Supir (optional check)
-            const sel = document.getElementById('t1_idSupir');
-            if (sel) {
-                const resSupir = await fetch('/masterdata/supir');
-                const dataSupir = await resSupir.json();
-                if (dataSupir.success) {
-                    sel.innerHTML = '<option value="">-- Pilih Supir --</option>';
-                    dataSupir.data.forEach(s => {
-                        if(s.status === 'active') sel.innerHTML += `<option value="${s.id}">${s.nama_supir}</option>`;
-                    });
-                }
+            // Load Supir
+            const resSupir = await fetch('/masterdata/supir');
+            const dataSupir = await resSupir.json();
+            if (dataSupir.success) {
+                const sel = document.getElementById('t1_idSupir');
+                sel.innerHTML = '<option value="">-- Pilih Supir --</option>';
+                dataSupir.data.forEach(s => {
+                    if(s.status === 'active') sel.innerHTML += `<option value="${s.id}">${s.nama_supir}</option>`;
+                });
+            }
+
+            // Load Pabrik Master
+            const resPabrik = await fetch('/masterdata/pabrik');
+            const dataPabrik = await resPabrik.json();
+            const selPabrik = document.getElementById('t1_namaPabrik');
+            if (selPabrik && dataPabrik.success && dataPabrik.data.length > 0) {
+                selPabrik.innerHTML = '<option value="">-- Pilih Pabrik (PKS) --</option>';
+                dataPabrik.data.forEach(p => {
+                    if (p.status === 'active') {
+                        selPabrik.innerHTML += `<option value="${p.nama_pabrik}" data-tarif="${p.tarif_angkut || 0}">${p.nama_pabrik} (Rp ${Number(p.tarif_angkut || 0).toLocaleString('id-ID')}/Kg)</option>`;
+                    }
+                });
             }
 
             // Load TKBM
             const resTkbm = await fetch('/tkbm-api/active');
             const dataTkbm = await resTkbm.json();
             const tkbmDiv = document.getElementById('tkbmCheckboxes');
-            if (tkbmDiv && dataTkbm.success && dataTkbm.data.length > 0) {
+            if (dataTkbm.success && dataTkbm.data.length > 0) {
                 tkbmDiv.innerHTML = dataTkbm.data.map(t => 
                     `<div class="form-check">
                         <input class="form-check-input tkbm-cb" type="checkbox" value="${t.id}" id="tkbm_${t.id}">
-                        <label class="form-check-label text-light" for="tkbm_${t.id}">${t.nama_karyawan}</label>
+                        <label class="form-check-label text-dark fw-semibold" for="tkbm_${t.id}">${t.nama_karyawan}</label>
                     </div>`
                 ).join('');
-            } else if (tkbmDiv) {
-                tkbmDiv.innerHTML = '<small class="text-danger">Belum ada data TKBM aktif</small>';
+            } else {
+                tkbmDiv.innerHTML = '<small class="text-danger fw-bold">Belum ada data TKBM aktif</small>';
             }
         } catch(e) { console.error('Load deps error:', e); }
     }
+
+    document.getElementById('t1_idSupir').addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        document.getElementById('t1_namaSupir').value = option ? option.text : '';
+    });
+
+    document.getElementById('t1_namaPabrik').addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        if (option && option.dataset.tarif !== undefined && option.value) {
+            const tarif = parseFloat(option.dataset.tarif) || 0;
+            document.getElementById('t1_hargaPerKg').value = formatRupiah(tarif);
+        } else {
+            document.getElementById('t1_hargaPerKg').value = '';
+        }
+    });
 
     document.getElementById('formTimbang1').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -428,9 +610,12 @@
 
         const data = {
           no_polisi: document.getElementById('t1_noPolisi').value,
-          id_supir: null,
+          id_supir: document.getElementById('t1_idSupir').value,
           nama_supir: document.getElementById('t1_namaSupir').value,
           nama_pabrik: document.getElementById('t1_namaPabrik').value,
+          harga_per_kg: parseRupiah(document.getElementById('t1_hargaPerKg')?.value),
+          pinjaman: parseRupiah(document.getElementById('t1_pinjaman')?.value),
+          biaya_es_jalan: parseRupiah(document.getElementById('t1_biayaEsJalan')?.value),
           jenis_material: document.getElementById('t1_jenisMaterial').value,
           berat: document.getElementById('berat1').value,
           keterangan: document.getElementById('t1_keterangan').value,
@@ -492,11 +677,11 @@
           document.getElementById('modalSusutValue').textContent = `${susut.toLocaleString('id-ID')} Kg (${persen}%)`;
           const preview = document.getElementById('modalSusutPreview');
           if (susut >= 0) {
-            preview.style.borderColor = '#f59e0b'; preview.style.background = '#451a03';
-            document.getElementById('modalSusutValue').style.color = '#fbbf24';
+            preview.style.borderColor = '#f59e0b'; preview.style.background = '#fffbe6';
+            document.getElementById('modalSusutValue').style.color = '#d97706';
           } else {
-            preview.style.borderColor = '#10b981'; preview.style.background = '#064e3b';
-            document.getElementById('modalSusutValue').style.color = '#34d399';
+            preview.style.borderColor = '#10b981'; preview.style.background = '#ecfdf5';
+            document.getElementById('modalSusutValue').style.color = '#059669';
           }
         }
     });
@@ -545,7 +730,7 @@
             window.serialPengiriman.targetInputId = 'berat1';
             const btn = document.getElementById('captureWeightPengiriman');
             btn.textContent = 'AMBIL BERAT';
-            btn.className = 'terminal-btn terminal-btn-warning w-50';
+            btn.className = 'btn btn-warning w-50 py-2 fw-bold text-dark';
             isWeightLockedPengiriman = false;
         }
     });
@@ -556,7 +741,7 @@
             window.serialPengiriman.targetInputId = 'berat2';
             const btn = document.getElementById('captureWeightPengiriman');
             btn.textContent = 'AMBIL BERAT';
-            btn.className = 'terminal-btn terminal-btn-warning w-50';
+            btn.className = 'btn btn-warning w-50 py-2 fw-bold text-dark';
             isWeightLockedPengiriman = false;
         }
     });
@@ -599,21 +784,17 @@
           customRegex: customRegex,
           autoReconnect: true,
           onConnect: () => {
-            document.getElementById('weightStatusPengiriman').textContent = 'Terhubung \u2713';
-            document.getElementById('weightStatusPengiriman').style.color = '#10b981';
+            document.getElementById('weightStatusPengiriman').textContent = 'Terhubung';
+            document.getElementById('weightStatusPengiriman').className = 'badge bg-success px-3 py-1';
             document.getElementById('toggleConnectionPengiriman').textContent = 'PUTUSKAN';
-            document.getElementById('toggleConnectionPengiriman').className = 'terminal-btn terminal-btn-danger w-50';
-            // document.getElementById('berat1').readOnly = true;
-            // document.getElementById('berat2').readOnly = true;
+            document.getElementById('toggleConnectionPengiriman').className = 'btn btn-outline-danger w-50 py-2 fw-bold';
           },
           onDisconnect: () => {
             document.getElementById('weightDisplayPengiriman').textContent = '0 KG';
             document.getElementById('weightStatusPengiriman').textContent = 'Terputus';
-            document.getElementById('weightStatusPengiriman').style.color = '#ef4444';
+            document.getElementById('weightStatusPengiriman').className = 'badge bg-secondary px-3 py-1';
             document.getElementById('toggleConnectionPengiriman').textContent = 'SAMBUNGKAN';
-            document.getElementById('toggleConnectionPengiriman').className = 'terminal-btn w-50';
-            // document.getElementById('berat1').readOnly = false;
-            // document.getElementById('berat2').readOnly = false;
+            document.getElementById('toggleConnectionPengiriman').className = 'btn btn-outline-secondary w-50 py-2 fw-bold';
           },
           onData: (weight) => {
             const wd = document.getElementById('weightDisplayPengiriman');
@@ -635,7 +816,7 @@
           document.getElementById(activeInputId).value = w;
           isWeightLockedPengiriman = true;
           this.textContent = 'TERKUNCI';
-          this.className = 'terminal-btn terminal-btn-success w-50';
+          this.className = 'btn btn-success w-50 py-2 fw-bold';
           if (activeInputId === 'berat2') updateNetto();
         } else {
           Swal.fire({ icon:'warning', title:'Perhatian', text:'Belum ada berat dari timbangan' });

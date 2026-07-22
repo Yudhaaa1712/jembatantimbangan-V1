@@ -57,7 +57,7 @@
             /* 11pt is equivalent to 10 CPI on dot matrix */
             font-weight: bold;
             /* Semua tulisan bold */
-            line-height: 1.15;
+            line-height: 1.05;
             margin: 0;
             color: #000;
         }
@@ -96,17 +96,6 @@ Memuat data...
             let spaces = width - String(left).length - String(right).length;
             if (spaces < 1) spaces = 1;
             return left + ' '.repeat(spaces) + right;
-        }
-        function leftAndCenterLine(leftStr, centerStr, width = 80) {
-            const left = String(leftStr || '');
-            const center = String(centerStr || '');
-            const centerPos = Math.floor((width - center.length) / 2);
-            if (left.length >= centerPos) {
-                return left + '  ' + center;
-            } else {
-                const gap = centerPos - left.length;
-                return left + ' '.repeat(gap) + center;
-            }
         }
         function wrapText(text, width) {
             let lines = String(text).split('\n');
@@ -153,22 +142,14 @@ Memuat data...
 
         const fmt = n => n ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(n)) : '0';
         function wLine(label, val) {
-            const l = padRight(label, 18);
-            const v = padLeft(fmt(val), 14);
+            const l = padRight(label, 17);
+            const v = padLeft(String(Math.round(val || 0)), 16);
             return l + ': ' + v + ' kg';
         }
         function rpLine(label, val) {
-            const l = padRight(label, 18);
+            const l = padRight(label, 17);
             const v = padLeft('Rp ' + fmt(val), 19);
             return l + ': ' + v;
-        }
-        function formatIndonesianDate(dateInput) {
-            if (!dateInput) return '-';
-            const d = new Date(dateInput);
-            if (isNaN(d.getTime())) return '-';
-            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
         }
 
         async function loadPrintSettings() {
@@ -178,12 +159,12 @@ Memuat data...
                 if (r.success && r.data) {
                     const s = r.data;
                     window.setupSettings = s;
-                    const offsetX = parseFloat(s.print_offset_x) !== undefined && !isNaN(parseFloat(s.print_offset_x)) ? parseFloat(s.print_offset_x) : 0.5;
-                    const offsetY = parseFloat(s.print_offset_y) !== undefined && !isNaN(parseFloat(s.print_offset_y)) ? parseFloat(s.print_offset_y) : 0;
-                    const contentWidth = parseFloat(s.print_content_width) || 22;
+                    const offsetX = (s.print_offset_x !== undefined && s.print_offset_x !== null && s.print_offset_x !== '' && !isNaN(parseFloat(s.print_offset_x))) ? parseFloat(s.print_offset_x) : 0;
+                    const offsetY = (s.print_offset_y !== undefined && s.print_offset_y !== null && s.print_offset_y !== '' && !isNaN(parseFloat(s.print_offset_y))) ? parseFloat(s.print_offset_y) : 0;
+                    const contentWidth = parseFloat(s.print_content_width) || 19;
                     const paperW = parseFloat(s.print_paper_width) || 9.5;
                     const paperH = parseFloat(s.print_paper_height) || 11;
-                    const fontSize = parseFloat(s.print_font_size) || 13;
+                    const fontSize = parseFloat(s.print_font_size) || 11;
                     const lineWidth = parseInt(s.print_line_width) || 80;
 
                     const style = document.createElement('style');
@@ -218,6 +199,9 @@ Memuat data...
                             pre {
                                 font-size: ${fontSize}pt !important;
                                 width: 100% !important;
+                                line-height: 1.05 !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
                             }
                         }
                     `;
@@ -257,11 +241,10 @@ Memuat data...
                 try { activeFeatures = JSON.parse(s.active_features); } catch(e) {}
             }
 
-            const garisSingle = '─'.repeat(W);
-            const garisDouble = '═'.repeat(W);
-            const cName = d.company?.company_name || 'PERUSAHAAN JAYA';
+            const garis = '─'.repeat(W);
+            const cName = d.company?.company_name || 'NAMA PERUSAHAAN';
             const cAddr = d.company?.company_address || 'ALAMAT PERUSAHAAN';
-            const cPhone = d.company?.company_phone || '08123456789';
+            const cPhone = d.company?.company_phone || 'TELEPON PERUSAHAAN';
             const header1 = centerLine(cName, W);
             const header2 = centerLine(cAddr, W);
             const header3 = centerLine(cPhone, W);
@@ -269,6 +252,13 @@ Memuat data...
             const noPolisi = (d.no_polisi || '-').toUpperCase();
             const barang = (d.jenis_material || '-').toUpperCase();
             const supplier = (d.nama_supplier || '-').toUpperCase();
+
+            const getFormattedDate = (dateVal) => {
+                const dt = dateVal ? new Date(dateVal) : new Date();
+                const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+                const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+                return `${days[dt.getDay()]} ${String(dt.getDate()).padStart(2, '0')} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
+            };
 
             const extractTimeOnly = (str) => {
                 if (!str) return '-';
@@ -280,58 +270,65 @@ Memuat data...
             let jamKeluar = '-';
             if (d.status === 'selesai' && d.waktu_keluar) {
                 jamKeluar = extractTimeOnly(d.waktu_keluar);
-            } else if (d.waktu_timbangan2) {
-                jamKeluar = extractTimeOnly(d.waktu_timbangan2);
             }
 
-            const dateFormatted = formatIndonesianDate(d.tanggal || d.waktu_timbangan1 || d.waktu_keluar);
+            const dateStr = getFormattedDate(d.waktu_keluar || d.waktu_timbangan1 || d.tanggal);
+
+            function centerDateLine(leftText, centerTextStr, width = 80) {
+                const left = String(leftText || '');
+                const center = String(centerTextStr || '');
+                const targetStart = Math.max(left.length + 1, Math.floor((width - center.length) / 2));
+                const padCount = targetStart - left.length;
+                return left + ' '.repeat(padCount > 0 ? padCount : 1) + center;
+            }
 
             let out = '';
             out += header1 + '\n';
             out += header2 + '\n';
             out += header3 + '\n';
-            out += garisSingle + '\n';
-            out += leftAndCenterLine(d.no_tiket || '', dateFormatted, W) + '\n';
-            out += garisDouble + '\n';
+            out += '═'.repeat(W) + '\n';
+            out += centerDateLine(d.no_tiket, dateStr, W) + '\n';
+            out += '─'.repeat(W) + '\n';
             
             if (t1Fields.material !== false) {
-                out += padRight('Nama Barang', 18) + ': ' + barang + '\n';
+                out += padRight('Nama Barang', 17) + ': ' + barang + '\n';
             }
 
-            out += padRight('Jam Masuk', 18) + ': ' + jamMasuk + '\n';
-            out += padRight('Jam Keluar', 18) + ': ' + jamKeluar + '\n';
+            if (jamMasuk && jamMasuk !== '-') {
+                out += padRight('Jam Masuk', 17) + ': ' + jamMasuk + '\n';
+            }
+
+            if (jamKeluar && jamKeluar !== '-') {
+                out += padRight('Jam Keluar', 17) + ': ' + jamKeluar + '\n';
+            }
 
             if (t1Fields.nama_pengemudi !== false) {
-                out += padRight('Nama Supir', 18) + ': ' + (d.nama_supir || '-').toUpperCase() + '\n';
+                out += padRight('Nama Supir', 17) + ': ' + (d.nama_supir || '-').toUpperCase() + '\n';
             }
 
             if (t1Fields.nama_suplier !== false) {
-                out += padRight('Supplier', 18) + ': ' + supplier + '\n';
-            }
-
-            if (t1Fields.no_kendaraan !== false && d.no_polisi) {
-                out += padRight('No. Kendaraan', 18) + ': ' + noPolisi + '\n';
+                out += padRight('Supplier', 17) + ': ' + supplier + '\n';
             }
 
             if (d.keterangan && d.keterangan.trim() !== '' && (t1Fields.keterangan !== false || t2Fields.keterangan !== false)) {
-                out += padRight('Keterangan', 18) + ': ' + d.keterangan.toUpperCase() + '\n';
+                out += padRight('Keterangan', 17) + ': ' + d.keterangan.toUpperCase() + '\n';
             }
 
             out += '\n';
 
             if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
-                out += padRight('Tipe Tiket', 18) + ': LANGSIR (' + d.jumlah_trip_langsir + ' TRIP)\n';
+                out += padRight('Tipe Tiket', 17) + ': LANGSIR (' + d.jumlah_trip_langsir + ' TRIP)\n';
                 const tripsStr = d.langsir_trips.map(t => Math.round(t.berat_bruto)).join(', ');
-                const wrappedTrips = wrapText(tripsStr, W - 20);
+                const wrappedTrips = wrapText(tripsStr, W - 19);
                 if (wrappedTrips.length > 0) {
-                    out += padRight('Bruto Trip', 18) + ': ' + wrappedTrips[0] + '\n';
+                    out += padRight('Bruto Trip', 17) + ': ' + wrappedTrips[0] + '\n';
                     for (let i = 1; i < wrappedTrips.length; i++) {
-                        out += padRight('', 18) + '  ' + wrappedTrips[i] + '\n';
+                        out += padRight('', 17) + '  ' + wrappedTrips[i] + '\n';
                     }
                 }
                 out += '─'.repeat(W) + '\n';
-                out += wLine('Bruto', d.bruto) + '\n';
-                out += wLine('Tara', d.tara) + '\n';
+                out += wLine('Total Bruto', d.bruto) + '\n';
+                out += wLine(`Tara`, d.tara) + '\n';
             } else {
                 out += wLine('Bruto', d.bruto) + '\n';
                 out += wLine('Tara', d.tara) + '\n';
@@ -340,41 +337,48 @@ Memuat data...
             out += wLine('Netto I', d.netto_awal) + '\n';
 
             if (t2Fields.persen_potongan !== false) {
-                out += wLine('Potongan', d.kg_potongan) + '\n';
+                const labelPotongan = 'Potongan';
+                out += wLine(labelPotongan, d.kg_potongan) + '\n';
             }
             out += wLine('Netto II', d.netto_akhir) + '\n';
 
             const showPrice = (t1Fields.harga !== false || t2Fields.harga !== false);
             if (showPrice) {
-                out += '\n';
+                out += '─'.repeat(38) + '\n';
                 out += rpLine('Harga/Kg', d.harga_per_kg) + '\n';
-
-                const hasDeductions = (d.pot_jalan > 0 || d.pot_pupuk > 0 || d.pot_hutang > 0 || d.pot_hutang_supplier > 0 || d.pot_muat > 0);
-                if (hasDeductions) {
-                    out += rpLine('Total Harga', d.total_awal) + '\n';
-                    if (d.pot_jalan > 0) {
-                        out += rpLine('Potongan Jalan', d.pot_jalan) + '\n';
-                    }
-                    if (d.pot_pupuk > 0) {
-                        out += rpLine('Potongan Pupuk', d.pot_pupuk) + '\n';
-                    }
-                    if (d.pot_hutang > 0) {
-                        out += rpLine('Pot. Hutang Supir', d.pot_hutang) + '\n';
-                    }
-                    if (d.pot_hutang_supplier > 0) {
-                        out += rpLine('Pot. Hut. Supplier', d.pot_hutang_supplier) + '\n';
-                    }
-                    if (d.pot_muat > 0) {
-                        out += rpLine('Upah Bongkar', d.pot_muat) + '\n';
-                    }
-                    out += '─'.repeat(39) + '\n';
-                    out += rpLine('Total Bayar', d.total_akhir) + '\n';
-                } else {
-                    out += '─'.repeat(39) + '\n';
-                    out += rpLine('Total Bayar', d.total_akhir) + '\n';
+                out += rpLine('Total Harga', d.total_awal) + '\n';
+                let hasPotongan = false;
+                if (d.pot_jalan > 0) {
+                    out += rpLine('Potongan Jalan', d.pot_jalan) + '\n';
+                    hasPotongan = true;
+                }
+                if (d.pot_pupuk > 0) {
+                    out += rpLine('Potongan Pupuk', d.pot_pupuk) + '\n';
+                    hasPotongan = true;
+                }
+                if (activeFeatures.hutang === true && t2Fields.potongan_hutang !== false && d.pot_hutang > 0) {
+                    out += rpLine('Potongan Hutang', d.pot_hutang) + '\n';
+                    hasPotongan = true;
+                }
+                if (d.pot_hutang_supplier > 0) {
+                    out += rpLine('Potongan Hutang', d.pot_hutang_supplier) + '\n';
+                    hasPotongan = true;
+                }
+                if (d.pot_muat > 0) {
+                    out += rpLine('Upah Bongkar', d.pot_muat) + '\n';
+                    hasPotongan = true;
+                }
+                if (hasPotongan) {
+                    out += '─'.repeat(38) + '\n';
+                }
+                out += rpLine('Total Bayar', d.total_akhir) + '\n';
+                
+                const setts = window.setupSettings || {};
+                if (setts.print_show_sisa_hutang === 'true' && d.sisa_hutang !== null && d.sisa_hutang !== undefined) {
+                    out += rpLine('Sisa Hutang', d.sisa_hutang) + '\n';
                 }
             }
-            out += '\n\n';
+            out += '\n';
 
             const sSetting = window.setupSettings || {};
             const sigLeftTitle = sSetting.print_sig_left_title || 'Penimbang';
@@ -383,9 +387,9 @@ Memuat data...
             const sigRightType = sSetting.print_sig_right_type || 'supir';
 
             const getSigValue = (type) => {
-                if (type === 'operator') return `( ${(d.nama_operator || 'ADMINISTRATOR').toUpperCase()} )`;
-                if (type === 'supir') return `( ${(d.nama_supir || 'YUDHA').toUpperCase()} )`;
-                if (type === 'supplier') return `( ${(d.nama_supplier || 'SUPPLIER').toUpperCase()} )`;
+                if (type === 'operator') return `( ${(d.nama_operator || '             ').toUpperCase()} )`;
+                if (type === 'supir') return `( ${(d.nama_supir || '             ').toUpperCase()} )`;
+                if (type === 'supplier') return `( ${(d.nama_supplier || '             ').toUpperCase()} )`;
                 if (type === 'kosong') return '(             )';
                 return '';
             };
@@ -423,7 +427,7 @@ Memuat data...
             }
 
             out += titleLine + '\n';
-            out += '\n\n\n\n';
+            out += '\n\n';
             out += valLine + '\n';
             document.getElementById('ticketContent').textContent = out;
         }
@@ -496,14 +500,12 @@ Memuat data...
             out += row('NETTO-2', fmt(d.netto_akhir)) + '\n';
             out += row('HARGA', fmt(d.harga_per_kg)) + '\n';
             out += garisTipis + '\n';
+            out += rowRp('JUMLAH', d.total_awal) + '\n';
             if (totalPotonganRp > 0) {
-                out += rowRp('TOTAL HARGA', d.total_awal) + '\n';
-                out += rowRp('POTONGAN', totalPotonganRp) + '\n';
-                out += garisTipis + '\n';
-                out += rowRp('TOTAL BAYAR', d.total_akhir) + '\n';
-            } else {
-                out += rowRp('TOTAL BAYAR', d.total_akhir) + '\n';
+                out += rowRp('ASAM', totalPotonganRp) + '\n';
             }
+            out += garisTipis + '\n';
+            out += rowRp('JUMLAH', d.total_akhir) + '\n';
             out += garisTebal + '\n';
             const kasir = (d.nama_operator || 'KASIR').toUpperCase();
             let leftName = supplier.length > 15 ? supplier.substring(0, 15) : supplier;
@@ -515,7 +517,7 @@ Memuat data...
             out += '\n' + titleLine + '\n\n\n\n' + valLine + '\n';
 
             // Ensure we use a <pre> tag so formatting is preserved
-            container.innerHTML = `<pre id="ticketContent" style="width: 100%; white-space: pre-wrap; font-family: 'Courier', monospace; font-weight: bold; font-size: 11pt; color: #000; line-height: 1.15; overflow: hidden; margin: 0; padding: 0; padding-top: 30px; padding-left: 20px;">${out}</pre>`;
+            container.innerHTML = `<pre id="ticketContent" style="width: 100%; white-space: pre-wrap; font-family: 'Courier', monospace; font-weight: bold; font-size: 11pt; color: #000; line-height: 1.05; overflow: hidden; margin: 0; padding: 0;">${out}</pre>`;
         }
 
         async function init() {

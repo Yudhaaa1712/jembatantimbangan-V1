@@ -312,6 +312,10 @@
                   <input class="form-check-input feature-toggle" type="checkbox" id="feature_upah" checked>
                   <label class="form-check-label" for="feature_upah">Manajemen Upah</label>
                 </div>
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input feature-toggle" type="checkbox" id="feature_supplier_autofill" checked>
+                  <label class="form-check-label" for="feature_supplier_autofill" title="Otomatis mengisi Harga & Potongan Supplier">Harga Supplier</label>
+                </div>
               </div>
             </div>
             <button type="button" class="btn btn-success mt-3" id="saveFeatureSettings">Simpan Pengaturan Menu</button>
@@ -416,7 +420,7 @@
             <div class="print-info-panel mt-3">
               <div class="print-info-item">
                 <label>Geser X:</label>
-                <input type="number" id="printOffsetX" step="0.1" min="0" value="2.5" onchange="onInfoInputChange()">
+                <input type="number" id="printOffsetX" step="0.1" min="0" value="0" onchange="onInfoInputChange()">
                 <span class="unit">cm</span>
               </div>
               <div class="print-info-item">
@@ -461,6 +465,16 @@
                   <option value="kosong">Kosong (Garis saja)</option>
                   <option value="hide">Sembunyikan</option>
                 </select>
+              </div>
+            </div>
+            
+            <div class="row mt-3 g-3 border-top pt-3">
+              <div class="col-md-4">
+                <label class="form-label fw-bold"><i class="bi bi-receipt"></i> Info Tambahan di Struk</label>
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="printShowSisaHutang" checked onchange="onSisaHutangChange()">
+                  <label class="form-check-label" for="printShowSisaHutang">Tampilkan Sisa Hutang</label>
+                </div>
               </div>
             </div>
 
@@ -563,6 +577,7 @@
             if (document.getElementById('feature_keuangan')) document.getElementById('feature_keuangan').checked = f.keuangan !== false;
             if (document.getElementById('feature_hutang')) document.getElementById('feature_hutang').checked = f.hutang === true;
             if (document.getElementById('feature_upah')) document.getElementById('feature_upah').checked = f.upah !== false;
+            if (document.getElementById('feature_supplier_autofill')) document.getElementById('feature_supplier_autofill').checked = f.supplier_autofill === true;
           } catch(e) {}
         }
       }
@@ -650,7 +665,8 @@
         pengiriman: document.getElementById('feature_pengiriman').checked,
         keuangan: document.getElementById('feature_keuangan').checked,
         hutang: document.getElementById('feature_hutang').checked,
-        upah: document.getElementById('feature_upah') ? document.getElementById('feature_upah').checked : true
+        upah: document.getElementById('feature_upah') ? document.getElementById('feature_upah').checked : true,
+        supplier_autofill: document.getElementById('feature_supplier_autofill').checked
       };
       const res = await fetch('/setup/settings', {
         method: 'POST',
@@ -685,12 +701,12 @@
     // ─── Print Settings Visual Editor ──────────────────────────────────────────
     const PRINT_DEFAULTS = {
       print_mode: 'text',
-      print_offset_x: 0.5,
+      print_offset_x: 0,
       print_offset_y: 0,
-      print_content_width: 22,
+      print_content_width: 19,
       print_paper_width: 9.5,
       print_paper_height: 11,
-      print_font_size: 13,
+      print_font_size: 11,
       print_line_width: 80,
       print_sig_left_title: 'Penimbang',
       print_sig_left_type: 'operator',
@@ -729,6 +745,10 @@
             }
           }
         }
+        
+        if (r.data?.print_show_sisa_hutang !== undefined) {
+          document.getElementById('printShowSisaHutang').checked = String(r.data.print_show_sisa_hutang) === 'true';
+        }
       } catch (e) { console.error('Load print settings error:', e); }
       syncAllInputs();
     }
@@ -749,6 +769,11 @@
       document.getElementById('printSigLeftType').value = printSettings.print_sig_left_type || 'operator';
       document.getElementById('printSigRightTitle').value = printSettings.print_sig_right_title || 'Pengemudi';
       document.getElementById('printSigRightType').value = printSettings.print_sig_right_type || 'supir';
+      
+      const sisaHutangCheck = document.getElementById('printShowSisaHutang');
+      if (sisaHutangCheck) {
+        sisaHutangCheck.checked = String(printSettings.print_show_sisa_hutang) === 'true';
+      }
 
       const w = printSettings.print_paper_width;
       const h = printSettings.print_paper_height;
@@ -820,7 +845,11 @@
       o += pR('Netto II', 17) + ': ' + pL('5.035', 16) + ' kg\n';
       o += '\u2500'.repeat(38) + '\n';
       o += pR('Harga/Kg', 17) + ': ' + pL('Rp 2.500', 19) + '\n';
-      o += pR('Total Harga', 17) + ': ' + pL('Rp 12.587.500', 19) + '\n\n\n';
+      o += pR('Total Harga', 17) + ': ' + pL('Rp 12.587.500', 19) + '\n';
+      if (document.getElementById('printShowSisaHutang')?.checked) {
+          o += pR('Sisa Hutang', 17) + ': ' + pL('Rp 500.000', 19) + '\n';
+      }
+      o += '\n\n\n';
       const sigLeftTitle = printSettings.print_sig_left_title || 'Penimbang';
       const sigLeftType = printSettings.print_sig_left_type || 'operator';
       const sigRightTitle = printSettings.print_sig_right_title || 'Pengemudi';
@@ -1013,6 +1042,11 @@
       printSettings.print_sig_left_type = document.getElementById('printSigLeftType').value;
       printSettings.print_sig_right_title = document.getElementById('printSigRightTitle').value;
       printSettings.print_sig_right_type = document.getElementById('printSigRightType').value;
+      updatePreview();
+    }
+
+    function onSisaHutangChange() {
+      printSettings.print_show_sisa_hutang = document.getElementById('printShowSisaHutang').checked ? 'true' : 'false';
       updatePreview();
     }
 

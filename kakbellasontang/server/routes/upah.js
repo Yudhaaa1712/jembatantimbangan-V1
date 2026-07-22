@@ -95,6 +95,128 @@ router.get('/supir-gaji-preview', async (req, res) => {
   }
 });
 
+// GET /upah-api/rekap-supir-pabrik — Rekap Gaji Supir per Pabrik (Format Excel Klien)
+router.get('/rekap-supir-pabrik', async (req, res) => {
+  try {
+    const supirQuery = cleanInput(req.query.id_supir || req.query.nama_supir || '');
+    const startDate = cleanInput(req.query.start_date || '');
+    const endDate = cleanInput(req.query.end_date || '');
+
+    let sql = `
+      SELECT 
+        pp.id, pp.no_surat_jalan, pp.tanggal, pp.nama_pabrik, pp.nama_supir, pp.id_supir,
+        pp.berat_bruto, pp.berat_tara, pp.netto_ram, pp.netto_pabrik,
+        COALESCE(pp.harga_per_kg, 0) as harga_per_kg,
+        COALESCE(pp.pinjaman, 0) as pinjaman,
+        COALESCE(pp.biaya_es_jalan, 0) as biaya_es_jalan,
+        pp.status
+      FROM pengiriman_pabrik pp
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (supirQuery) {
+      if (!isNaN(parseInt(supirQuery))) {
+        const supirObj = await queryOne(`SELECT nama_supir FROM supir WHERE id = ?`, [parseInt(supirQuery)]);
+        const supirNama = supirObj ? supirObj.nama_supir : '';
+        sql += ` AND (pp.id_supir = ? OR LOWER(pp.nama_supir) = LOWER(?) OR LOWER(pp.nama_supir) = LOWER(?))`;
+        params.push(parseInt(supirQuery), supirQuery, supirNama);
+      } else {
+        sql += ` AND LOWER(pp.nama_supir) LIKE LOWER(?)`;
+        params.push(`%${supirQuery}%`);
+      }
+    }
+
+    if (startDate) {
+      sql += ` AND pp.tanggal >= ?`;
+      params.push(startDate);
+    }
+    if (endDate) {
+      sql += ` AND pp.tanggal <= ?`;
+      params.push(endDate);
+    }
+
+    sql += ` ORDER BY pp.tanggal ASC, pp.id ASC`;
+
+    const rows = await query(sql, params);
+
+    let totalTonase = 0;
+    let totalHasil = 0;
+    let totalPinjaman = 0;
+    let totalEsJalan = 0;
+    let totalHasilBersih = 0;
+
+    const dataFormatted = rows.map(r => {
+      const tonase = parseFloat(r.netto_ram || 0); // Tonase Angkut
+      const hargaKg = parseFloat(r.harga_per_kg || 0);
+      const hasil = tonase * hargaKg;
+      const pinjaman = parseFloat(r.pinjaman || 0);
+      const esJalan = parseFloat(r.biaya_es_jalan || 0);
+      const hBersih = hasil - pinjaman - esJalan;
+
+      totalTonase += tonase;
+      totalHasil += hasil;
+      totalPinjaman += pinjaman;
+      totalEsJalan += esJalan;
+      totalHasilBersih += hBersih;
+
+      return {
+        id: r.id,
+        no_surat_jalan: r.no_surat_jalan,
+        tanggal: r.tanggal,
+        nama_pabrik: r.nama_pabrik,
+        nama_supir: r.nama_supir,
+        tonase_angkut: tonase,
+        harga_per_kg: hargaKg,
+        hasil: hasil,
+        pinjaman: pinjaman,
+        biaya_es_jalan: esJalan,
+        hasil_bersih: hBersih,
+        status: r.status
+      };
+    });
+
+    return jsonResponse(res, true, 'Data Rekap Supir Pabrik', {
+      items: dataFormatted,
+      summary: {
+        total_tonase: totalTonase,
+        total_hasil: totalHasil,
+        total_pinjaman: totalPinjaman,
+        total_es_jalan: totalEsJalan,
+        total_hasil_bersih: totalHasilBersih,
+        total_trip: dataFormatted.length
+      }
+    });
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// POST /upah-api/update-rekap-item — Update Harga/Kg, Pinjaman, atau Es+Jalan per Item Pengiriman
+router.post('/update-rekap-item', async (req, res) => {
+  try {
+    const id = parseInt(req.body.id);
+    const hargaKg = parseFloat(req.body.harga_per_kg) || 0;
+    const pinjaman = parseFloat(req.body.pinjaman) || 0;
+    const biayaEsJalan = parseFloat(req.body.biaya_es_jalan) || 0;
+
+    if (!id) {
+      return jsonResponse(res, false, 'ID Pengiriman tidak valid');
+    }
+
+    await query(
+      `UPDATE pengiriman_pabrik SET 
+       harga_per_kg = ?, pinjaman = ?, biaya_es_jalan = ?, updated_at = datetime('now', 'localtime')
+       WHERE id = ?`,
+      [hargaKg, pinjaman, biayaEsJalan, id]
+    );
+
+    return jsonResponse(res, true, 'Item rekap berhasil diperbarui');
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
 // POST /upah-api/gaji — Simpan pembayaran gaji supir
 router.post('/gaji', requireRole('admin'), async (req, res) => {
   try {

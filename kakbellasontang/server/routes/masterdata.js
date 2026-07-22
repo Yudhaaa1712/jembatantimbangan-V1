@@ -155,93 +155,6 @@ router.delete('/kendaraan/:id', requireRole('admin'), async (req, res) => {
   } catch (err) { return jsonResponse(res, false, err.message); }
 });
 
-// Helper date filter for tonase
-function buildDateCondition(dateFilter, startDate, endDate) {
-  switch (dateFilter) {
-    case 'today':      return { sql: `DATE(t.tanggal) = DATE('now', 'localtime')`, params: [] };
-    case 'yesterday':  return { sql: `DATE(t.tanggal) = DATE('now', 'localtime', '-1 day')`, params: [] };
-    case 'week':       return { sql: `DATE(t.tanggal) >= DATE('now', 'localtime', '-7 days')`, params: [] };
-    case 'half_month': return { sql: `DATE(t.tanggal) >= DATE('now', 'localtime', '-15 days')`, params: [] };
-    case 'month':      return { sql: `strftime('%m', t.tanggal) = strftime('%m', 'now', 'localtime') AND strftime('%Y', t.tanggal) = strftime('%Y', 'now', 'localtime')`, params: [] };
-    case 'half_year':  return { sql: `DATE(t.tanggal) >= DATE('now', 'localtime', '-6 months')`, params: [] };
-    case 'year':       return { sql: `strftime('%Y', t.tanggal) = strftime('%Y', 'now', 'localtime')`, params: [] };
-    case 'custom_range':
-      if (startDate && endDate) {
-        return { sql: `DATE(t.tanggal) >= DATE(?) AND DATE(t.tanggal) <= DATE(?)`, params: [startDate, endDate] };
-      } else if (startDate) {
-        return { sql: `DATE(t.tanggal) >= DATE(?)`, params: [startDate] };
-      } else if (endDate) {
-        return { sql: `DATE(t.tanggal) <= DATE(?)`, params: [endDate] };
-      }
-      return { sql: `1=1`, params: [] };
-    case 'all': return { sql: `1=1`, params: [] };
-    default:
-      if (startDate || endDate) {
-        let conds = [];
-        let p = [];
-        if (startDate) { conds.push(`DATE(t.tanggal) >= DATE(?)`); p.push(startDate); }
-        if (endDate) { conds.push(`DATE(t.tanggal) <= DATE(?)`); p.push(endDate); }
-        return { sql: conds.join(' AND '), params: p };
-      }
-      return { sql: `1=1`, params: [] };
-  }
-}
-
-// Rekapitulasi Tonase Kendaraan & Supir (BM & Supir Tonnage)
-router.get('/tonase-kendaraan', async (req, res) => {
-  try {
-    const dateFilter = req.query.date_filter || '';
-    const startDate  = req.query.start_date;
-    const endDate    = req.query.end_date;
-    const search     = req.query.search || '';
-
-    const { sql: dateSql, params: dateParams } = buildDateCondition(dateFilter, startDate, endDate);
-
-    let whereClause = `WHERE t.status = 'selesai' AND ${dateSql}`;
-    const params = [...dateParams];
-
-    if (search) {
-      whereClause += ` AND (t.no_polisi LIKE ? OR t.nama_supir LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`);
-    }
-
-    let sql = `
-      SELECT 
-        UPPER(t.no_polisi) as no_polisi,
-        COALESCE(UPPER(NULLIF(t.nama_supir,'')), UPPER(NULLIF(k.nama_supir,'')), '-') as nama_supir,
-        COUNT(t.id) as total_trip,
-        SUM(COALESCE(t.netto_akhir, t.berat_netto, 0)) as total_netto_kg,
-        ROUND(SUM(COALESCE(t.netto_akhir, t.berat_netto, 0)) / 1000.0, 2) as total_tonase,
-        MAX(t.tanggal) as transaksi_terakhir
-      FROM transaksi_timbangan t
-      LEFT JOIN kendaraan k ON UPPER(t.no_polisi) = UPPER(k.no_polisi)
-      ${whereClause}
-      GROUP BY UPPER(t.no_polisi), COALESCE(UPPER(NULLIF(t.nama_supir,'')), UPPER(NULLIF(k.nama_supir,'')), '-')
-      ORDER BY total_netto_kg DESC
-    `;
-
-    const rawData = await query(sql, params);
-
-    let grandTotalTonase = 0;
-    let grandTotalTrip = 0;
-
-    rawData.forEach(item => {
-      grandTotalTonase += (item.total_tonase || 0);
-      grandTotalTrip += (item.total_trip || 0);
-    });
-
-    return jsonResponse(res, true, 'Rekap Tonase Kendaraan & Supir', {
-      items: rawData,
-      summary: {
-        grand_total_tonase: Math.round(grandTotalTonase * 100) / 100,
-        grand_total_trip: grandTotalTrip
-      }
-    });
-  } catch (err) {
-    return jsonResponse(res, false, err.message);
-  }
-});
-
 // ─── CUSTOMER ─────────────────────────────────────────────────────────────────
 
 router.get('/customer', async (req, res) => {
@@ -355,6 +268,76 @@ router.delete('/supir/:id', requireRole('admin'), async (req, res) => {
     await query(`UPDATE supir SET status='inactive', updated_at=datetime('now', 'localtime') WHERE id=?`, [id]);
     return jsonResponse(res, true, 'Supir dinonaktifkan');
   } catch (err) { return jsonResponse(res, false, err.message); }
+});
+
+// ─── PABRIK (PKS) ─────────────────────────────────────────────────────────────
+
+router.get('/pabrik', async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    let sql = `SELECT * FROM pabrik WHERE 1=1`;
+    const params = [];
+    if (search) {
+      sql += ` AND nama_pabrik LIKE ?`;
+      params.push(`%${search}%`);
+    }
+    sql += ` ORDER BY nama_pabrik ASC`;
+    const data = await query(sql, params);
+    return jsonResponse(res, true, 'Pabrik list', data);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.post('/pabrik', requireRole('admin'), async (req, res) => {
+  try {
+    const nama = cleanInput(req.body.nama_pabrik).toUpperCase();
+    const tarif = parseFloat(req.body.tarif_angkut) || 0;
+
+    if (!nama) return jsonResponse(res, false, 'Nama Pabrik tidak boleh kosong');
+
+    const existing = await queryOne(`SELECT id FROM pabrik WHERE LOWER(nama_pabrik) = LOWER(?)`, [nama]);
+    if (existing) return jsonResponse(res, false, 'Pabrik dengan nama tersebut sudah ada');
+
+    const result = await query(
+      `INSERT INTO pabrik (nama_pabrik, tarif_angkut, status, created_at) VALUES (?, ?, 'active', datetime('now', 'localtime'))`,
+      [nama, tarif]
+    );
+
+    return jsonResponse(res, true, 'Pabrik berhasil ditambahkan', { id: result.insertId });
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.put('/pabrik/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const nama = cleanInput(req.body.nama_pabrik).toUpperCase();
+    const tarif = parseFloat(req.body.tarif_angkut) || 0;
+    const status = cleanInput(req.body.status) || 'active';
+
+    if (!id || !nama) return jsonResponse(res, false, 'Data tidak valid');
+
+    await query(
+      `UPDATE pabrik SET nama_pabrik = ?, tarif_angkut = ?, status = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`,
+      [nama, tarif, status, id]
+    );
+
+    return jsonResponse(res, true, 'Pabrik berhasil diperbarui');
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.delete('/pabrik/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await query(`UPDATE pabrik SET status = 'inactive', updated_at = datetime('now', 'localtime') WHERE id = ?`, [id]);
+    return jsonResponse(res, true, 'Pabrik dinonaktifkan');
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
 });
 
 // ─── ACTIVITY LOGS ────────────────────────────────────────────────────────────

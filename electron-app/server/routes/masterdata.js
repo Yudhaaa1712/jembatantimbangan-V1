@@ -270,6 +270,76 @@ router.delete('/supir/:id', requireRole('admin'), async (req, res) => {
   } catch (err) { return jsonResponse(res, false, err.message); }
 });
 
+// ─── PABRIK (PKS) ─────────────────────────────────────────────────────────────
+
+router.get('/pabrik', async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    let sql = `SELECT * FROM pabrik WHERE 1=1`;
+    const params = [];
+    if (search) {
+      sql += ` AND nama_pabrik LIKE ?`;
+      params.push(`%${search}%`);
+    }
+    sql += ` ORDER BY nama_pabrik ASC`;
+    const data = await query(sql, params);
+    return jsonResponse(res, true, 'Pabrik list', data);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.post('/pabrik', requireRole('admin'), async (req, res) => {
+  try {
+    const nama = cleanInput(req.body.nama_pabrik).toUpperCase();
+    const tarif = parseFloat(req.body.tarif_angkut) || 0;
+
+    if (!nama) return jsonResponse(res, false, 'Nama Pabrik tidak boleh kosong');
+
+    const existing = await queryOne(`SELECT id FROM pabrik WHERE LOWER(nama_pabrik) = LOWER(?)`, [nama]);
+    if (existing) return jsonResponse(res, false, 'Pabrik dengan nama tersebut sudah ada');
+
+    const result = await query(
+      `INSERT INTO pabrik (nama_pabrik, tarif_angkut, status, created_at) VALUES (?, ?, 'active', datetime('now', 'localtime'))`,
+      [nama, tarif]
+    );
+
+    return jsonResponse(res, true, 'Pabrik berhasil ditambahkan', { id: result.insertId });
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.put('/pabrik/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const nama = cleanInput(req.body.nama_pabrik).toUpperCase();
+    const tarif = parseFloat(req.body.tarif_angkut) || 0;
+    const status = cleanInput(req.body.status) || 'active';
+
+    if (!id || !nama) return jsonResponse(res, false, 'Data tidak valid');
+
+    await query(
+      `UPDATE pabrik SET nama_pabrik = ?, tarif_angkut = ?, status = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`,
+      [nama, tarif, status, id]
+    );
+
+    return jsonResponse(res, true, 'Pabrik berhasil diperbarui');
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.delete('/pabrik/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await query(`UPDATE pabrik SET status = 'inactive', updated_at = datetime('now', 'localtime') WHERE id = ?`, [id]);
+    return jsonResponse(res, true, 'Pabrik dinonaktifkan');
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
 // ─── ACTIVITY LOGS ────────────────────────────────────────────────────────────
 
 router.get('/activity-logs', requireRole('admin'), async (req, res) => {
