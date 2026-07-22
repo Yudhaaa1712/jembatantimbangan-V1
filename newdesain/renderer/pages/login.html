@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Weighbridge Arroyan Jv Teknik</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+  <link rel="stylesheet" href="/assets/css/bw-theme.css">
+  <link rel="stylesheet" href="/assets/css/tailwind.min.css">
+</head>
+<body class="no-sidebar bg-neoBg min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-bold">
+  <!-- Dynamic grid background pattern -->
+  <div class="absolute inset-0 z-0 opacity-15 pointer-events-none" style="background-image: radial-gradient(#000000 2px, transparent 2px); background-size: 24px 24px;"></div>
+  
+  <!-- Floating Neo-Brutalism background boxes for decoration -->
+  <div class="hidden md:block absolute w-48 h-48 bg-neoYellow border-4 border-black -top-12 -left-12 -rotate-12 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"></div>
+  <div class="hidden md:block absolute w-64 h-64 bg-neoPink border-4 border-black -bottom-16 -right-16 rotate-12 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"></div>
+  <div class="hidden md:block absolute w-32 h-32 bg-neoGreen border-4 border-black top-1/4 right-10 -rotate-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"></div>
+  <div class="hidden md:block absolute w-24 h-24 bg-neoBlue border-4 border-black bottom-1/4 left-10 rotate-45 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"></div>
+
+  <div class="relative z-10 w-full max-w-5xl bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-hidden flex flex-col md:flex-row">
+    <!-- Left side banner -->
+    <div class="md:w-1/2 bg-neoYellow border-b-4 md:border-b-0 md:border-r-4 border-black p-8 md:p-12 flex flex-col justify-between">
+      <div class="brand-logo bg-white border-4 border-black p-4 inline-block self-start shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] mb-8">
+        <img src="/assets/img/arroyan.png" alt="Logo" class="h-16 object-contain" onerror="this.style.display='none'">
+      </div>
+      <div>
+        <h2 class="text-4xl md:text-5xl font-black uppercase text-black tracking-tight leading-none mb-4">SISTEM JEMBATAN TIMBANGAN</h2>
+        <p class="text-black font-extrabold text-sm md:text-base border-t-2 border-black pt-4">Sistem timbangan digital terintegrasi untuk pengelolaan data transaksi yang akurat dan efisien.</p>
+      </div>
+      <div class="mt-8 text-black text-xs font-black tracking-widest uppercase">
+        © ARROYAN JV TEKNIK
+      </div>
+    </div>
+    
+    <!-- Right side form -->
+    <div class="md:w-1/2 p-8 md:p-12 flex flex-col justify-center bg-white">
+      <div class="logo-section mb-8">
+        <h1 class="text-3xl font-black text-black uppercase tracking-wide leading-none mb-1">SELAMAT DATANG</h1>
+        <p class="text-black font-extrabold text-xs tracking-wider uppercase opacity-70">Weighbridge - Arroyan Jv Teknik</p>
+      </div>
+      
+      <div id="alert-message" class="alert mb-6" style="display:none"></div>
+      
+      <form id="loginForm" class="space-y-6">
+        <div>
+          <label for="username" class="text-sm font-black text-black uppercase tracking-wider block mb-2">Username</label>
+          <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required autocomplete="username" style="border-width: 2px !important;" autofocus>
+        </div>
+        <div>
+          <label for="password" class="text-sm font-black text-black uppercase tracking-wider block mb-2">Password</label>
+          <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password" required autocomplete="current-password" style="border-width: 2px !important;">
+        </div>
+        <div class="flex items-center mb-6">
+          <input type="checkbox" class="form-check-input h-5 w-5 border-2 border-black rounded-none checked:bg-neoYellow cursor-pointer accent-black" id="remember" style="transform: none; margin-top: 0;">
+          <label class="form-check-label ms-3 text-xs font-extrabold text-black uppercase tracking-wider cursor-pointer" for="remember">Ingat saya di perangkat ini</label>
+        </div>
+        <button type="submit" class="btn btn-primary w-full bg-neoPink hover:bg-[#ff3399] text-white font-black text-base py-3 uppercase tracking-wider" id="btnLogin" style="border-width: 2px !important;">
+          <span id="btnSpinner" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display:none"></span>
+          <span id="btnText">Login</span>
+        </button>
+      </form>
+    </div>
+  </div>
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const userInp = document.getElementById('username');
+    if (userInp) {
+      setTimeout(() => { userInp.focus(); }, 100);
+    }
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnLogin');
+    const spinner = document.getElementById('btnSpinner');
+    const btnText = document.getElementById('btnText');
+    const alertEl = document.getElementById('alert-message');
+
+    btn.disabled = true;
+    spinner.style.display = 'inline-block';
+    btnText.textContent = 'Memproses...';
+    alertEl.style.display = 'none';
+
+    try {
+      const formData = new FormData(this);
+      const response = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: formData.get('username'),
+          password: formData.get('password')
+        })
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        btnText.textContent = 'Berhasil!';
+        window.location.href = result.data?.redirect || '/timbangan/1';
+      } else {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = result.message || 'Login gagal';
+        alertEl.style.display = 'block';
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Login';
+      }
+    } catch (err) {
+      alertEl.className = 'alert alert-danger';
+      alertEl.textContent = 'Terjadi kesalahan koneksi';
+      alertEl.style.display = 'block';
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = 'Login';
+    }
+  });
+  </script>
+</body>
+</html>

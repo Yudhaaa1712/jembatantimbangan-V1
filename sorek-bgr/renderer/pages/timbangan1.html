@@ -233,6 +233,7 @@
         
         if (r.data.timbangan1_fields) {
           const fields = JSON.parse(r.data.timbangan1_fields);
+          window.t1Fields = fields;
           const fieldMap = {
             no_kendaraan: 'field_no_kendaraan',
             nama_pengemudi: 'field_nama_pengemudi',
@@ -298,7 +299,7 @@
 
     if (!val) {
       validationEl.style.display = 'none';
-      if (fieldHarga) fieldHarga.style.display = 'none';
+      if (fieldHarga) fieldHarga.style.display = (window.t1Fields && window.t1Fields.harga === false) ? 'none' : '';
       return;
     }
 
@@ -317,7 +318,7 @@
     } else {
       // Unregistered supplier -> do nothing (hide validation element)
       validationEl.style.display = 'none';
-      if (fieldHarga) fieldHarga.style.display = 'none';
+      if (fieldHarga) fieldHarga.style.display = (window.t1Fields && window.t1Fields.harga === false) ? 'none' : '';
     }
   });
 

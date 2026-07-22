@@ -497,7 +497,7 @@ router.post('/ajax', async (req, res) => {
 
       // ── Delete / cancel timbangan 1 ──────────────────────────────────────
       case 'delete_timbangan1': {
-        if (user.role !== 'admin') return jsonResponse(res, false, 'Hanya admin yang bisa membatalkan transaksi');
+        if (user.role !== 'admin' && user.role !== 'operator') return jsonResponse(res, false, 'Hanya admin atau operator yang bisa membatalkan transaksi');
         const id = parseInt(req.body.id);
         const reason = cleanInput(req.body.cancel_reason) || 'Dibatalkan dari Timbangan 1';
         if (!id) return jsonResponse(res, false, 'ID tidak valid');

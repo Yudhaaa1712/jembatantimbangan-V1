@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Surat Jalan</title>
+  <style>
+    @page { size: A5 landscape; margin: 8mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #000; padding: 10px; }
+    .sj-container { width: 100%; max-width: 210mm; margin: 0 auto; }
+    .company-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+    .company-name { font-size: 18px; font-weight: bold; text-transform: uppercase; }
+    .company-address { font-size: 10px; margin-top: 2px; }
+    .sj-title { text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline; margin: 10px 0; }
+    .sj-number { text-align: center; font-size: 12px; margin-bottom: 10px; color: #333; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 20px; margin-bottom: 12px; font-size: 11px; }
+    .info-item { display: flex; }
+    .info-label { width: 120px; font-weight: bold; }
+    .info-value { flex: 1; border-bottom: 1px dotted #999; }
+    .weight-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    .weight-table th, .weight-table td { border: 1px solid #000; padding: 6px 10px; font-size: 11px; }
+    .weight-table th { background: #f0f0f0; text-align: center; font-weight: bold; }
+    .weight-table td { text-align: right; }
+    .weight-table td:first-child { text-align: left; font-weight: bold; }
+    .netto-row { background: #e8f5e9; font-weight: bold; font-size: 12px; }
+    .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; text-align: center; }
+    .sig-box { border: 1px solid #ccc; padding: 8px; }
+    .sig-title { font-weight: bold; font-size: 11px; margin-bottom: 40px; }
+    .sig-line { border-top: 1px solid #000; margin-top: 5px; padding-top: 3px; font-size: 10px; }
+    .notes { font-size: 10px; margin-top: 8px; color: #555; }
+    
+    @media screen {
+      body {
+        background: #f4f4f0;
+        padding: 40px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .sj-container {
+        background: #ffffff;
+        border: 3px solid #000000;
+        box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+        padding: 30px;
+        margin: 20px auto;
+      }
+      .btn-cetak {
+        background: #00ff66 !important;
+        color: #000000 !important;
+        border: 2px solid #000000 !important;
+        border-radius: 0px !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        box-shadow: 2px 2px 0px 0px rgba(0,0,0,1) !important;
+        transition: all 0.07s ease !important;
+      }
+      .btn-cetak:hover {
+        background: #33ff85 !important;
+        transform: translate(1px, 1px);
+        box-shadow: 1px 1px 0px 0px rgba(0,0,0,1) !important;
+      }
+      .btn-tutup {
+        background: #ff007f !important;
+        color: #ffffff !important;
+        border: 2px solid #000000 !important;
+        border-radius: 0px !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        box-shadow: 2px 2px 0px 0px rgba(0,0,0,1) !important;
+        transition: all 0.07s ease !important;
+      }
+      .btn-tutup:hover {
+        background: #ff3399 !important;
+        transform: translate(1px, 1px);
+        box-shadow: 1px 1px 0px 0px rgba(0,0,0,1) !important;
+      }
+    }
+    
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="text-align:center;margin-bottom:20px;">
+    <button class="btn btn-cetak" onclick="window.print()" style="font-size:14px;cursor:pointer;">🖨️ Cetak Surat Jalan</button>
+    <button class="btn btn-tutup" onclick="window.close()" style="font-size:14px;cursor:pointer;margin-left:10px;">✕ Tutup</button>
+  </div>
+
+  <div class="sj-container" id="sjContent">
+    <div class="company-header">
+      <div class="company-name" id="companyName">PERUSAHAAN</div>
+      <div class="company-address" id="companyAddress">Alamat</div>
+      <div class="company-address" id="companyPhone">Telepon</div>
+    </div>
+
+    <div class="sj-title">SURAT JALAN</div>
+    <div class="sj-number">No: <strong id="noSJ">-</strong></div>
+
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">Tanggal</span><span class="info-value" id="sjTanggal">-</span></div>
+      <div class="info-item"><span class="info-label">No. Polisi</span><span class="info-value" id="sjPolisi">-</span></div>
+      <div class="info-item"><span class="info-label">Nama Supir</span><span class="info-value" id="sjSupir">-</span></div>
+      <div class="info-item"><span class="info-label">Tujuan Pabrik</span><span class="info-value" id="sjPabrik">-</span></div>
+    </div>
+
+    <table class="weight-table">
+      <thead>
+        <tr><th style="width:40%;">Keterangan</th><th>Berat (Kg)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Berat Bruto</td><td id="sjBruto">0</td></tr>
+        <tr><td>Berat Tara</td><td id="sjTara">0</td></tr>
+        <tr class="netto-row"><td>Netto</td><td id="sjNetto">0</td></tr>
+      </tbody>
+    </table>
+
+    <div class="notes">Keterangan: <span id="sjKeterangan">-</span></div>
+
+    <div class="signature-grid">
+      <div class="sig-box">
+        <div class="sig-title">Pengirim</div>
+        <div class="sig-line">( ........................ )</div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-title">Supir</div>
+        <div class="sig-line">( <span id="sigSupir">........................</span> )</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  async function loadData() {
+    const pathParts = window.location.pathname.split('/');
+    const id = pathParts[pathParts.length - 1];
+
+    // Load shipment data
+    try {
+      const res = await fetch(`/pengiriman/detail/${id}`);
+      const r = await res.json();
+      if (r.success) {
+        const d = r.data;
+        
+        // Isi Header (Company)
+        document.getElementById('companyName').textContent = d.company?.company_name || 'PERUSAHAAN';
+        document.getElementById('companyAddress').textContent = d.company?.company_address || '';
+        document.getElementById('companyPhone').textContent = d.company?.company_phone || '';
+
+        // Isi Data Surat Jalan
+        document.getElementById('noSJ').textContent = d.no_surat_jalan;
+        document.getElementById('sjTanggal').textContent = d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID') : '-';
+        document.getElementById('sjPolisi').textContent = d.no_polisi;
+        document.getElementById('sjSupir').textContent = d.nama_supir;
+        document.getElementById('sjPabrik').textContent = d.nama_pabrik;
+        document.getElementById('sjBruto').textContent = Number(d.berat_bruto).toLocaleString('id-ID');
+        document.getElementById('sjTara').textContent = Number(d.berat_tara).toLocaleString('id-ID');
+        document.getElementById('sjNetto').textContent = Number(d.netto_ram).toLocaleString('id-ID');
+        document.getElementById('sjKeterangan').textContent = d.keterangan || '-';
+        document.getElementById('sigSupir').textContent = d.nama_supir;
+
+        // Auto print after load
+        setTimeout(() => window.print(), 500);
+      }
+    } catch(e) { console.error('Error loading data:', e); }
+  }
+  document.addEventListener('DOMContentLoaded', loadData);
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+</html>

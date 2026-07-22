@@ -265,28 +265,20 @@ Memuat data...
                 tglKeluar = d.waktu_keluar ? new Date(d.tanggal || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
             }
 
-            const kananTiket = rightCol('No. Tiket', d.no_tiket);
-            const kananMasuk = rightCol('Jam/ Tanggal Masuk', jamMasuk + ' ' + tglMasuk);
-            const kananKeluar = rightCol('Jam/ Tanggal Keluar', jamKeluar + ' ' + tglKeluar);
-
             let out = '';
             out += header1 + '\n';
             out += header2 + '\n';
             out += header3 + '\n';
             out += garis + '\n';
-            out += splitLine('Cetakan 1', kananTiket, W) + '\n';
+            out += centerLine(`NO. TIKET: ${d.no_tiket}   JAM MASUK: ${jamMasuk}`, W) + '\n';
             out += '═'.repeat(W) + '\n';
             
             if (t1Fields.no_kendaraan !== false) {
-                out += splitLine(padRight('No. Kendaraan', 17) + ': ' + noPolisi, kananMasuk, W) + '\n';
-            } else {
-                out += splitLine('', kananMasuk, W) + '\n';
+                out += padRight('No. Kendaraan', 17) + ': ' + noPolisi + '\n';
             }
 
             if (t1Fields.material !== false) {
-                out += splitLine(padRight('Nama Barang', 17) + ': ' + barang, kananKeluar, W) + '\n';
-            } else {
-                out += splitLine('', kananKeluar, W) + '\n';
+                out += padRight('Nama Barang', 17) + ': ' + barang + '\n';
             }
 
             if (t1Fields.nama_pengemudi !== false) {
@@ -303,12 +295,28 @@ Memuat data...
                 out += '\n';
             }
 
-            out += wLine('Bruto', d.bruto) + '\n';
-            out += wLine('Tara', d.tara) + '\n';
+            if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
+                out += padRight('Tipe Tiket', 17) + ': LANGSIR (' + d.jumlah_trip_langsir + ' TRIP)\n';
+                const tripsStr = d.langsir_trips.map(t => Math.round(t.berat_bruto)).join(', ');
+                const wrappedTrips = wrapText(tripsStr, W - 19);
+                if (wrappedTrips.length > 0) {
+                    out += padRight('Bruto Trip', 17) + ': ' + wrappedTrips[0] + '\n';
+                    for (let i = 1; i < wrappedTrips.length; i++) {
+                        out += padRight('', 17) + '  ' + wrappedTrips[i] + '\n';
+                    }
+                }
+                out += '─'.repeat(W) + '\n';
+                out += wLine('Total Bruto', d.bruto) + '\n';
+                out += wLine(`Tara`, d.tara) + '\n';
+            } else {
+                out += wLine('Bruto', d.bruto) + '\n';
+                out += wLine('Tara', d.tara) + '\n';
+            }
+            
             out += wLine('Netto I', d.netto_awal) + '\n';
 
             if (t2Fields.persen_potongan !== false) {
-                const labelPotongan = d.persen_potongan > 0 ? `Potongan(${d.persen_potongan}%)` : 'Potongan(kg)';
+                const labelPotongan = 'Potongan';
                 out += wLine(labelPotongan, d.kg_potongan) + '\n';
             }
             out += wLine('Netto II', d.netto_akhir) + '\n';
@@ -331,8 +339,12 @@ Memuat data...
                     out += rpLine('Potongan Hutang', d.pot_hutang) + '\n';
                     hasPotongan = true;
                 }
+                if (d.pot_hutang_supplier > 0) {
+                    out += rpLine('Potongan Hutang', d.pot_hutang_supplier) + '\n';
+                    hasPotongan = true;
+                }
                 if (d.pot_muat > 0) {
-                    out += rpLine('Potongan Muat', d.pot_muat) + '\n';
+                    out += rpLine('Upah Bongkar', d.pot_muat) + '\n';
                     hasPotongan = true;
                 }
                 if (hasPotongan) {
@@ -425,12 +437,9 @@ Memuat data...
             const months = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
             const tglStr = `${String(tgl.getDate()).padStart(2, '0')} ${months[tgl.getMonth()]} ${tgl.getFullYear()}`;
 
-            let potText = '';
-            if (d.persen_potongan > 0) potText = `${d.persen_potongan.toFixed(1)}%`;
-            else if (d.kg_potongan > 0) potText = `${d.kg_potongan} kg`;
-            else potText = '0.0%';
+            let potText = `${fmt(d.kg_potongan)} kg`;
 
-            let totalPotonganRp = (d.pot_jalan||0) + (d.pot_pupuk||0) + (d.pot_hutang||0) + (d.pot_muat||0);
+            let totalPotonganRp = (d.pot_jalan||0) + (d.pot_pupuk||0) + (d.pot_hutang||0) + (d.pot_hutang_supplier||0) + (d.pot_muat||0);
 
             const row = (label, val) => padRight(label, 13) + ': ' + padLeft(val, 23);
             const rowRp = (label, val) => padRight(label, 13) + ': Rp ' + padLeft(fmt(val), 20);
@@ -446,8 +455,25 @@ Memuat data...
             out += row('NAMA', supplier) + '\n';
             out += row('JENIS BARANG', barang) + '\n';
             out += garisTipis + '\n';
-            out += row('BRUTTO', fmt(d.bruto)) + '\n';
-            out += row('TARRA', fmt(d.tara)) + '\n';
+            
+            if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
+                out += row('TIPE', `LANGSIR (${d.jumlah_trip_langsir} TRIP)`) + '\n';
+                const tripsStr = d.langsir_trips.map(t => fmt(t.berat_bruto)).join(', ');
+                const wrappedTrips = wrapText(tripsStr, 23);
+                if (wrappedTrips.length > 0) {
+                    out += row('BRUTTO TRIP', wrappedTrips[0]) + '\n';
+                    for (let i = 1; i < wrappedTrips.length; i++) {
+                        out += row('', wrappedTrips[i]) + '\n';
+                    }
+                }
+                out += garisTipis + '\n';
+                out += row('TOT BRUTTO', fmt(d.bruto)) + '\n';
+                out += row(`TARRA`, fmt(d.tara)) + '\n';
+            } else {
+                out += row('BRUTTO', fmt(d.bruto)) + '\n';
+                out += row('TARRA', fmt(d.tara)) + '\n';
+            }
+            
             out += row('NETTO-1', fmt(d.netto_awal)) + '\n';
             out += row('POTONGAN', potText) + '\n';
             out += row('NETTO-2', fmt(d.netto_akhir)) + '\n';

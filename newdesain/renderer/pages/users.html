@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+  <link rel="stylesheet" href="/assets/css/bw-theme.css">
+  <link rel="stylesheet" href="/assets/css/pages/masterdata-bw.css">
+</head>
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header"><h1 class="page-title">Manajemen User</h1></div>
+    <div class="d-flex justify-content-between mb-3">
+      <input type="text" id="searchUser" class="form-control" style="max-width:300px;" placeholder="Cari user..." oninput="loadUsers()">
+      <button class="btn btn-success" onclick="showAddUser()">Tambah User</button>
+    </div>
+    <div class="table-container">
+      <table class="data-table">
+        <thead><tr><th>No</th><th>Username</th><th>Nama Lengkap</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody id="userBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+  window.activePage = 'users';
+
+  async function loadUsers() {
+    const res = await fetch('/users/list');
+    const data = await res.json();
+    const tbody = document.getElementById('userBody');
+    if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;">Tidak ada data</td></tr>'; return; }
+    tbody.innerHTML = data.data.map((u,i)=>{
+      const usernameEscaped = u.username.replace(/'/g, "\\'");
+      const namaEscaped = u.nama_lengkap.replace(/'/g, "\\'");
+      return `<tr>
+        <td>${i+1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
+        <td>${u.role==='admin'?'<span class="badge bg-primary">Admin</span>':'<span class="badge bg-info text-dark">Operator</span>'}</td>
+        <td>${u.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editUser(${u.id},'${usernameEscaped}','${namaEscaped}','${u.role}','${u.status}')">Edit</button>
+          ${u.username!=='admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Nonaktifkan</button>`:''}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function showAddUser() {
+    const {value:form} = await Swal.fire({title:'Tambah User',html:`
+      <input id="uUsername" class="swal2-input" placeholder="Username">
+      <input id="uName" class="swal2-input" placeholder="Nama Lengkap">
+      <input id="uPass" type="password" class="swal2-input" placeholder="Password">
+      <select id="uRole" class="swal2-input"><option value="operator">Operator</option><option value="admin">Admin</option></select>
+    `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
+      username:document.getElementById('uUsername').value,
+      nama_lengkap:document.getElementById('uName').value,
+      password:document.getElementById('uPass').value,
+      role:document.getElementById('uRole').value
+    })});
+    if(!form||!form.username||!form.password) return;
+    const res = await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadUsers();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  async function editUser(id, user, name, role, status) {
+    const {value:form} = await Swal.fire({title:'Edit User',html:`
+      <input id="eUsername" class="swal2-input" value="${user}" readonly>
+      <input id="eName" class="swal2-input" value="${name}">
+      <input id="ePass" type="password" class="swal2-input" placeholder="Password Baru (Kosongkan jika tidak diubah)">
+      <select id="eRole" class="swal2-input" ${user==='admin'?'disabled':''}><option value="operator" ${role==='operator'?'selected':''}>Operator</option><option value="admin" ${role==='admin'?'selected':''}>Admin</option></select>
+      <select id="eStatus" class="swal2-input" ${user==='admin'?'disabled':''}><option value="active" ${status==='active'?'selected':''}>Aktif</option><option value="inactive" ${status!=='active'?'selected':''}>Nonaktif</option></select>
+    `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
+      nama_lengkap:document.getElementById('eName').value,
+      password:document.getElementById('ePass').value,
+      role:document.getElementById('eRole').value,
+      status:document.getElementById('eStatus').value
+    })});
+    if(!form) return;
+    const res = await fetch(`/users/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadUsers();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  async function deleteUser(id) {
+    const conf = await Swal.fire({icon:'warning',title:'Nonaktifkan?',showCancelButton:true,confirmButtonColor:'#dc2626'});
+    if(!conf.isConfirmed) return;
+    const res = await fetch(`/users/${id}`,{method:'DELETE'});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadUsers();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  document.addEventListener('DOMContentLoaded', async function() {
+    await loadSessionInfo();
+    await loadUsers();
+  });
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+</html>

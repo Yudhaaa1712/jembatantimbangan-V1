@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timbangan 2 - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+  <link rel="stylesheet" href="/assets/css/bw-theme.css">
+  <link rel="stylesheet" href="/assets/css/pages/timbangan2-bw.css">
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="container-fluid">
+    <form id="timbangan2Form">
+      <input type="hidden" id="idTransaksi" name="id_transaksi">
+
+      <!-- PILIH TIKET - FULL WIDTH -->
+      <div class="terminal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <label class="terminal-label"><i class="bi bi-ticket-detailed"></i> Pilih Tiket</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="badge bg-secondary" id="serialConfigStatus2" style="font-size: 0.75rem;">
+              <i class="bi bi-plug-fill"></i> <span id="currentBaudRate2">9600</span>
+            </div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 10px;">
+          <select name="no_tiket1" class="terminal-select" id="tiketSelector" required>
+            <option value="">-- PILIH TIKET --</option>
+          </select>
+          <button type="button" class="terminal-btn terminal-btn-danger" id="cancelTiketBtn" style="display: none; background: #dc2626; color: #fff;">
+            <i class="bi bi-trash-fill"></i> BATALKAN
+          </button>
+          <button type="button" class="terminal-btn" id="refreshTiketBtn" onclick="loadPendingTickets()">
+            <i class="bi bi-arrow-clockwise"></i> REFRESH
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN LAYOUT: 3 COLUMNS -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 15px;" id="timbangan2Section">
+
+        <!-- COLUMN 1: DATA TIMBANGAN 1 -->
+        <div class="terminal-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label class="terminal-label" style="margin: 0;"><i class="bi bi-database"></i> Data Timbangan 1</label>
+            <span class="badge" id="modeTimbanganBadge" style="font-size: 11px; padding: 4px 8px; display: none; font-weight: bold; border-radius: 4px;"></span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="margin-bottom: 10px;" id="t1field_no_kendaraan">
+              <label class="terminal-label" style="font-size: 12px;">No Kendaraan</label>
+              <input type="text" class="terminal-input" id="displayKendaraan" style="font-size: 16px; padding: 8px;" readonly>
+            </div>
+            <div style="margin-bottom: 10px;" id="t1field_nama_pengemudi">
+              <label class="terminal-label" style="font-size: 12px;">Supir</label>
+              <input type="text" class="terminal-input" id="displayPengemudi" style="font-size: 16px; padding: 8px;" readonly>
+            </div>
+            <div style="margin-bottom: 10px;" id="t1field_nama_suplier">
+              <label class="terminal-label" style="font-size: 12px;">Supplier</label>
+              <input type="text" class="terminal-input" id="displaySuplier" style="font-size: 16px; padding: 8px;" readonly>
+            </div>
+            <div style="margin-bottom: 10px;" id="t1field_material">
+              <label class="terminal-label" style="font-size: 12px;">Material</label>
+              <input type="text" class="terminal-input" id="displayMaterial" style="font-size: 16px; padding: 8px;" readonly>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+              <label class="terminal-label" style="font-size: 12px;">Bruto (Timbangan1)</label>
+              <input type="text" class="terminal-input" id="displayBerat1" style="font-size: 16px; padding: 8px;" readonly>
+              <input type="hidden" id="beratT1Hidden">
+            </div>
+            <div style="margin-bottom: 10px;" id="t2field_persen_potongan">
+              <label class="terminal-label" style="font-size: 12px;">Potongan (%)</label>
+              <input type="number" name="persen_potongan" class="terminal-input" id="persenPotongan" 
+                     step="0.01" min="0" max="100" style="font-size: 16px; padding: 8px;">
+            </div>
+            <div style="margin-bottom: 10px;" id="t2field_keterangan">
+              <label class="terminal-label" style="font-size: 12px;">Keterangan</label>
+              <input type="text" name="keterangan" id="keteranganInput" class="terminal-input" style="font-size: 16px; padding: 8px;">
+            </div>
+            <div style="margin-bottom: 10px;" id="t2field_harga">
+              <label class="terminal-label" style="font-size: 12px;">Harga per Kg</label>
+              <input type="text" class="terminal-input" id="displayHarga" placeholder="Rp 0" style="font-size: 16px; padding: 8px;">
+              <input type="hidden" name="harga_input_t2" id="hargaHiddenT2" value="0">
+            </div>
+            
+            <div style="margin-bottom: 10px; display: none;" id="t2field_potongan_hutang">
+              <div class="mb-2">
+                <label class="terminal-label" style="font-size: 12px; color: #f59e0b;">Potongan Hutang (Max: <span id="maxSupirDebt">0</span>)</label>
+                <input type="number" name="potongan_hutang_rp" class="terminal-input" id="potonganHutangInput" 
+                       step="1" min="0" placeholder="0" style="font-size: 16px; padding: 8px;">
+                <input type="hidden" id="supirDebtVal" value="0">
+              </div>
+            </div>
+
+            <div style="margin-bottom: 10px; display: none;" id="t2field_potongan_hutang_supplier">
+              <div class="mb-2">
+                <label class="terminal-label" style="font-size: 12px; color: #3b82f6;">Potongan Hutang Supplier (Max: <span id="maxSupplierDebt">0</span>)</label>
+                <input type="number" name="potongan_hutang_supplier_rp" class="terminal-input" id="potonganHutangSupplierInput" 
+                       step="1" min="0" placeholder="0" style="font-size: 16px; padding: 8px;">
+                <input type="hidden" id="supplierDebtVal" value="0">
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 10px;" id="t2field_potongan_muat">
+              <label class="terminal-label" style="font-size: 12px; color: #f59e0b;">Upah Bongkar</label>
+              <select id="opsiUpahBongkar" class="terminal-select" style="font-size: 14px; padding: 8px; margin-bottom: 5px;">
+                <option value="0">Tanpa Upah Bongkar (Rp 0)</option>
+                <option value="10">Rp 10 x Netto Akhir</option>
+                <option value="15">Rp 15 x Netto Akhir</option>
+                <option value="manual">Manual (Input Sendiri)</option>
+              </select>
+              <input type="number" name="potongan_muat_rp" class="terminal-input" id="potonganMuatInput" 
+                     step="1" min="0" placeholder="0" style="font-size: 16px; padding: 8px;">
+            </div>
+            
+          </div>
+        </div>
+
+        <!-- COLUMN 2: PERHITUNGAN OTOMATIS -->
+        <div class="terminal-box">
+          <label class="terminal-label"><i class="bi bi-clipboard-data"></i> Hasil Perhitungan</label>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
+            <div class="result-item" style="padding: 8px;">
+              <div class="result-label" style="font-size: 9px;">Bruto</div>
+              <div class="result-value" id="hasilBruto" style="font-size: 12px;">0</div>
+            </div>
+            <div class="result-item" style="padding: 8px;">
+              <div class="result-label" style="font-size: 9px;">Tara</div>
+              <div class="result-value" id="hasilTara" style="font-size: 12px;">0</div>
+            </div>
+            <div class="result-item" style="padding: 8px;">
+              <div class="result-label" style="font-size: 9px;">Netto Awal</div>
+              <div class="result-value" id="hasilNettoBT" style="font-size: 12px;">0</div>
+            </div>
+            <div class="result-item" id="result_persen_potongan" style="padding: 8px;">
+              <div class="result-label" style="font-size: 9px;">Potongan (%)</div>
+              <div class="result-value" style="font-size: 12px;">
+                <span id="hasilPotonganPersen">0%</span> <span id="hasilPotongan" style="font-size: 10px; opacity: 0.8;">= 0 Kg</span>
+              </div>
+            </div>
+            <div class="result-item" style="padding: 8px;">
+              <div class="result-label" style="font-size: 9px;">Netto Akhir</div>
+              <div class="result-value" id="hasilNettoAkhir" style="font-size: 12px;">0</div>
+            </div>
+            <div class="result-item" id="result_harga" style="padding: 8px;">
+              <div class="result-label" style="font-size: 9px;">Harga/Kg</div>
+              <div class="result-value" id="hasilHargaPerKg" style="font-size: 12px;">0</div>
+            </div>
+            <div class="result-item" id="result_potongan_hutang" style="padding: 8px; display: none;">
+              <div class="result-label" style="font-size: 9px;">Potongan Hutang</div>
+              <div class="result-value" id="hasilPotonganHutang" style="font-size: 12px; color: #ef4444;">0</div>
+            </div>
+            <div class="result-item" id="result_potongan_hutang_supplier" style="padding: 8px; display: none;">
+              <div class="result-label" style="font-size: 9px;">Potongan Hutang Supplier</div>
+              <div class="result-value" id="hasilPotonganHutangSupplier" style="font-size: 12px; color: #3b82f6;">0</div>
+            </div>
+            <div class="result-item" id="result_potongan_muat" style="padding: 8px; display: none;">
+              <div class="result-label" style="font-size: 9px;">Upah Bongkar</div>
+              <div class="result-value" id="hasilPotonganMuat" style="font-size: 12px; color: #ef4444;">0</div>
+            </div>
+            
+          </div>
+          
+          <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: stretch;">
+            <div>
+              <div class="result-item" style="border: 2px solid #10b981; background: #064e3b; padding: 4px;">
+                <div class="result-label" style="color: #34d399; font-size: 8px;">TOTAL BAYAR</div>
+                <div class="result-value" id="hasilTotalHargaFinal" style="color: #34d399; font-size: 16px; font-weight: 900;">0</div>
+              </div>
+              <div class="result-item" id="kasContainerT2" style="border: 1px solid #3b82f6; background: #1e3a5f; padding: 3px; margin-top: 4px;">
+                <div class="result-label" style="color: #93c5fd; font-size: 7px;">SISA KAS</div>
+                <div class="result-value" id="saldoKasDisplay" style="color: #60a5fa; font-size: 11px;">Rp 0</div>
+              </div>
+            </div>
+            <button type="submit" class="terminal-btn terminal-btn-primary" id="saveButton"
+                    style="padding: 8px 15px; white-space: nowrap; font-size: 10px;">
+              <i class="bi bi-save-fill"></i> SIMPAN & CETAK
+            </button>
+          </div>
+        </div>
+
+        <!-- COLUMN 3: DISPLAY PANEL -->
+        <div class="terminal-box">
+          <label class="terminal-label"><i class="bi bi-display"></i> Display</label>
+          <div class="display-panel" style="min-height: 0px; padding: 10px;">
+            <div class="display-value" id="weightDisplay2Large" style="font-size: 72px; margin: 10px 0; font-weight: 900;">0 KG</div>
+            <div class="display-status" id="weightStatus2" style="font-size: 16px;">Menunggu...</div>
+            <button type="button" class="terminal-btn terminal-btn-info" id="toggleConnection2"
+                    style="margin-top: 10px; width: 100%; padding: 12px; font-size: 16px;">
+              <i class="bi bi-plug-fill"></i> SAMBUNGKAN
+            </button>
+            <button type="button" class="terminal-btn terminal-btn-warning" id="captureWeight2"
+                    style="margin-top: 10px; width: 100%; padding: 12px; font-size: 16px;">
+              <i class="bi bi-camera-fill"></i> AMBIL BERAT
+            </button>
+          </div>
+
+          <!-- INPUT BERAT -->
+          <div style="margin-top: 5px;">
+            <label class="terminal-label" style="color: #28a745; font-weight: bold; font-size: 16px;">
+              BERAT TERTANGKAP
+            </label>
+            <input type="number" class="terminal-input" id="beratInput2" step="1" min="0" 
+                   style="background: #28a745; color: #fff; font-size: 28px; font-weight: bold; height: auto; padding: 15px;">
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script src="/js/auto-serial-connect.js" defer></script>
+  
+  <script>
+  window.activePage = 'timbangan2';
+
+  function formatRibuan(angka) {
+      if(!angka) return '0';
+      return new Intl.NumberFormat('id-ID').format(angka);
+  }
+
+  async function loadPendingTickets() {
+    try {
+      const res = await fetch('/timbangan/ajax', { 
+          method:'POST', 
+          headers:{'Content-Type':'application/json'}, 
+          body:JSON.stringify({action:'get_pending_tickets'}) 
+      });
+      const data = await res.json();
+      const sel = document.getElementById('tiketSelector');
+      sel.innerHTML = '<option value="">-- PILIH TIKET --</option>';
+      if (data.data) {
+        data.data.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.no_tiket;
+          opt.textContent = `${t.nama_supir} - ${t.no_tiket}`;
+          // Store data in dataset
+          opt.dataset.kendaraan = t.no_polisi || '';
+          opt.dataset.pengemudi = t.nama_supir || '';
+          opt.dataset.suplier = t.nama_supplier || '';
+          opt.dataset.material = (t.jenis_material || '').toUpperCase();
+          opt.dataset.harga = t.harga_per_kg || 0;
+          opt.dataset.defaultHarga = t.default_harga || 0;
+          opt.dataset.defaultPotongan = t.default_potongan || 0;
+          opt.dataset.berat = t.berat_bruto || t.berat_timbangan1 || 0;
+          opt.dataset.keterangan = t.keterangan || '';
+          opt.dataset.id = t.id;
+          opt.dataset.mode = t.mode_timbangan || 'beli';
+          opt.dataset.isLangsir = t.is_langsir || 0;
+          opt.dataset.tripLangsir = t.jumlah_trip_langsir || 1;
+          sel.appendChild(opt);
+        });
+      }
+    } catch(e) { console.error('Error loading tickets', e); }
+  }
+
+  document.getElementById('tiketSelector').addEventListener('change', async function() {
+    const opt = this.options[this.selectedIndex];
+    if (this.value === '') {
+        document.getElementById('timbangan2Form').reset();
+        document.getElementById('supirDebtVal').value = 0;
+        document.getElementById('maxSupirDebt').textContent = '0';
+        document.getElementById('potonganHutangInput').value = '';
+        document.getElementById('cancelTiketBtn').style.display = 'none';
+        return;
+    }
+    
+    document.getElementById('cancelTiketBtn').style.display = 'inline-block';
+    
+    document.getElementById('idTransaksi').value = opt.dataset.id;
+    document.getElementById('displayKendaraan').value = opt.dataset.kendaraan;
+    document.getElementById('displayPengemudi').value = opt.dataset.pengemudi;
+    document.getElementById('displaySuplier').value = opt.dataset.suplier;
+    document.getElementById('displayMaterial').value = opt.dataset.material;
+    
+    const berat1 = parseFloat(opt.dataset.berat);
+    document.getElementById('beratT1Hidden').value = berat1;
+    document.getElementById('displayBerat1').value = formatRibuan(berat1) + ' Kg';
+    
+    document.getElementById('keteranganInput').value = opt.dataset.keterangan;
+    
+    let harga = parseFloat(opt.dataset.harga);
+    const defHarga = parseFloat(opt.dataset.defaultHarga);
+    if (defHarga > 0) harga = defHarga; // Override with supplier default if exists
+    
+    document.getElementById('hargaHiddenT2').value = harga;
+    document.getElementById('displayHarga').value = harga > 0 ? formatRibuan(harga) : '';
+    
+    const defPotongan = parseFloat(opt.dataset.defaultPotongan);
+    document.getElementById('persenPotongan').value = defPotongan > 0 ? defPotongan : '';
+    
+    
+    // Show/hide Mode Badge
+    const mode = opt.dataset.mode || 'beli';
+    const modeBadge = document.getElementById('modeTimbanganBadge');
+    if (modeBadge) {
+      modeBadge.style.display = 'inline-block';
+      if (mode === 'jual') {
+        modeBadge.textContent = 'MODE JUAL';
+        modeBadge.style.backgroundColor = '#2563eb';
+        modeBadge.style.color = '#fff';
+      } else {
+        modeBadge.textContent = 'MODE BELI';
+        modeBadge.style.backgroundColor = '#10b981';
+        modeBadge.style.color = '#fff';
+      }
+      
+      const isLangsir = parseInt(opt.dataset.isLangsir) === 1;
+      if (isLangsir) {
+        const tripCount = opt.dataset.tripLangsir || 1;
+        modeBadge.textContent = `MODE LANGSIR (${tripCount} TRIP)`;
+        modeBadge.style.backgroundColor = '#f59e0b';
+      }
+    }
+
+    // Reset supir debt inputs
+    document.getElementById('supirDebtVal').value = 0;
+    document.getElementById('maxSupirDebt').textContent = '0';
+    document.getElementById('potonganHutangInput').value = '';
+    document.getElementById('t2field_potongan_hutang').style.display = 'none';
+
+    // Reset supplier debt inputs
+    document.getElementById('supplierDebtVal').value = 0;
+    document.getElementById('maxSupplierDebt').textContent = '0';
+    document.getElementById('potonganHutangSupplierInput').value = '';
+    document.getElementById('t2field_potongan_hutang_supplier').style.display = 'none';
+
+    document.getElementById('opsiUpahBongkar').value = '0';
+    document.getElementById('potonganMuatInput').value = '';
+    
+    if (window.isHutangActive && opt.dataset.pengemudi) {
+      try {
+        const res = await fetch('/hutang-supir-api/supir/check-debt?name=' + encodeURIComponent(opt.dataset.pengemudi));
+        const d = await res.json();
+        if (d.success && d.data && d.data.total_hutang > 0) {
+          document.getElementById('supirDebtVal').value = d.data.total_hutang || 0;
+          document.getElementById('maxSupirDebt').textContent = formatRibuan(d.data.total_hutang || 0);
+          document.getElementById('t2field_potongan_hutang').style.display = 'block';
+        }
+      } catch(e) { console.error('Fetch supir debt error:', e); }
+    }
+
+    if (opt.dataset.suplier) {
+      try {
+        const res = await fetch('/hutang-supplier-api/supplier/check-debt?name=' + encodeURIComponent(opt.dataset.suplier));
+        const d = await res.json();
+        if (d.success && d.data && d.data.total_hutang > 0) {
+          document.getElementById('supplierDebtVal').value = d.data.total_hutang || 0;
+          document.getElementById('maxSupplierDebt').textContent = formatRibuan(d.data.total_hutang || 0);
+          document.getElementById('t2field_potongan_hutang_supplier').style.display = 'block';
+        }
+      } catch(e) { console.error('Fetch supplier debt error:', e); }
+    }
+    
+    hitungKalkulasi();
+  });
+
+  function hitungKalkulasi() {
+      const t1Weight = parseFloat(document.getElementById('beratT1Hidden').value) || 0;
+      const t2Weight = parseFloat(document.getElementById('beratInput2').value) || 0;
+      const persen = parseFloat(document.getElementById('persenPotongan').value) || 0;
+      const harga = parseFloat(document.getElementById('hargaHiddenT2').value) || 0;
+      
+      const selector = document.getElementById('tiketSelector');
+      const opt = selector.options[selector.selectedIndex];
+      const mode = opt ? (opt.dataset.mode || 'beli') : 'beli';
+      const isModeJual = mode === 'jual';
+
+      const bruto = isModeJual ? t2Weight : t1Weight;
+      const tara = isModeJual ? t1Weight : t2Weight;
+      
+      document.getElementById('hasilBruto').textContent = formatRibuan(bruto);
+      document.getElementById('hasilTara').textContent = formatRibuan(tara);
+      
+      const nettoAwal = Math.max(0, bruto - tara);
+      document.getElementById('hasilNettoBT').textContent = formatRibuan(nettoAwal);
+      
+      const kgPotongan = Math.max(0, Math.round((persen / 100) * nettoAwal));
+      document.getElementById('hasilPotonganPersen').textContent = persen + '%';
+      document.getElementById('hasilPotongan').textContent = '= ' + formatRibuan(kgPotongan) + ' Kg';
+      
+      const nettoAkhir = Math.max(0, Math.round(nettoAwal - kgPotongan));
+      document.getElementById('hasilNettoAkhir').textContent = formatRibuan(nettoAkhir);
+      
+      document.getElementById('hasilHargaPerKg').textContent = formatRibuan(harga);
+      
+      const totalAwal = nettoAkhir * harga;
+      
+      let potonganHutang = 0;
+      let tambahHutang = 0;
+      
+      if (window.isHutangActive) {
+        const supirDebt = parseFloat(document.getElementById('supirDebtVal').value) || 0;
+        const maxPotongan = Math.max(0, Math.min(supirDebt, totalAwal));
+        
+        let pInput = parseFloat(document.getElementById('potonganHutangInput').value) || 0;
+        if (pInput > maxPotongan) {
+          pInput = maxPotongan;
+          document.getElementById('potonganHutangInput').value = pInput;
+        }
+        potonganHutang = pInput;
+        
+        document.getElementById('result_potongan_hutang').style.display = potonganHutang > 0 ? '' : 'none';
+        document.getElementById('hasilPotonganHutang').textContent = '- Rp ' + formatRibuan(potonganHutang);
+      }
+      
+      let potonganHutangSupplier = 0;
+      const supplierDebt = parseFloat(document.getElementById('supplierDebtVal').value) || 0;
+      const maxPotonganSupplier = Math.max(0, Math.min(supplierDebt, totalAwal - potonganHutang));
+      
+      let pSupplierInput = parseFloat(document.getElementById('potonganHutangSupplierInput').value) || 0;
+      if (pSupplierInput > maxPotonganSupplier) {
+        pSupplierInput = maxPotonganSupplier;
+        document.getElementById('potonganHutangSupplierInput').value = pSupplierInput;
+      }
+      potonganHutangSupplier = pSupplierInput;
+      
+      document.getElementById('result_potongan_hutang_supplier').style.display = potonganHutangSupplier > 0 ? '' : 'none';
+      document.getElementById('hasilPotonganHutangSupplier').textContent = '- Rp ' + formatRibuan(potonganHutangSupplier);
+      
+      const fieldBongkarContainer = document.getElementById('t2field_potongan_muat');
+      const isBongkarDisabled = fieldBongkarContainer && fieldBongkarContainer.style.display === 'none';
+      
+      let potonganMuat = 0;
+      if (isBongkarDisabled) {
+        potonganMuat = 0;
+        if (document.getElementById('potonganMuatInput')) document.getElementById('potonganMuatInput').value = 0;
+        if (document.getElementById('opsiUpahBongkar')) document.getElementById('opsiUpahBongkar').value = '0';
+      } else {
+        const opsiBongkar = document.getElementById('opsiUpahBongkar').value;
+        if (opsiBongkar === '15') {
+          potonganMuat = nettoAkhir * 15;
+          document.getElementById('potonganMuatInput').value = potonganMuat;
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else if (opsiBongkar === '10') {
+          potonganMuat = nettoAkhir * 10;
+          document.getElementById('potonganMuatInput').value = potonganMuat;
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else if (opsiBongkar === '0') {
+          potonganMuat = 0;
+          document.getElementById('potonganMuatInput').value = 0;
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else {
+          document.getElementById('potonganMuatInput').readOnly = false;
+          potonganMuat = parseFloat(document.getElementById('potonganMuatInput').value) || 0;
+        }
+      }
+      document.getElementById('result_potongan_muat').style.display = (potonganMuat > 0 && !isBongkarDisabled) ? '' : 'none';
+      document.getElementById('hasilPotonganMuat').textContent = '- Rp ' + formatRibuan(potonganMuat);
+      
+      const totalAkhir = Math.max(0, totalAwal - potonganHutang - potonganHutangSupplier - potonganMuat);
+      document.getElementById('hasilTotalHargaFinal').textContent = 'Rp ' + formatRibuan(totalAkhir);
+
+      fetch('/timbangan/debug-calc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          t1Weight,
+          t2Weight,
+          isModeJual,
+          bruto,
+          tara,
+          nettoAwal,
+          kgPotongan,
+          nettoAkhir,
+          totalAwal,
+          totalAkhir,
+          potonganHutang,
+          potonganHutangSupplier,
+          potonganMuat,
+          harga
+        })
+      }).catch(() => {});
+  }
+
+  // Event Listeners Input Uang / Angka
+  ['displayHarga'].forEach(id => {
+      document.getElementById(id).addEventListener('input', function() {
+          const val = this.value.replace(/[^0-9]/g, '');
+          const hiddenId = 'hargaHiddenT2';
+          document.getElementById(hiddenId).value = val;
+          if (val) this.value = formatRibuan(parseInt(val));
+          hitungKalkulasi();
+      });
+  });
+
+  document.getElementById('beratInput2').addEventListener('input', hitungKalkulasi);
+  document.getElementById('persenPotongan').addEventListener('input', hitungKalkulasi);
+  document.getElementById('potonganHutangInput').addEventListener('input', hitungKalkulasi);
+  document.getElementById('potonganHutangSupplierInput').addEventListener('input', hitungKalkulasi);
+  document.getElementById('potonganMuatInput').addEventListener('input', hitungKalkulasi);
+  document.getElementById('opsiUpahBongkar').addEventListener('change', hitungKalkulasi);
+
+  document.getElementById('captureWeight2').addEventListener('click', function() {
+    const w = parseInt(document.getElementById('weightDisplay2Large').dataset.rawWeight) || 0;
+    if (w > 0) {
+      document.getElementById('beratInput2').value = w;
+      window.isWeightLocked2 = true;
+      this.innerHTML = '<i class="bi bi-lock-fill"></i> TERKUNCI';
+      this.className = 'terminal-btn terminal-btn-success';
+      this.style.width = '100%';
+      this.style.marginTop = '10px';
+      hitungKalkulasi();
+    } else {
+      Swal.fire({ icon:'warning', title:'Perhatian', text:'Belum ada berat dari timbangan' });
+    }
+  });
+
+  document.getElementById('timbangan2Form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      if (!document.getElementById('tiketSelector').value) {
+          Swal.fire({icon: 'warning', text: 'Pilih tiket terlebih dahulu!'});
+          return;
+      }
+      
+      const btn = document.getElementById('saveButton');
+      btn.disabled = true; 
+      btn.innerHTML = '<i class="bi bi-hourglass-split"></i> MENYIMPAN...';
+      
+      try {
+          const t1Weight = parseFloat(document.getElementById('beratT1Hidden').value)||0;
+          const t2Weight = parseFloat(document.getElementById('beratInput2').value)||0;
+          
+          const selector = document.getElementById('tiketSelector');
+          const opt = selector.options[selector.selectedIndex];
+          const mode = opt ? (opt.dataset.mode || 'beli') : 'beli';
+          const isModeJual = mode === 'jual';
+
+          const bruto = isModeJual ? t2Weight : t1Weight;
+          const tara = isModeJual ? t1Weight : t2Weight;
+          
+          const persen = parseFloat(document.getElementById('persenPotongan').value)||0;
+          const harga = parseFloat(document.getElementById('hargaHiddenT2').value)||0;
+          
+          const keterangan = document.getElementById('keteranganInput').value;
+          
+          const netto = Math.max(0, bruto - tara);
+          const kgPot = Math.max(0, Math.round((persen/100)*netto));
+          
+          const payload = {
+            action:'save_timbangan2',
+            id_transaksi: document.getElementById('idTransaksi').value,
+            berat_timbangan2: t2Weight,
+            persen_potongan: persen,
+            kg_potongan: kgPot,
+            harga_per_kg: harga,
+            potongan_hutang_rp: window.isHutangActive ? (parseFloat(document.getElementById('potonganHutangInput').value) || 0) : 0,
+            potongan_hutang_supplier_rp: parseFloat(document.getElementById('potonganHutangSupplierInput').value) || 0,
+            potongan_muat_rp: parseFloat(document.getElementById('potonganMuatInput').value) || 0,
+            keterangan: keterangan
+          };
+          
+          const res = await fetch('/timbangan/ajax', { 
+              method:'POST', 
+              headers:{'Content-Type':'application/json'}, 
+              body:JSON.stringify(payload) 
+          });
+          const result = await res.json();
+          
+          if (result.success) {
+            await Swal.fire({ icon:'success', title:'Berhasil!', text:result.message, timer:1500, showConfirmButton:false });
+            const noTiket = document.getElementById('tiketSelector').value;
+            window.open(`/print-ticket/${noTiket}`, '_blank', 'width=800,height=600');
+            
+            document.getElementById('timbangan2Form').reset();
+            document.getElementById('supirDebtVal').value = 0;
+            document.getElementById('maxSupirDebt').textContent = '0';
+            document.getElementById('potonganHutangInput').value = '';
+            document.getElementById('opsiUpahBongkar').value = '0';
+            document.getElementById('potonganMuatInput').value = '';
+            document.getElementById('cancelTiketBtn').style.display = 'none';
+            window.isWeightLocked2 = false;
+            document.getElementById('captureWeight2').innerHTML = '<i class="bi bi-camera-fill"></i> AMBIL BERAT';
+            document.getElementById('captureWeight2').className = 'terminal-btn terminal-btn-warning';
+            
+
+            hitungKalkulasi();
+            loadPendingTickets();
+          } else {
+            Swal.fire({ icon:'error', title:'Gagal', text:result.message });
+          }
+      } catch(err) {
+          console.error(err);
+          Swal.fire({ icon:'error', title:'Error', text:'Gagal menyimpan data' });
+      } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-save-fill"></i> SIMPAN & CETAK';
+      }
+  });
+
+  async function initSerialConnector2() {
+    if (typeof AutoSerialConnector === 'undefined') { setTimeout(initSerialConnector2, 200); return; }
+    
+    let indicatorModel = 'generic';
+    let customRegex = '';
+    try {
+      const res = await fetch('/setup/settings');
+      const r = await res.json();
+      if (r.success && r.data) {
+        indicatorModel = r.data.serial_indicator_model || 'generic';
+        customRegex = r.data.serial_custom_regex || '';
+      }
+    } catch(e) { console.error(e); }
+
+    window.serialConnector2 = new AutoSerialConnector({
+      targetInputId: 'beratInput2',
+      indicatorModel: indicatorModel,
+      customRegex: customRegex,
+      autoReconnect: true,
+      onConnect: () => {
+        document.getElementById('weightStatus2').textContent = 'Terhubung ✓';
+        document.getElementById('weightStatus2').style.color = '#10b981';
+        document.getElementById('toggleConnection2').innerHTML = '<i class="bi bi-plug-fill"></i> PUTUSKAN';
+        document.getElementById('toggleConnection2').className = 'terminal-btn terminal-btn-danger';
+        document.getElementById('toggleConnection2').style.width = '100%';
+        document.getElementById('toggleConnection2').style.marginTop = '10px';
+      },
+      onDisconnect: () => {
+        document.getElementById('weightDisplay2Large').textContent = '0 KG';
+        document.getElementById('weightStatus2').textContent = 'Terputus';
+        document.getElementById('weightStatus2').style.color = '#ef4444';
+        document.getElementById('toggleConnection2').innerHTML = '<i class="bi bi-plug-fill"></i> SAMBUNGKAN';
+        document.getElementById('toggleConnection2').className = 'terminal-btn terminal-btn-info';
+        document.getElementById('toggleConnection2').style.width = '100%';
+        document.getElementById('toggleConnection2').style.marginTop = '10px';
+      },
+      onData: (w) => {
+        const wd2 = document.getElementById('weightDisplay2Large');
+        wd2.textContent = Math.floor(w).toLocaleString('id-ID') + ' KG';
+        wd2.dataset.rawWeight = Math.floor(w);
+      }
+    });
+    window.serialConnector2.autoConnect({ maxRetries:10, skipValidation:true });
+    document.getElementById('toggleConnection2').addEventListener('click', async function() {
+      if (window.serialConnector2.isConnected) await window.serialConnector2.disconnect();
+      else await window.serialConnector2.manualConnect();
+    });
+  }
+
+  // Kas Balance
+  async function loadKasSaldo() {
+    if(document.getElementById('kasContainerT2') && document.getElementById('kasContainerT2').style.display === 'none') return;
+    try {
+      const res = await fetch('/kas/saldo');
+      const r = await res.json();
+      if (r.success) {
+        const saldo = Number(r.data.saldo);
+        document.getElementById('saldoKasDisplay').textContent = 'Rp ' + saldo.toLocaleString('id-ID');
+      }
+    } catch(e) { /* ignore */ }
+  }
+
+  // Load Settings
+  async function loadFieldSettings2() {
+    try {
+      const res = await fetch('/setup/settings');
+      const r = await res.json();
+      if (r.success && r.data.timbangan2_fields) {
+        const fields = JSON.parse(r.data.timbangan2_fields);
+        const fieldMap = {
+          persen_potongan: 't2field_persen_potongan',
+          harga: 't2field_harga',
+          potongan_hutang: 't2field_potongan_hutang',
+          potongan_muat: 't2field_potongan_muat',
+          keterangan: 't2field_keterangan'
+        };
+        // Map result items to field keys for synced hiding
+        const resultMap = {
+          persen_potongan: 'result_persen_potongan',
+          harga: 'result_harga',
+          potongan_hutang: 'result_potongan_hutang',
+          potongan_muat: 'result_potongan_muat'
+        };
+        Object.keys(fieldMap).forEach(key => {
+          const el = document.getElementById(fieldMap[key]);
+          if (!el) return;
+          if (fields[key] === false) {
+            el.style.display = 'none';
+            el.querySelectorAll('input, select, textarea').forEach(inp => {
+              inp.removeAttribute('required');
+              if (inp.type !== 'hidden') inp.value = '';
+            });
+          } else {
+            el.style.display = '';
+          }
+          // Also toggle the corresponding result item
+          if (resultMap[key]) {
+            const resultEl = document.getElementById(resultMap[key]);
+            if (resultEl) resultEl.style.display = fields[key] === false ? 'none' : '';
+          }
+        });
+      }
+      if (r.success && r.data.timbangan1_fields) {
+        const fields1 = JSON.parse(r.data.timbangan1_fields);
+        const fieldMap1 = {
+          no_kendaraan: 't1field_no_kendaraan',
+          nama_pengemudi: 't1field_nama_pengemudi',
+          nama_suplier: 't1field_nama_suplier',
+          material: 't1field_material'
+        };
+        Object.keys(fieldMap1).forEach(key => {
+          const el = document.getElementById(fieldMap1[key]);
+          if (!el) return;
+          if (fields1[key] === false) {
+            el.style.display = 'none';
+          } else {
+            el.style.display = '';
+          }
+        });
+      }
+      // Also handle active_features: hide kas container if keuangan is off, hide hutang if hutang is off
+      if (r.success && r.data.active_features) {
+        try {
+          const features = JSON.parse(r.data.active_features);
+          // Hide Kas container if keuangan is off
+          const kasContainer = document.getElementById('kasContainerT2');
+          if (kasContainer) kasContainer.style.display = features.keuangan === false ? 'none' : '';
+          
+          window.isHutangActive = features.hutang === true;
+          if (!window.isHutangActive) {
+            const hField = document.getElementById('t2field_potongan_hutang');
+            if (hField) hField.style.display = 'none';
+            const hRes = document.getElementById('result_potongan_hutang');
+            if (hRes) hRes.style.display = 'none';
+          }
+        } catch(e) {}
+      }
+    } catch(e) { console.warn('Load field settings error:', e); }
+  }
+
+  document.addEventListener('DOMContentLoaded', async function() {
+    await loadSessionInfo();
+    await loadPendingTickets();
+    await loadFieldSettings2();
+    loadKasSaldo();
+    setTimeout(initSerialConnector2, 500);
+
+    document.getElementById('cancelTiketBtn').addEventListener('click', async function() {
+      const idVal = document.getElementById('idTransaksi').value;
+      const tiketVal = document.getElementById('tiketSelector').value;
+      if (!idVal || !tiketVal) {
+        Swal.fire({ icon: 'warning', text: 'Pilih tiket terlebih dahulu!' });
+        return;
+      }
+
+      const { value: reason } = await Swal.fire({
+        title: 'Batalkan Tiket',
+        text: `Apakah Anda yakin ingin membatalkan tiket ${tiketVal}?`,
+        input: 'text',
+        inputPlaceholder: 'Masukkan alasan pembatalan (opsional)',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Batalkan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc2626',
+      });
+
+      if (reason !== undefined) {
+        try {
+          const payload = {
+            action: 'delete_timbangan1',
+            id: idVal,
+            cancel_reason: reason || 'Dibatalkan dari Timbangan 2'
+          };
+          const res = await fetch('/timbangan/ajax', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+          if (result.success) {
+            Swal.fire({ icon: 'success', text: 'Tiket berhasil dibatalkan', timer: 1500, showConfirmButton: false });
+            document.getElementById('timbangan2Form').reset();
+            document.getElementById('supirDebtVal').value = 0;
+            document.getElementById('maxSupirDebt').textContent = '0';
+            document.getElementById('potonganHutangInput').value = '';
+            document.getElementById('opsiUpahBongkar').value = '0';
+            document.getElementById('potonganMuatInput').value = '';
+            document.getElementById('cancelTiketBtn').style.display = 'none';
+            hitungKalkulasi();
+            loadPendingTickets();
+          } else {
+            Swal.fire({ icon: 'error', text: result.message });
+          }
+        } catch (err) {
+          console.error(err);
+          Swal.fire({ icon: 'error', text: 'Gagal membatalkan tiket' });
+        }
+      }
+    });
+  });
+
+  window.addEventListener('beforeunload', function() {
+    if (window.serialConnector2 && window.serialConnector2.isConnected) {
+      try {
+        window.serialConnector2.isConnected = false;
+        if (window.serialConnector2.reader) {
+          window.serialConnector2.reader.cancel().catch(() => {});
+          try { window.serialConnector2.reader.releaseLock(); } catch(e) {}
+        }
+        if (window.serialConnector2.port) {
+          window.serialConnector2.port.close().catch(() => {});
+        }
+      } catch(e) { /* ignore */ }
+    }
+  });
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Master Data TKBM - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+  <link rel="stylesheet" href="/assets/css/bw-theme.css">
+  <link rel="stylesheet" href="/assets/css/pages/masterdata-bw.css">
+</head>
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header"><h1 class="page-title"><i class="fas fa-users"></i> Master Data TKBM (Tenaga Kerja Bongkar Muat)</h1></div>
+    <div class="d-flex justify-content-between mb-3">
+      <input type="text" id="searchTKBM" class="form-control" style="max-width:300px;" placeholder="Cari pekerja TKBM..." oninput="loadTKBM()">
+      <button class="btn btn-success" onclick="showAddTKBM()"><i class="bi bi-plus"></i> Tambah Karyawan TKBM</button>
+    </div>
+    <div class="table-container">
+      <table class="data-table">
+        <thead><tr><th>No</th><th>Nama Karyawan</th><th>No Telepon</th><th>Alamat</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody id="tkbmBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+  window.activePage = 'masterdata'; // Keep active page as masterdata or create tkbm
+
+  let tkbmList = [];
+
+  async function loadTKBM() {
+    try {
+      const res = await fetch('/tkbm-api/list');
+      const data = await res.json();
+      tkbmList = data.data || [];
+      renderTKBM();
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  function renderTKBM() {
+    const tbody = document.getElementById('tkbmBody');
+    const keyword = document.getElementById('searchTKBM').value.toLowerCase();
+    
+    let filtered = tkbmList;
+    if(keyword) {
+      filtered = filtered.filter(k => k.nama_karyawan.toLowerCase().includes(keyword));
+    }
+
+    if(filtered.length === 0) {
+      tbody.innerHTML='<tr><td colspan="6" style="text-align:center;">Tidak ada data TKBM</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map((k,i)=>{
+      const namaEscaped = k.nama_karyawan.replace(/'/g, "\\'");
+      return `<tr>
+        <td>${i+1}</td>
+        <td class="fw-bold">${k.nama_karyawan}</td>
+        <td>${k.no_telepon || '-'}</td>
+        <td>${k.alamat || '-'}</td>
+        <td>${k.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editTKBM(${k.id},'${namaEscaped}','${k.no_telepon||''}','${k.alamat||''}','${k.status}')"><i class="fas fa-edit"></i> Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteTKBM(${k.id})"><i class="fas fa-trash"></i> Hapus</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function showAddTKBM() {
+    const {value:form} = await Swal.fire({title:'Tambah Karyawan TKBM',html:`
+      <input id="tName" class="swal2-input" placeholder="Nama Karyawan (Inisial)">
+      <input id="tPhone" class="swal2-input" placeholder="No Telepon (Opsional)">
+      <input id="tAddress" class="swal2-input" placeholder="Alamat (Opsional)">
+    `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
+      nama_karyawan:document.getElementById('tName').value,
+      no_telepon:document.getElementById('tPhone').value,
+      alamat:document.getElementById('tAddress').value
+    })});
+    
+    if(!form || !form.nama_karyawan) {
+        if(form) Swal.fire('Gagal', 'Nama karyawan wajib diisi', 'error');
+        return;
+    }
+
+    const res = await fetch('/tkbm-api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadTKBM();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  async function editTKBM(id, name, phone, address, status) {
+    const {value:form} = await Swal.fire({title:'Edit Karyawan TKBM',html:`
+      <input id="eName" class="swal2-input" value="${name}" placeholder="Nama Karyawan">
+      <input id="ePhone" class="swal2-input" value="${phone}" placeholder="No Telepon">
+      <input id="eAddress" class="swal2-input" value="${address}" placeholder="Alamat">
+      <select id="eStatus" class="swal2-input">
+        <option value="active" ${status==='active'?'selected':''}>Aktif</option>
+        <option value="inactive" ${status!=='active'?'selected':''}>Nonaktif</option>
+      </select>
+    `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
+      nama_karyawan:document.getElementById('eName').value,
+      no_telepon:document.getElementById('ePhone').value,
+      alamat:document.getElementById('eAddress').value,
+      status:document.getElementById('eStatus').value
+    })});
+    if(!form || !form.nama_karyawan) return;
+    const res = await fetch(`/tkbm-api/update/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadTKBM();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  async function deleteTKBM(id) {
+    const conf = await Swal.fire({icon:'warning',text:'Hapus atau nonaktifkan karyawan ini?',showCancelButton:true,confirmButtonColor:'#dc2626'});
+    if(!conf.isConfirmed) return;
+    const res = await fetch(`/tkbm-api/delete/${id}`,{method:'DELETE'});
+    const r = await res.json();
+    if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:2000,showConfirmButton:false});loadTKBM();}
+    else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+  }
+
+  // Init
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof loadSessionInfo === 'function') {
+      loadSessionInfo();
+    }
+    loadTKBM();
+  });
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+</html>
