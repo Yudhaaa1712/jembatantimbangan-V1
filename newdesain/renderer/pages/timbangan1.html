@@ -23,7 +23,7 @@
       <div class="card-header bg-neoYellow border-b-4 border-black py-2 rounded-none flex-shrink-0">
         <div class="d-flex align-items-center justify-content-between">
           <div>
-            <h5 class="mb-0 text-black font-black uppercase tracking-wider"><i class="bi bi-speedometer2"></i> TIMBANGAN
+            <h5 class="mb-0 text-black font-black uppercase tracking-wider"> TIMBANGAN
               1 (BRUTO)</h5>
           </div>
           <div class="text-end d-flex align-items-center gap-2">
@@ -34,7 +34,7 @@
             <button
               class="btn bg-white hover:bg-neoBg text-black border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] font-black py-1 px-3 text-xs"
               id="openSerialSettings" tabindex="-1">
-              <i class="bi bi-gear-fill"></i> PENGATURAN
+              PENGATURAN
             </button>
           </div>
         </div>
@@ -64,32 +64,22 @@
                 </div>
               </div>
 
-              <!-- Actions & Input -->
-              <div class="col-md-5 px-2">
-                <div class="row g-1.5">
+              <!-- Actions -->
+              <div class="col-md-5 px-2 d-flex align-items-center">
+                <div class="row g-2 w-100">
                   <div class="col-6">
                     <button type="button"
-                      class="btn w-100 bg-neoBlue hover:bg-[#3385ff] text-white font-black py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-xs"
+                      class="btn w-100 bg-neoBlue hover:bg-[#3385ff] text-white font-black py-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-sm"
                       id="toggleConnection" tabindex="-1">
-                      <i class="bi bi-plug-fill"></i> SAMBUNG
+                      SAMBUNG
                     </button>
                   </div>
                   <div class="col-6">
                     <button type="button"
-                      class="btn w-100 bg-neoYellow hover:bg-[#ffeb33] text-black font-black py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-xs"
+                      class="btn w-100 bg-neoYellow hover:bg-[#ffeb33] text-black font-black py-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-sm"
                       id="captureWeight" tabindex="7">
-                      <i class="bi bi-camera-fill"></i> AMBIL BERAT
+                      AMBIL BERAT
                     </button>
-                  </div>
-                  <div class="col-12 mt-1">
-                    <div class="d-flex align-items-stretch">
-                      <div class="bg-neoPink text-white border-2 border-black font-black uppercase px-2 py-1 text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex-grow-1 d-flex align-items-center justify-content-center">
-                        BERAT TERTANGKAP (KG)
-                      </div>
-                      <input type="number"
-                        class="form-control text-center font-black focus:bg-neoYellow outline-none py-1 text-lg border-2 border-black ms-2 w-25"
-                        name="berat" id="beratInputForm" value="" step="1" min="0" placeholder="0" required tabindex="-1">
-                    </div>
                   </div>
                 </div>
               </div>
@@ -115,7 +105,7 @@
                         <label
                           class="form-check-label ms-1 font-black uppercase tracking-wider text-xs cursor-pointer text-black"
                           for="modeBeli">
-                          <i class="bi bi-cart-dash-fill"></i> BELI
+                          BELI
                         </label>
                       </div>
                       <div class="form-check mb-0">
@@ -125,7 +115,7 @@
                         <label
                           class="form-check-label ms-1 font-black uppercase tracking-wider text-xs cursor-pointer text-black"
                           for="modeJual">
-                          <i class="bi bi-cart-plus-fill"></i> JUAL
+                          JUAL
                         </label>
                       </div>
                     </div>
@@ -142,7 +132,7 @@
                       <label
                         class="form-check-label ms-1 font-black uppercase tracking-wider text-xs cursor-pointer text-black"
                         for="isLangsir">
-                        <i class="bi bi-truck-flatbed"></i> LANGSIR
+                        LANGSIR
                       </label>
                     </div>
                   </div>
@@ -192,6 +182,21 @@
                       autocomplete="off">
                   </div>
                 </div>
+
+                <!-- BERAT TERTANGKAP (Besar & Di bawah Jenis Material) -->
+                <div class="col-12 my-1" id="field_berat_tertangkap">
+                  <div class="card border-2 border-black rounded-none bg-neoPink text-white p-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="d-flex align-items-center justify-content-between gap-3">
+                      <label class="text-white font-black uppercase tracking-wider mb-0 text-sm flex-shrink-0">
+                        BERAT TERTANGKAP (KG)
+                      </label>
+                      <input type="number"
+                        class="form-control text-center font-black focus:bg-neoYellow text-black bg-white outline-none py-1 border-2 border-black flex-grow-1"
+                        name="berat" id="beratInputForm" value="" step="1" min="0" placeholder="0" required tabindex="-1" style="font-size: 1.75rem; height: 48px; max-width: 250px;">
+                    </div>
+                  </div>
+                </div>
+
                 <div class="col-md-6" id="field_harga">
                   <label class="form-label text-black font-black uppercase tracking-wider block">Harga per Kg</label>
                   <input type="text" name="harga_display"
@@ -200,8 +205,7 @@
                   <input type="hidden" name="harga" id="hargaHidden" value="0">
                 </div>
                 <div class="col-md-6" id="field_keterangan">
-                  <label class="form-label text-black font-black uppercase tracking-wider block"><i
-                      class="bi bi-chat-left-text"></i> Keterangan</label>
+                  <label class="form-label text-black font-black uppercase tracking-wider block">Keterangan</label>
                   <input type="text" class="form-control font-bold focus:bg-neoYellow outline-none py-1.5"
                     name="keterangan" style="text-transform:uppercase;" tabindex="6">
                 </div>
@@ -213,14 +217,14 @@
                   <button type="submit"
                     class="btn w-100 bg-neoGreen hover:bg-[#33ff85] text-black font-black py-2.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] d-flex align-items-center justify-content-center gap-1"
                     id="btnSimpan" tabindex="8">
-                    <i class="bi bi-save-fill"></i> <span id="btnSimpanText">SIMPAN DATA</span>
+                    <span id="btnSimpanText">SIMPAN DATA</span>
                   </button>
                 </div>
                 <div class="col-4">
                   <button type="reset"
                     class="btn w-100 bg-white hover:bg-neoBg text-black font-black py-2.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] d-flex align-items-center justify-content-center gap-1"
                     id="btnReset" tabindex="-1">
-                    <i class="bi bi-arrow-counterclockwise"></i> RESET
+                    RESET
                   </button>
                 </div>
               </div>
@@ -238,7 +242,7 @@
       <div
         class="modal-content bg-white text-black border-4 border-black rounded-none shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div class="modal-header bg-neoYellow border-b-4 border-black rounded-none">
-          <h5 class="modal-title font-black uppercase text-black"><i class="bi bi-gear-fill"></i> Pengaturan Port Serial
+          <h5 class="modal-title font-black uppercase text-black">Pengaturan Port Serial
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -520,7 +524,9 @@
       e.preventDefault();
       const btn = document.getElementById('btnSimpan');
       btn.disabled = true;
-      btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyimpan...';
+      const btnText = document.getElementById('btnSimpanText');
+      if (btnText) btnText.textContent = 'Menyimpan...';
+      else btn.innerHTML = '<span id="btnSimpanText">Menyimpan...</span>';
 
       try {
         const formData = new FormData(this);
@@ -589,7 +595,9 @@
         Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menyimpan data' });
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-save-fill"></i> SIMPAN DATA';
+        const btnText = document.getElementById('btnSimpanText');
+        if (btnText) btnText.textContent = 'SIMPAN DATA';
+        else btn.innerHTML = '<span id="btnSimpanText">SIMPAN DATA</span>';
       }
     });
 
@@ -608,7 +616,7 @@
         document.getElementById('beratInputForm').value = weight;
         isWeightLocked = true;
         window.isWeightLocked = true;
-        this.innerHTML = '<i class="bi bi-lock-fill"></i> TERKUNCI';
+        this.innerHTML = 'TERKUNCI';
         this.className = 'btn w-100 bg-neoGreen hover:bg-[#33ff85] text-black font-black py-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]';
       } else {
         Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Belum ada berat dari timbangan' });
@@ -619,7 +627,7 @@
     document.getElementById('btnReset').addEventListener('click', function () {
       isWeightLocked = false;
       window.isWeightLocked = false;
-      document.getElementById('captureWeight').innerHTML = '<i class="bi bi-camera-fill"></i> AMBIL BERAT';
+      document.getElementById('captureWeight').innerHTML = 'AMBIL BERAT';
       document.getElementById('captureWeight').className = 'btn w-100 bg-neoYellow hover:bg-[#ffeb33] text-black font-black py-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]';
       document.getElementById('weightDisplay').textContent = '0';
       document.getElementById('supirHutangWarning').style.display = 'none';
@@ -743,7 +751,7 @@
           if (badge) {
             badge.className = 'scale-status-dot connected mt-2';
           }
-          document.getElementById('toggleConnection').innerHTML = '<i class="bi bi-plug-fill"></i> PUTUSKAN';
+          document.getElementById('toggleConnection').textContent = 'PUTUSKAN';
           document.getElementById('toggleConnection').className = 'btn w-100 bg-neoPink hover:bg-[#ff3399] text-white font-black py-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]';
         },
         onDisconnect: () => {
@@ -753,7 +761,7 @@
           if (badge) {
             badge.className = 'scale-status-dot disconnected mt-2';
           }
-          document.getElementById('toggleConnection').innerHTML = '<i class="bi bi-plug-fill"></i> SAMBUNG';
+          document.getElementById('toggleConnection').textContent = 'SAMBUNG';
           document.getElementById('toggleConnection').className = 'btn w-100 bg-neoBlue hover:bg-[#3385ff] text-white font-black py-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]';
         },
         onData: (weight) => {

@@ -198,7 +198,7 @@
                 <input type="text" class="form-control" id="serialCustomRegex" name="serial_custom_regex" placeholder="Contoh: [+-]?\d+">
                 <small class="text-muted">Masukkan pola regex pencocok angka berat dari output timbangan Anda.</small>
               </div>
-              <button type="submit" class="btn bg-neoBlue hover:bg-[#3385ff] text-white font-black border-2 border-black py-2.5 px-4 rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"><i class="bi bi-save"></i> Simpan Pengaturan</button>
+              <button type="submit" class="btn bg-neoBlue hover:bg-[#3385ff] text-white font-black border-2 border-black py-2.5 px-4 rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Simpan Pengaturan</button>
             </form>
           </div>
         </div>
@@ -335,7 +335,7 @@
               <label class="form-label">Hardware ID Anda:</label>
               <div class="input-group">
                 <input type="text" class="form-control bg-white text-black font-bold" id="hwidDisplay" readonly>
-                <button class="btn bg-white hover:bg-neoBg text-black border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" onclick="copyHwid()"><i class="bi bi-clipboard"></i> Salin</button>
+                <button class="btn bg-white hover:bg-neoBg text-black border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" onclick="copyHwid()">Salin</button>
               </div>
               <small class="text-muted">Kirimkan Hardware ID ini ke Arroyan Jv Teknik untuk mendapatkan Kunci Lisensi.</small>
             </div>
@@ -344,7 +344,7 @@
                 <label class="form-label">Masukkan Kunci Lisensi:</label>
                 <textarea class="form-control" id="licenseKey" rows="4" required placeholder="Paste lisensi di sini..."></textarea>
               </div>
-              <button type="submit" class="btn bg-neoGreen hover:bg-[#33ff85] text-black border-2 border-black rounded-none font-black py-2 w-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"><i class="bi bi-key-fill"></i> Aktivasi Aplikasi</button>
+              <button type="submit" class="btn bg-neoGreen hover:bg-[#33ff85] text-black border-2 border-black rounded-none font-black py-2 w-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Aktivasi Aplikasi</button>
             </form>
           </div>
         </div>
@@ -354,13 +354,13 @@
       <div class="col-md-12">
         <div class="card border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4" id="card-danger">
           <div class="card-header bg-neoPink border-bottom-2 border-black text-white rounded-none">
-            <h5 class="mb-0 font-black"><i class="fas fa-exclamation-triangle"></i> Area Bahaya (Danger Zone)</h5>
+            <h5 class="mb-0 font-black">Area Bahaya (Danger Zone)</h5>
           </div>
           <div class="card-body bg-white text-black">
             <p class="text-muted mb-3">Menu ini digunakan untuk mengosongkan/menghapus data transaksi dan kas. Akun pengguna (User) dan pengaturan (Setup) akan tetap dipertahankan.</p>
             <div class="d-flex align-items-center gap-3 flex-wrap">
               <button class="btn bg-neoPink hover:bg-[#ff3399] text-white border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] font-black btn-lg" id="btnClearDataBtn">
-                <i class="fas fa-trash-alt"></i> KOSONGKAN SEMUA DATA TRANSAKSI & KAS
+                KOSONGKAN SEMUA DATA TRANSAKSI & KAS
               </button>
               <div class="text-muted small">
                 <strong>Data yang akan dihapus:</strong><br>
@@ -377,14 +377,14 @@
       <div class="col-md-12">
         <div class="card border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" id="card-struk">
           <div class="card-header bg-neoYellow border-bottom-2 border-black text-black d-flex justify-content-between align-items-center rounded-none">
-            <h5 class="mb-0 font-black"><i class="fas fa-print"></i> Pengaturan Cetak Struk</h5>
-            <small class="text-black font-extrabold uppercase text-[10px]"><i class="fas fa-arrows-alt"></i> Geser & ubah ukuran struk di atas kertas</small>
+            <h5 class="mb-0 font-black">Pengaturan Cetak Struk</h5>
+            <small class="text-black font-extrabold uppercase text-[10px]">Geser & ubah ukuran struk di atas kertas</small>
           </div>
           <div class="card-body">
             
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="form-label fw-bold"><i class="fas fa-layer-group"></i> Mode Cetak / Template</label>
+                <label class="form-label fw-bold">Mode Cetak / Template</label>
                 <select class="form-select" id="printMode" onchange="onInfoInputChange()">
                   <option value="text">Teks Standar (Kertas Continuous 9.5x11)</option>
                   <option value="html_a6">Format Peron (Sesuai Gambar, Teks 38-Kolom A6)</option>
@@ -491,10 +491,9 @@
                   oninput="onLineWidthChange()">
               </div>
               <div class="col-md-3 d-flex align-items-end gap-2">
-                <button class="btn bg-neoBlue hover:bg-[#3385ff] text-white border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex-fill py-2" onclick="savePrintSettings()"><i class="fas fa-save"></i>
+                <button class="btn bg-neoBlue hover:bg-[#3385ff] text-white border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex-fill py-2" onclick="savePrintSettings()">
                   Simpan</button>
-                <button class="btn bg-white hover:bg-neoBg text-black border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] py-2" onclick="resetPrintSettings()" title="Reset Default"><i
-                    class="fas fa-undo"></i></button>
+                <button class="btn bg-white hover:bg-neoBg text-black border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] py-2" onclick="resetPrintSettings()" title="Reset Default">Reset</button>
               </div>
             </div>
           </div>
@@ -666,9 +665,9 @@
         document.getElementById('hwidDisplay').value = r.hwid || '';
         const box = document.getElementById('licenseInfo');
         if (r.isLicensed) {
-          box.innerHTML = `<div class="alert alert-success border-2 border-black rounded-none bg-neoGreen text-black font-extrabold"><i class="bi bi-check-circle-fill"></i> Aplikasi berlisensi.<br>Berlaku hingga: <strong>${r.licenseData?.expiry === 'permanent' ? 'Permanen' : new Date(r.licenseData?.expiry).toLocaleDateString()}</strong></div>`;
+          box.innerHTML = `<div class="alert alert-success border-2 border-black rounded-none bg-neoGreen text-black font-extrabold">Aplikasi berlisensi.<br>Berlaku hingga: <strong>${r.licenseData?.expiry === 'permanent' ? 'Permanen' : new Date(r.licenseData?.expiry).toLocaleDateString()}</strong></div>`;
         } else {
-          box.innerHTML = `<div class="alert alert-danger border-2 border-black rounded-none bg-neoPink text-white font-extrabold"><i class="bi bi-x-circle-fill"></i> Aplikasi belum diaktivasi atau lisensi tidak valid/kadaluwarsa.</div>`;
+          box.innerHTML = `<div class="alert alert-danger border-2 border-black rounded-none bg-neoPink text-white font-extrabold">Aplikasi belum diaktivasi atau lisensi tidak valid/kadaluwarsa.</div>`;
         }
       }
     }

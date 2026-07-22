@@ -83,6 +83,88 @@
       </div>
     </div>
 
+    <!-- Data Tonase Mobil & Supir Tab -->
+    <div id="tab-kendaraan" style="display:none;">
+      <!-- Summary Card: Total Tonase-->
+      <div class="row g-3 mb-3">
+        <div class="col-md-6 mx-auto">
+          <div
+            class="card border-2 border-black rounded-none bg-neoGreen text-black p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="text-xs font-black uppercase tracking-wider opacity-90 mb-1">Total Tonase</div>
+                <div class="text-3xl font-black" id="grandTotalTonaseDisplay">0 Ton</div>
+                <div class="text-xs font-bold mt-1" id="grandTotalTripDisplay">0 Trip</div>
+              </div>
+              <div class="fs-1 opacity-75">TONASE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Periode (Sama dengan Halaman Transaksi) -->
+      <div class="filter-section p-3 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-3 rounded-none">
+        <div class="d-flex align-items-end gap-3 flex-wrap">
+          <div class="filter-group">
+            <label class="form-label text-xs font-black uppercase tracking-wider block mb-1">Pilih Periode</label>
+            <select id="tonaseDateFilterSelect" class="form-select form-select-sm font-bold border-2 border-black rounded-none" style="min-width: 200px;" onchange="handleTonaseFilterChange()">
+              <option value="today">Hari Ini</option>
+              <option value="yesterday">Kemarin</option>
+              <option value="week">7 Hari Terakhir</option>
+              <option value="half_month">15 Hari Terakhir</option>
+              <option value="month">Bulan Ini</option>
+              <option value="half_year">6 Bulan Terakhir</option>
+              <option value="year">Tahun Ini</option>
+              <option value="custom_range">Pilih Tanggal (Custom)</option>
+            </select>
+          </div>
+          <div id="tonaseCustomDateRow" style="display:none; gap:10px; align-items:flex-end;" class="flex-wrap">
+            <div class="filter-group">
+              <label class="form-label text-xs font-black uppercase tracking-wider block mb-1">Dari Tanggal</label>
+              <input type="date" id="tonaseStartDate" class="form-control form-control-sm font-bold border-2 border-black rounded-none">
+            </div>
+            <div class="filter-group">
+              <label class="form-label text-xs font-black uppercase tracking-wider block mb-1">Sampai Tanggal</label>
+              <input type="date" id="tonaseEndDate" class="form-control form-control-sm font-bold border-2 border-black rounded-none">
+            </div>
+            <button class="btn btn-primary btn-sm bg-neoBlue text-white font-black border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] px-3" style="height: 31px;" onclick="loadTonaseKendaraan()">
+              Cari
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rekap Tonase Table -->
+      <div id="subtab-rekap">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <input type="text" id="searchTonase"
+            class="form-control form-control-sm font-bold border-2 border-black rounded-none" style="max-width:300px;"
+            placeholder="Cari No. Polisi (BM) / Supir..." oninput="loadTonaseKendaraan()">
+          <span class="text-xs font-black uppercase text-black" id="tonaseCountBadge">Total Data: 0</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>No. Polisi (BM)</th>
+                <th>Nama Supir</th>
+                <th>Jumlah Trip</th>
+                <th>Total Netto (Kg)</th>
+                <th>Total Tonase (Ton)</th>
+                <th>Transaksi Terakhir</th>
+              </tr>
+            </thead>
+            <tbody id="tonaseBody">
+              <tr>
+                <td colspan="7" class="text-center py-3">Memuat data tonase...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Email Config Tab -->
     <div id="tab-email" style="display:none;">
       <div class="row">
@@ -575,6 +657,7 @@
     document.getElementById('tab-users').style.display = 'none';
     document.getElementById('tab-supplier').style.display = 'none';
     document.getElementById('tab-supir').style.display = 'none';
+    if (document.getElementById('tab-kendaraan')) document.getElementById('tab-kendaraan').style.display = 'none';
     document.getElementById('tab-material').style.display = 'none';
     document.getElementById('tab-email').style.display = 'none';
     
@@ -582,6 +665,10 @@
         document.getElementById('tab-users').style.display = 'block';
         document.getElementById('mdTitle').textContent = 'Master Data - Pengguna';
         await loadUsers();
+    } else if (tab === 'kendaraan') {
+        if (document.getElementById('tab-kendaraan')) document.getElementById('tab-kendaraan').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Data Tonase Ramp (Mobil & Supir)';
+        await loadTonaseKendaraan();
     } else if (tab === 'supir') {
         document.getElementById('tab-supir').style.display = 'block';
         document.getElementById('mdTitle').textContent = 'Master Data - Supir';
@@ -602,6 +689,74 @@
     
     await loadSessionInfo();
   });
+
+  // --- TONASE KENDARAAN & SUPIR LOGIC ---
+  function handleTonaseFilterChange() {
+    const val = document.getElementById('tonaseDateFilterSelect').value;
+    const customRow = document.getElementById('tonaseCustomDateRow');
+    if (val === 'custom_range') {
+      customRow.style.display = 'flex';
+    } else {
+      customRow.style.display = 'none';
+      loadTonaseKendaraan();
+    }
+  }
+
+  async function loadTonaseKendaraan() {
+    try {
+      const filterSelect = document.getElementById('tonaseDateFilterSelect');
+      const filter = filterSelect ? filterSelect.value : 'today';
+      const start = document.getElementById('tonaseStartDate')?.value || '';
+      const end = document.getElementById('tonaseEndDate')?.value || '';
+      const search = document.getElementById('searchTonase')?.value || '';
+
+      let queryParams = new URLSearchParams({
+        date_filter: filter,
+        search: search
+      });
+
+      if (filter === 'custom_range') {
+        if (start) queryParams.append('start_date', start);
+        if (end) queryParams.append('end_date', end);
+      }
+
+      const res = await fetch('/masterdata/tonase-kendaraan?' + queryParams.toString());
+      const data = await res.json();
+      const tbody = document.getElementById('tonaseBody');
+
+      if (!data.success) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">Gagal memuat data: ${data.message}</td></tr>`;
+        return;
+      }
+
+      const items = data.data.items || [];
+      const summary = data.data.summary || {};
+
+      if (document.getElementById('grandTotalTonaseDisplay')) document.getElementById('grandTotalTonaseDisplay').textContent = `${summary.grand_total_tonase || 0} Ton`;
+      if (document.getElementById('grandTotalTripDisplay')) document.getElementById('grandTotalTripDisplay').textContent = `${summary.grand_total_trip || 0} Trip`;
+      if (document.getElementById('tonaseCountBadge')) document.getElementById('tonaseCountBadge').textContent = `Total Data: ${items.length}`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3">Tidak ada data tonase ditemukan</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map((item, i) => {
+        const formatNetto = new Intl.NumberFormat('id-ID').format(item.total_netto_kg || 0);
+        return `<tr>
+          <td>${i + 1}</td>
+          <td class="font-extrabold">${item.no_polisi || '-'}</td>
+          <td>${item.nama_supir || '-'}</td>
+          <td class="text-center font-bold">${item.total_trip} Trip</td>
+          <td class="text-end font-bold">${formatNetto} Kg</td>
+          <td class="text-end font-extrabold text-success">${item.total_tonase} Ton</td>
+          <td class="text-center small">${item.transaksi_terakhir || '-'}</td>
+        </tr>`;
+      }).join('');
+    } catch (err) {
+      console.error('Error loadTonaseKendaraan:', err);
+    }
+  }
   </script>
   <script src="/js/sidebar.js"></script>
 </body>

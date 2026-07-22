@@ -53,8 +53,10 @@ function startServer() {
     const dbDir = app.getPath('userData');
     const dbPath = path.join(dbDir, 'database.db');
     serverProcess = fork(serverPath, [], {
+      execPath: process.execPath,
       env: { 
         ...process.env, 
+        ELECTRON_RUN_AS_NODE: '1',
         PORT: SERVER_PORT, 
         NODE_ENV: isDev ? 'development' : 'production',
         DB_PATH: dbPath
@@ -174,10 +176,10 @@ function createWindow() {
   });
 
   // ── Load app with retry ───────────────────────────────────────────────────
-  let retries = 5;
+  let retries = 15;
   function loadAppUrl() {
-    mainWindow.loadURL(`http://localhost:${SERVER_PORT}/`).catch(err => {
-      console.warn(`[Electron] Failed to load URL, retrying... (${retries} left)`);
+    mainWindow.loadURL(`http://127.0.0.1:${SERVER_PORT}/`).catch(err => {
+      console.warn(`[Electron] Failed to load URL: http://127.0.0.1:${SERVER_PORT}/ (${err.code}), retrying... (${retries} left)`);
       if (retries > 0) {
         retries--;
         setTimeout(loadAppUrl, 1000);

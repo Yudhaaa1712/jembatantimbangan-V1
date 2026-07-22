@@ -123,6 +123,18 @@ try {
   console.error('[DB Migration] Error migrating hutang_supplier_history table:', e);
 }
 
+// Migration: Check kepemilikan in kendaraan
+try {
+  const tableInfoKendaraan = db.prepare("PRAGMA table_info(kendaraan)").all();
+  const hasKepemilikan = tableInfoKendaraan.some(col => col.name === 'kepemilikan');
+  if (!hasKepemilikan) {
+    db.prepare("ALTER TABLE kendaraan ADD COLUMN kepemilikan TEXT DEFAULT 'Perusahaan'").run();
+    console.log('[DB Migration] Added kepemilikan column to kendaraan table');
+  }
+} catch (e) {
+  console.error('[DB Migration] Error migrating kendaraan table:', e);
+}
+
 // Migration: Check new columns in transaksi_timbangan
 try {
   const tableInfo = db.prepare("PRAGMA table_info(transaksi_timbangan)").all();

@@ -71,7 +71,7 @@ function loadData() {
         data: filterData,
         dataType: 'json',
         beforeSend: function () {
-            $('#dataTableBody').html('<tr><td colspan="19" class="text-center"><i class="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>');
+            $('#dataTableBody').html('<tr><td colspan="19" class="text-center">Memuat data...</td></tr>');
         },
         success: function (response) {
             if (response.success && response.data) {
@@ -161,9 +161,9 @@ function displayData(result) {
                 <td>${statusBadge}</td>
                 <td>
                     <button class="btn btn-view btn-sm" onclick="viewDetail(${row.id})" title="Detail">
-                        <i class="fas fa-eye"></i>
+                        Detail
                     </button>
-                    ${row.status === 'selesai' ? `<button class="btn btn-sm btn-outline-primary" onclick="cetakStruk('${row.no_tiket}')" title="Cetak Struk"><i class="fas fa-print"></i></button>` : ''}
+                    ${row.status === 'selesai' ? `<button class="btn btn-sm btn-outline-primary" onclick="cetakStruk('${row.no_tiket}')" title="Cetak Struk">Cetak</button>` : ''}
                 </td>
             </tr>
         `;
@@ -228,7 +228,7 @@ function showDetailModal(data) {
     const content = `
         <div class="row">
             <div class="col-md-6">
-                <h6 class="text-info"><i class="fas fa-id-card"></i> Data Identitas</h6>
+                <h6 class="text-info">Data Identitas</h6>
                 <table class="table table-sm table-dark">
                     <tr><td style="width:120px">Tanggal</td><td><strong>${data.tanggal || '-'}</strong></td></tr>
                     <tr><td>No. Tiket</td><td><strong>${data.no_tiket || '-'}</strong></td></tr>
@@ -240,7 +240,7 @@ function showDetailModal(data) {
                 </table>
             </div>
             <div class="col-md-6">
-                <h6 class="text-info"><i class="fas fa-weight-hanging"></i> Data Timbangan</h6>
+                <h6 class="text-info">Data Timbangan</h6>
                 <table class="table table-sm table-dark">
                     <tr><td style="width:120px">Bruto</td><td class="text-end"><strong>${formatBerat(calc.bruto)} Kg</strong></td></tr>
                     <tr><td>Tara</td><td class="text-end"><strong>${formatBerat(calc.tara)} Kg</strong></td></tr>
@@ -255,7 +255,7 @@ function showDetailModal(data) {
         </div>
         <div class="row mt-3">
             <div class="col-12">
-                <h6 class="text-info"><i class="fas fa-calculator"></i> Perhitungan Harga</h6>
+                <h6 class="text-info">Perhitungan Harga</h6>
                 <div class="d-flex justify-content-between text-center" style="gap: 10px;">
                     <div class="flex-fill p-3 rounded" style="background: #1e3a8a; border: 2px solid #3b82f6;">
                         <div class="small text-uppercase" style="color: #60a5fa;">Total Awal</div>
@@ -276,7 +276,7 @@ function showDetailModal(data) {
         <div class="row mt-3">
             <div class="col-12 text-center">
                 <button class="btn btn-primary" onclick="cetakStruk('${data.no_tiket}')">
-                    <i class="fas fa-print"></i> CETAK STRUK
+                    CETAK STRUK
                 </button>
             </div>
         </div>` : ''}

@@ -51,24 +51,24 @@
 <body>
   <div id="site-header"></div>
   <div class="main-container">
-    <div class="page-header"><h1 class="page-title"><i class="bi bi-cash-coin"></i> Manajemen Upah Supir &amp; Pekerja</h1></div>
+    <div class="page-header"><h1 class="page-title">Manajemen Upah Supir &amp; Pekerja</h1></div>
 
     <!-- Tab Navigation -->
     <ul class="nav nav-tabs mb-4" id="upahTabs" role="tablist">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="setting-tab" data-bs-toggle="tab" data-bs-target="#tab-setting" type="button" role="tab"><i class="bi bi-gear-fill"></i> Tarif &amp; Pengaturan</button>
+        <button class="nav-link active" id="setting-tab" data-bs-toggle="tab" data-bs-target="#tab-setting" type="button" role="tab">Tarif &amp; Pengaturan</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="payout-tab" data-bs-toggle="tab" data-bs-target="#tab-payout" type="button" role="tab" onclick="loadDrivers()"><i class="bi bi-calculator"></i> Kalkulasi &amp; Payout Upah</button>
+        <button class="nav-link" id="payout-tab" data-bs-toggle="tab" data-bs-target="#tab-payout" type="button" role="tab" onclick="loadDrivers()">Kalkulasi &amp; Payout Upah</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#tab-history" type="button" role="tab" onclick="loadRiwayat()"><i class="bi bi-clock-history"></i> Riwayat Gaji Supir</button>
+        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#tab-history" type="button" role="tab" onclick="loadRiwayat()">Riwayat Gaji Supir</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="payout-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-payout-tkbm" type="button" role="tab" onclick="loadTkbm()"><i class="bi bi-people"></i> Payout TKBM</button>
+        <button class="nav-link" id="payout-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-payout-tkbm" type="button" role="tab" onclick="loadTkbm()">Payout TKBM</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="history-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-history-tkbm" type="button" role="tab" onclick="loadRiwayatTkbm()"><i class="bi bi-clock-history"></i> Riwayat TKBM</button>
+        <button class="nav-link" id="history-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-history-tkbm" type="button" role="tab" onclick="loadRiwayatTkbm()">Riwayat TKBM</button>
       </li>
     </ul>
 
@@ -100,7 +100,7 @@
                 </div>
               </div>
             </div>
-            <button type="button" class="btn btn-primary" onclick="simpanPengaturan()"><i class="bi bi-save"></i> Simpan Pengaturan</button>
+            <button type="button" class="btn btn-primary" onclick="simpanPengaturan()">Simpan Pengaturan</button>
           </form>
         </div>
       </div>
@@ -127,81 +127,54 @@
               <input type="date" id="payoutEndDate" class="form-control" value="">
             </div>
             <div class="col-md-3">
-              <button class="btn btn-primary w-100" onclick="hitungPreviewUpah()"><i class="bi bi-search"></i> Hitung Preview</button>
+              <button class="btn btn-primary w-100" onclick="hitungPreviewUpah()">Hitung Preview</button>
             </div>
           </div>
 
           <div id="previewResultsContainer" style="display: none;">
             <hr>
-            <h5 class="mb-3 text-primary"><i class="bi bi-list-task"></i> Daftar Tiket Timbangan Belum Dibayar</h5>
+            <h5 class="mb-3 text-primary">Daftar Tiket Timbangan Belum Dibayar</h5>
             
             <div class="table-container mb-4">
               <table class="data-table">
                 <thead>
-                  <tr>
-                    <th>No Tiket</th>
-                    <th>Tanggal</th>
-                    <th>No Polisi</th>
-                    <th>Material</th>
-                    <th>Netto Akhir (Kg)</th>
-                    <th>Keterangan</th>
-                  </tr>
+                  <tr><th>No Tiket</th><th>Tanggal</th><th>Bruto</th><th>Tara</th><th>Netto (Kg)</th><th>Keterangan</th></tr>
                 </thead>
-                <tbody id="previewTableBody">
-                  <!-- JS populated -->
-                </tbody>
+                <tbody id="previewTableBody"></tbody>
               </table>
             </div>
 
-            <!-- Summary & Payout Details -->
             <div class="row g-3">
               <div class="col-md-6">
                 <div class="card p-3 bg-light border-0">
-                  <h6>Rincian Upah Bruto</h6>
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>Total Netto:</span>
-                    <strong id="previewTotalNetto">0 Kg</strong>
-                  </div>
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>Tarif per Kg:</span>
-                    <strong id="previewTarifPerKg">Rp 0</strong>
-                  </div>
+                  <h6>Upah Bruto</h6>
+                  <div class="d-flex justify-content-between mb-2"><span>Total Netto:</span><strong id="previewTotalNetto">0 Kg</strong></div>
+                  <div class="d-flex justify-content-between mb-2"><span>Tarif Supir:</span><strong id="previewTarifSupir">Rp 0 / Kg</strong></div>
                   <hr class="my-1">
-                  <div class="d-flex justify-content-between text-success">
-                    <span>Total Gaji Bruto:</span>
-                    <h5 class="mb-0 fw-bold" id="previewGajiBruto">Rp 0</h5>
-                  </div>
+                  <div class="d-flex justify-content-between text-success"><span>Gaji Bruto:</span><h5 class="mb-0 fw-bold" id="previewGajiBruto">Rp 0</h5></div>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="card p-3 bg-light border-0">
-                  <h6>Potongan &amp; Total Bayar</h6>
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>Sisa Hutang Supir:</span>
-                    <strong class="text-danger" id="previewSisaHutang">Rp 0</strong>
-                    <input type="hidden" id="rawSisaHutang" value="0">
-                  </div>
+                  <h6>Potongan Hutang</h6>
+                  <div class="d-flex justify-content-between mb-2"><span>Total Sisa Hutang:</span><strong class="text-danger" id="previewSisaHutang">Rp 0</strong></div>
                   <div class="mb-3">
-                    <label class="form-label small text-muted mb-1">Potongan Hutang (Maksimal disesuaikan gaji bruto):</label>
-                    <input type="number" id="inputPotonganHutang" class="form-control form-control-sm" placeholder="0" oninput="hitungUpahNetto()">
+                    <label class="form-label small">Potong Hutang Untuk Gaji Ini (Rp)</label>
+                    <input type="number" id="inputPotonganHutangGaji" class="form-control" placeholder="0" oninput="hitungNettoBayarGaji()">
                   </div>
                   <hr class="my-1">
-                  <div class="d-flex justify-content-between text-primary">
-                    <span>Gaji Bersih Diterima:</span>
-                    <h5 class="mb-0 fw-bold" id="previewGajiNetto">Rp 0</h5>
-                  </div>
+                  <div class="d-flex justify-content-between text-primary"><span>Gaji Bersih Diterima:</span><h5 class="mb-0 fw-bold" id="previewGajiNetto">Rp 0</h5></div>
                 </div>
               </div>
             </div>
 
             <div class="text-end mt-4">
-              <button class="btn btn-success btn-lg" onclick="prosesBayarGaji()"><i class="bi bi-wallet2"></i> Simpan &amp; Bayar Upah</button>
+              <button class="btn btn-success btn-lg" onclick="prosesBayarGaji()">Simpan &amp; Bayar Upah</button>
             </div>
           </div>
           
           <div id="noPreviewPlaceholder" class="text-center py-5 text-muted">
-            <i class="bi bi-calculator-fill display-3"></i>
             <p class="mt-2">Isi form di atas dan klik tombol "Hitung Preview" untuk memulai perhitungan upah.</p>
           </div>
         </div>
@@ -277,7 +250,7 @@
               <input type="date" id="payoutTkbmEndDate" class="form-control" value="">
             </div>
             <div class="col-md-3">
-              <button class="btn btn-primary w-100" onclick="hitungPreviewUpahTkbm()"><i class="bi bi-search"></i> Hitung Preview</button>
+              <button class="btn btn-primary w-100" onclick="hitungPreviewUpahTkbm()">Hitung Preview</button>
             </div>
           </div>
 
@@ -310,7 +283,7 @@
                 </div>
               </div>
             </div>
-            <div class="text-end mt-4"><button class="btn btn-success btn-lg" onclick="prosesBayarTkbm()"><i class="bi bi-wallet2"></i> Bayar Upah TKBM</button></div>
+            <div class="text-end mt-4"><button class="btn btn-success btn-lg" onclick="prosesBayarTkbm()">Bayar Upah TKBM</button></div>
           </div>
         </div>
       </div>
@@ -394,7 +367,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-          <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> Cetak Slip</button>
+          <button type="button" class="btn btn-primary" onclick="window.print()">Cetak Slip</button>
         </div>
       </div>
     </div>
@@ -647,8 +620,8 @@
                 <td class="text-end text-success fw-bold">${formatRupiah(h.total_dibayar)}</td>
                 <td>${h.nama_operator || '-'}</td>
                 <td>
-                  <button class="btn btn-sm btn-info" onclick="showSlipModalByIndex(${i})"><i class="bi bi-printer"></i> Slip</button>
-                  <button class="btn btn-sm btn-danger" onclick="batalkanPembayaranGaji(${h.id}, '${noSlipEscaped}')"><i class="bi bi-trash"></i> Batalkan</button>
+                  <button class="btn btn-sm btn-info" onclick="showSlipModalByIndex(${i})">Slip</button>
+                  <button class="btn btn-sm btn-danger" onclick="batalkanPembayaranGaji(${h.id}, '${noSlipEscaped}')">Batalkan</button>
                 </td>
               </tr>
             `;
@@ -860,7 +833,7 @@
                 <td class="text-center">${h.total_trip} Trip</td>
                 <td class="text-end text-success fw-bold">${formatRupiah(h.gaji_bersih)}</td>
                 <td>
-                  <button class="btn btn-sm btn-danger" onclick="batalGajiTkbm(${h.id})"><i class="bi bi-trash"></i> Batalkan</button>
+                  <button class="btn btn-sm btn-danger" onclick="batalGajiTkbm(${h.id})">Batalkan</button>
                 </td>
               </tr>
             `;

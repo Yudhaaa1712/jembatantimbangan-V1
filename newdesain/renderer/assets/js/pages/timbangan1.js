@@ -106,7 +106,7 @@ function updateConnectionUI(connected) {
             weightStatus.className = 'display-status text-success';
         }
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="bi bi-plug-fill"></i> PUTUSKAN';
+            toggleBtn.innerHTML = 'PUTUSKAN';
             toggleBtn.className = 'btn btn-danger w-100 mt-3';
         }
         // Indikator terhubung = input manual tidak bisa
@@ -121,7 +121,7 @@ function updateConnectionUI(connected) {
             weightStatus.className = 'display-status text-danger';
         }
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="bi bi-plug-fill"></i> SAMBUNGKAN';
+            toggleBtn.innerHTML = 'SAMBUNGKAN';
             toggleBtn.className = 'btn btn-info w-100 mt-3';
         }
         // Indikator terputus = bisa input manual
@@ -187,7 +187,6 @@ function updatePortInfoDisplay() {
             const isUsb = portInfo.usbVendorId !== undefined && portInfo.usbVendorId !== null;
             portInfoEl.innerHTML = `
                 <div class="text-success">
-                    <i class="bi bi-check-circle-fill"></i> 
                     <strong>Port Terpilih</strong><br>
                     <small>${isUsb ? `VendorID: ${portInfo.usbVendorId || 'N/A'}, ProductID: ${portInfo.usbProductId || 'N/A'}` : 'Physical COM Port (Motherboard)'}</small>
                 </div>
@@ -196,7 +195,7 @@ function updatePortInfoDisplay() {
         }
     } catch (e) { }
 
-    portInfoEl.innerHTML = '<span class="text-muted"><i class="bi bi-plug"></i> Belum ada port dipilih</span>';
+    portInfoEl.innerHTML = '<span class="text-muted">Belum ada port dipilih</span>';
 }
 
 function applyPreset(presetType) {
@@ -307,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         } catch (error) {
             showNotification('Error: ' + error.message, 'error');
         } finally {
-            this.innerHTML = '<i class="bi bi-save-fill"></i> Simpan & Reconnect';
+            this.innerHTML = 'Simpan & Reconnect';
             this.disabled = false;
         }
     });
@@ -389,7 +388,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         beratInputForm.readOnly = true;
         beratInputForm.style.cursor = 'not-allowed';
 
-        this.innerHTML = '<i class="bi bi-lock-fill"></i> TERKUNCI!';
+        this.innerHTML = 'TERKUNCI!';
         this.classList.remove('btn-warning');
         this.classList.add('btn-success');
         this.disabled = true;

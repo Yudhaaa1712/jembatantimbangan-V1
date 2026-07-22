@@ -40,7 +40,7 @@ router.get('/list', async (req, res) => {
        FROM pengiriman_pabrik pp
        LEFT JOIN users u ON pp.operator_id = u.id
        WHERE pp.tanggal >= date('now', 'localtime', '-30 days')
-       ORDER BY pp.created_at DESC`
+       ORDER BY pp.created_at ASC, pp.id ASC`
     );
     return jsonResponse(res, true, 'Data pengiriman', rows);
   } catch (err) {

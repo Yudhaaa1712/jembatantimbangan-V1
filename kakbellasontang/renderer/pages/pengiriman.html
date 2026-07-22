@@ -16,9 +16,17 @@
       .display-panel-sm { background: #000; border: 2px solid #333; border-radius: 8px; padding: 10px; text-align: center; }
       .display-panel-sm .display-value { font-size: 28px; font-weight: 900; color: #0f0; font-family: monospace; }
       .display-panel-sm .display-status { font-size: 11px; color: #a0a0a0; margin-bottom: 5px; }
-      .terminal-table { width: 100%; color: #0f0; font-size: 12px; }
-      .terminal-table th { border-bottom: 1px solid #333; padding: 8px; color: #fff; text-transform: uppercase; }
-      .terminal-table td { border-bottom: 1px dotted #333; padding: 6px 8px; vertical-align: middle; }
+      .dark-terminal-card {
+        background: #0f172a !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 12px;
+        padding: 20px;
+        color: #f8fafc;
+      }
+      .terminal-table { width: 100%; font-size: 12px; border-collapse: collapse; background: #0f172a !important; }
+      .terminal-table th { background: #1e293b !important; border-bottom: 2px solid #334155 !important; padding: 10px 8px; color: #38bdf8 !important; text-transform: uppercase; font-weight: 700; }
+      .terminal-table td { background: #0f172a !important; border-bottom: 1px solid #1e293b !important; padding: 8px; vertical-align: middle; color: #f8fafc !important; }
+      .terminal-table tr:hover td { background: #1e293b !important; }
       .dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px; }
       .dash-box { border: 1px solid #333; border-radius: 6px; padding: 10px; text-align: center; background: #0a0a0a; }
       .dash-box .dash-title { font-size: 10px; text-transform: uppercase; color: #a0a0a0; }
@@ -56,10 +64,7 @@
                                         </div>
                                         <div class="mb-3">
                                             <label class="terminal-label">Supir Pengirim</label>
-                                            <select class="terminal-select" id="t1_idSupir" required>
-                                                <option value="">-- Pilih Supir --</option>
-                                            </select>
-                                            <input type="hidden" id="t1_namaSupir">
+                                            <input type="text" class="terminal-input" id="t1_namaSupir" placeholder="INPUT NAMA SUPIR..." style="text-transform:uppercase;" required>
                                         </div>
                                         <div class="mb-3">
                                             <label class="terminal-label">Pabrik Tujuan</label>
@@ -78,7 +83,7 @@
                                             <label class="terminal-label">Keterangan</label>
                                             <input type="text" class="terminal-input" id="t1_keterangan" style="text-transform:uppercase;">
                                         </div>
-                                        <div class="mb-3">
+                                        <div class="mb-3" style="display:none;">
                                             <label class="terminal-label text-info">Pekerja TKBM (Bisa > 1)</label>
                                             <div id="tkbmCheckboxes" style="background:#111; border:1px solid #333; padding:10px; max-height:100px; overflow-y:auto; border-radius:4px;">
                                                 <small class="text-muted">Memuat data...</small>
@@ -188,9 +193,9 @@
         <!-- BAGIAN BAWAH: TABEL RIWAYAT -->
         <div class="row">
             <div class="col-12">
-                <div class="terminal-box">
+                <div class="terminal-box dark-terminal-card">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <label class="terminal-label mb-0"><i class="fas fa-history"></i> Riwayat Pengiriman Pabrik</label>
+                        <label class="terminal-label mb-0" style="color:#38bdf8;"><i class="fas fa-history"></i> Riwayat Pengiriman Pabrik</label>
                         <div>
                             <a href="/pengiriman/export-excel" class="terminal-btn terminal-btn-success text-decoration-none me-2"><i class="fas fa-file-excel"></i> Export Excel</a>
                             <button class="terminal-btn" onclick="loadList()"><i class="fas fa-sync-alt"></i> Refresh Data</button>
@@ -202,7 +207,8 @@
                                 <tr>
                                     <th>No. SJ</th>
                                     <th>Tanggal</th>
-                                    <th>Kendaraan & Supir</th>
+                                    <th>No. Polisi</th>
+                                    <th>Nama Supir</th>
                                     <th>Pabrik Tujuan</th>
                                     <th>Material</th>
                                     <th class="text-end">Netto RAM</th>
@@ -213,7 +219,7 @@
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
-                                <tr><td colspan="10" class="text-center py-4" style="color:#fff;">Memuat data...</td></tr>
+                                <tr><td colspan="11" class="text-center py-4" style="color:#fff;">Memuat data...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -342,13 +348,13 @@
           const r = await res.json();
           const tbody = document.getElementById('tableBody');
           if (!r.success || !r.data.length) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4">Belum ada data pengiriman</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4" style="color:#94a3b8;">Belum ada data pengiriman</td></tr>';
             return;
           }
           tbody.innerHTML = r.data.map(d => {
             const tgl = d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID') : '-';
             const nettoRam = Number(d.netto_ram).toLocaleString('id-ID');
-            const nettoPabrik = d.netto_pabrik !== null ? Number(d.netto_pabrik).toLocaleString('id-ID') : '<span style="color:#666;">Belum</span>';
+            const nettoPabrik = d.netto_pabrik !== null ? Number(d.netto_pabrik).toLocaleString('id-ID') : '<span style="color:#94a3b8;">Belum</span>';
             let susutHtml = '-';
             if (d.susut !== null) {
               const cls = d.susut >= 0 ? 'susut-normal' : 'susut-surplus';
@@ -365,14 +371,15 @@
             }
             aksiHtml += `<button class="terminal-btn terminal-btn-danger" style="padding:2px 6px; font-size:10px;" onclick="hapus(${d.id})">Hapus</button>`;
 
-            return `<tr style="color: #000;">
-              <td><strong>${d.no_surat_jalan}</strong></td>
-              <td style="color: #333;">${tgl}</td>
-              <td>${d.no_polisi} <small class="d-block" style="color:#333;">${d.nama_supir}</small></td>
-              <td>${d.nama_pabrik}</td>
+            return `<tr style="color: #f8fafc;">
+              <td><strong style="color:#38bdf8;">${d.no_surat_jalan}</strong></td>
+              <td style="color: #cbd5e1;">${tgl}</td>
+              <td><strong style="color: #ffffff;">${d.no_polisi || '-'}</strong></td>
+              <td style="color: #e2e8f0;">${d.nama_supir || '-'}</td>
+              <td style="color: #cbd5e1;">${d.nama_pabrik}</td>
               <td><span class="badge ${jenis === 'TBS' ? 'bg-success' : 'bg-primary'}">${jenis}</span></td>
-              <td class="text-end fw-bold" style="color:#000;">${nettoRam}</td>
-              <td class="text-end fw-bold" style="color:#000;">${nettoPabrik}</td>
+              <td class="text-end fw-bold" style="color:#34d399;">${nettoRam}</td>
+              <td class="text-end fw-bold" style="color:#60a5fa;">${nettoPabrik}</td>
               <td class="text-center">${susutHtml}</td>
               <td class="text-center">${statusBadge}</td>
               <td class="text-center">${aksiHtml}</td>
@@ -383,38 +390,35 @@
 
     async function loadFormDependencies() {
         try {
-            // Load Supir
-            const resSupir = await fetch('/masterdata/supir');
-            const dataSupir = await resSupir.json();
-            if (dataSupir.success) {
-                const sel = document.getElementById('t1_idSupir');
-                sel.innerHTML = '<option value="">-- Pilih Supir --</option>';
-                dataSupir.data.forEach(s => {
-                    if(s.status === 'active') sel.innerHTML += `<option value="${s.id}">${s.nama_supir}</option>`;
-                });
+            // Load Supir (optional check)
+            const sel = document.getElementById('t1_idSupir');
+            if (sel) {
+                const resSupir = await fetch('/masterdata/supir');
+                const dataSupir = await resSupir.json();
+                if (dataSupir.success) {
+                    sel.innerHTML = '<option value="">-- Pilih Supir --</option>';
+                    dataSupir.data.forEach(s => {
+                        if(s.status === 'active') sel.innerHTML += `<option value="${s.id}">${s.nama_supir}</option>`;
+                    });
+                }
             }
 
             // Load TKBM
             const resTkbm = await fetch('/tkbm-api/active');
             const dataTkbm = await resTkbm.json();
             const tkbmDiv = document.getElementById('tkbmCheckboxes');
-            if (dataTkbm.success && dataTkbm.data.length > 0) {
+            if (tkbmDiv && dataTkbm.success && dataTkbm.data.length > 0) {
                 tkbmDiv.innerHTML = dataTkbm.data.map(t => 
                     `<div class="form-check">
                         <input class="form-check-input tkbm-cb" type="checkbox" value="${t.id}" id="tkbm_${t.id}">
                         <label class="form-check-label text-light" for="tkbm_${t.id}">${t.nama_karyawan}</label>
                     </div>`
                 ).join('');
-            } else {
+            } else if (tkbmDiv) {
                 tkbmDiv.innerHTML = '<small class="text-danger">Belum ada data TKBM aktif</small>';
             }
         } catch(e) { console.error('Load deps error:', e); }
     }
-
-    document.getElementById('t1_idSupir').addEventListener('change', function() {
-        const option = this.options[this.selectedIndex];
-        document.getElementById('t1_namaSupir').value = option ? option.text : '';
-    });
 
     document.getElementById('formTimbang1').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -424,7 +428,7 @@
 
         const data = {
           no_polisi: document.getElementById('t1_noPolisi').value,
-          id_supir: document.getElementById('t1_idSupir').value,
+          id_supir: null,
           nama_supir: document.getElementById('t1_namaSupir').value,
           nama_pabrik: document.getElementById('t1_namaPabrik').value,
           jenis_material: document.getElementById('t1_jenisMaterial').value,

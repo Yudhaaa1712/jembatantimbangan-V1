@@ -48,7 +48,7 @@ router.get('/list', async (req, res) => {
        LEFT JOIN supplier s ON tt.id_supplier = s.id
        LEFT JOIN users u ON tt.operator_id = u.id
        WHERE ${dateSql} AND ((tt.status = 'selesai' AND tt.timbang2_locked = 1) OR tt.status = 'dibatalkan')
-       ORDER BY tt.created_at DESC`,
+       ORDER BY COALESCE(tt.waktu_keluar, tt.waktu_timbangan2, tt.updated_at, tt.created_at) ASC, tt.id ASC`,
       dateParams
     );
 

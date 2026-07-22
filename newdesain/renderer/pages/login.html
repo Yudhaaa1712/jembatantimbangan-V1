@@ -47,7 +47,7 @@
       <form id="loginForm" class="space-y-6">
         <div>
           <label for="username" class="text-sm font-black text-black uppercase tracking-wider block mb-2">Username</label>
-          <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required autocomplete="username" style="border-width: 2px !important;">
+          <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required autocomplete="username" style="border-width: 2px !important;" autofocus>
         </div>
         <div>
           <label for="password" class="text-sm font-black text-black uppercase tracking-wider block mb-2">Password</label>
@@ -68,6 +68,13 @@
   <script src="/assets/js/bootstrap.bundle.min.js"></script>
   <script src="/assets/js/sweetalert2.min.js"></script>
   <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const userInp = document.getElementById('username');
+    if (userInp) {
+      setTimeout(() => { userInp.focus(); }, 100);
+    }
+  });
+
   document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const btn = document.getElementById('btnLogin');

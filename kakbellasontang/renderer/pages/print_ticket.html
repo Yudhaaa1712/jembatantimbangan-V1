@@ -348,26 +348,31 @@ Memuat data...
             if (showPrice) {
                 out += '\n';
                 out += rpLine('Harga/Kg', d.harga_per_kg) + '\n';
-                out += rpLine('Total Harga', d.total_awal) + '\n';
 
-                if (d.pot_jalan > 0) {
-                    out += rpLine('Potongan Jalan', d.pot_jalan) + '\n';
+                const hasDeductions = (d.pot_jalan > 0 || d.pot_pupuk > 0 || d.pot_hutang > 0 || d.pot_hutang_supplier > 0 || d.pot_muat > 0);
+                if (hasDeductions) {
+                    out += rpLine('Total Harga', d.total_awal) + '\n';
+                    if (d.pot_jalan > 0) {
+                        out += rpLine('Potongan Jalan', d.pot_jalan) + '\n';
+                    }
+                    if (d.pot_pupuk > 0) {
+                        out += rpLine('Potongan Pupuk', d.pot_pupuk) + '\n';
+                    }
+                    if (d.pot_hutang > 0) {
+                        out += rpLine('Pot. Hutang Supir', d.pot_hutang) + '\n';
+                    }
+                    if (d.pot_hutang_supplier > 0) {
+                        out += rpLine('Pot. Hut. Supplier', d.pot_hutang_supplier) + '\n';
+                    }
+                    if (d.pot_muat > 0) {
+                        out += rpLine('Upah Bongkar', d.pot_muat) + '\n';
+                    }
+                    out += '─'.repeat(39) + '\n';
+                    out += rpLine('Total Bayar', d.total_akhir) + '\n';
+                } else {
+                    out += '─'.repeat(39) + '\n';
+                    out += rpLine('Total Bayar', d.total_akhir) + '\n';
                 }
-                if (d.pot_pupuk > 0) {
-                    out += rpLine('Potongan Pupuk', d.pot_pupuk) + '\n';
-                }
-                if (d.pot_hutang > 0) {
-                    out += rpLine('Pot. Hutang Supir', d.pot_hutang) + '\n';
-                }
-                if (d.pot_hutang_supplier > 0) {
-                    out += rpLine('Pot. Hut. Supplier', d.pot_hutang_supplier) + '\n';
-                }
-                if (d.pot_muat > 0) {
-                    out += rpLine('Upah Bongkar', d.pot_muat) + '\n';
-                }
-                
-                out += '─'.repeat(39) + '\n';
-                out += rpLine('Total Bayar', d.total_akhir) + '\n';
             }
             out += '\n\n';
 
@@ -491,12 +496,14 @@ Memuat data...
             out += row('NETTO-2', fmt(d.netto_akhir)) + '\n';
             out += row('HARGA', fmt(d.harga_per_kg)) + '\n';
             out += garisTipis + '\n';
-            out += rowRp('JUMLAH', d.total_awal) + '\n';
             if (totalPotonganRp > 0) {
-                out += rowRp('ASAM', totalPotonganRp) + '\n';
+                out += rowRp('TOTAL HARGA', d.total_awal) + '\n';
+                out += rowRp('POTONGAN', totalPotonganRp) + '\n';
+                out += garisTipis + '\n';
+                out += rowRp('TOTAL BAYAR', d.total_akhir) + '\n';
+            } else {
+                out += rowRp('TOTAL BAYAR', d.total_akhir) + '\n';
             }
-            out += garisTipis + '\n';
-            out += rowRp('JUMLAH', d.total_akhir) + '\n';
             out += garisTebal + '\n';
             const kasir = (d.nama_operator || 'KASIR').toUpperCase();
             let leftName = supplier.length > 15 ? supplier.substring(0, 15) : supplier;

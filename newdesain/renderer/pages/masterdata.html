@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,20 +11,33 @@
   <link rel="stylesheet" href="/assets/css/bw-theme.css">
   <link rel="stylesheet" href="/assets/css/pages/masterdata-bw.css">
 </head>
+
 <body>
   <div id="site-header"></div>
   <div class="main-container">
-    <div class="page-header"><h1 class="page-title" id="mdTitle">Master Data</h1></div>
+    <div class="page-header">
+      <h1 class="page-title" id="mdTitle">Master Data</h1>
+    </div>
 
     <!-- Users Tab -->
     <div id="tab-users" style="display:none;">
       <div class="d-flex justify-content-between mb-2">
-        <input type="text" id="searchUser" class="form-control" style="max-width:300px;" placeholder="Cari user..." oninput="loadUsers()">
-        <button class="btn btn-success btn-sm" onclick="showAddUser()"><i class="bi bi-plus"></i> Tambah User</button>
+        <input type="text" id="searchUser" class="form-control" style="max-width:300px;" placeholder="Cari user..."
+          oninput="loadUsers()">
+        <button class="btn btn-success btn-sm" onclick="showAddUser()">Tambah User</button>
       </div>
       <div class="table-container">
         <table class="data-table">
-          <thead><tr><th>No</th><th>Username</th><th>Nama Lengkap</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Username</th>
+              <th>Nama Lengkap</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
           <tbody id="userBody"></tbody>
         </table>
       </div>
@@ -32,12 +46,23 @@
     <!-- Supplier Tab -->
     <div id="tab-supplier" style="display:none;">
       <div class="d-flex justify-content-between mb-2">
-        <input type="text" id="searchSupplier" class="form-control" style="max-width:300px;" placeholder="Cari supplier..." oninput="loadSupplier()">
-        <button class="btn btn-success btn-sm" onclick="showAddSupplier()"><i class="bi bi-plus"></i> Tambah Supplier</button>
+        <input type="text" id="searchSupplier" class="form-control" style="max-width:300px;"
+          placeholder="Cari supplier..." oninput="loadSupplier()">
+        <button class="btn btn-success btn-sm" onclick="showAddSupplier()">Tambah Supplier</button>
       </div>
       <div class="table-container">
         <table class="data-table">
-          <thead><tr><th>No</th><th>Nama Supplier</th><th>Harga Default</th><th>Potongan (%)</th><th>Total Hutang</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama Supplier</th>
+              <th>Harga Default</th>
+              <th>Potongan (%)</th>
+              <th>Total Hutang</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
           <tbody id="supplierBody"></tbody>
         </table>
       </div>
@@ -46,14 +71,107 @@
     <!-- Supir Tab -->
     <div id="tab-supir" style="display:none;">
       <div class="d-flex justify-content-between mb-2">
-        <input type="text" id="searchSupir" class="form-control" style="max-width:300px;" placeholder="Cari supir..." oninput="loadSupir()">
-        <button class="btn btn-success btn-sm" onclick="showAddSupir()"><i class="bi bi-plus"></i> Tambah Supir</button>
+        <input type="text" id="searchSupir" class="form-control" style="max-width:300px;" placeholder="Cari supir..."
+          oninput="loadSupir()">
+        <button class="btn btn-success btn-sm" onclick="showAddSupir()">Tambah Supir</button>
       </div>
       <div class="table-container">
         <table class="data-table">
-          <thead><tr><th>No</th><th>Nama Supir</th><th>No Telepon</th><th>Alamat</th><th>Total Hutang</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama Supir</th>
+              <th>No Telepon</th>
+              <th>Alamat</th>
+              <th>Total Hutang</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
           <tbody id="supirBody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Data Tonase Mobil & Supir Tab -->
+    <div id="tab-kendaraan" style="display:none;">
+      <!-- Summary Card: Total Tonase-->
+      <div class="row g-3 mb-3">
+        <div class="col-md-6 mx-auto">
+          <div
+            class="card border-2 border-black rounded-none bg-neoGreen text-black p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="text-xs font-black uppercase tracking-wider opacity-90 mb-1">Total Tonase</div>
+                <div class="text-3xl font-black" id="grandTotalTonaseDisplay">0 Ton</div>
+                <div class="text-xs font-bold mt-1" id="grandTotalTripDisplay">0 Trip</div>
+              </div>
+              <div class="fs-1 opacity-75">TONASE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter (Sama dengan Halaman Transaksi) -->
+      <div class="filter-section p-3 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-3 rounded-none">
+        <div class="d-flex align-items-end gap-3 flex-wrap">
+          <div class="filter-group">
+            <label class="form-label text-xs font-black uppercase tracking-wider block mb-1">Pilih Periode</label>
+            <select id="tonaseDateFilterSelect" class="form-select form-select-sm font-bold border-2 border-black rounded-none" style="min-width: 200px;" onchange="handleTonaseFilterChange()">
+              <option value="today">Hari Ini</option>
+              <option value="yesterday">Kemarin</option>
+              <option value="week">7 Hari Terakhir</option>
+              <option value="half_month">15 Hari Terakhir</option>
+              <option value="month">Bulan Ini</option>
+              <option value="half_year">6 Bulan Terakhir</option>
+              <option value="year">Tahun Ini</option>
+              <option value="custom_range">Pilih Tanggal (Custom)</option>
+            </select>
+          </div>
+          <div id="tonaseCustomDateRow" style="display:none; gap:10px; align-items:flex-end;" class="flex-wrap">
+            <div class="filter-group">
+              <label class="form-label text-xs font-black uppercase tracking-wider block mb-1">Dari Tanggal</label>
+              <input type="date" id="tonaseStartDate" class="form-control form-control-sm font-bold border-2 border-black rounded-none">
+            </div>
+            <div class="filter-group">
+              <label class="form-label text-xs font-black uppercase tracking-wider block mb-1">Sampai Tanggal</label>
+              <input type="date" id="tonaseEndDate" class="form-control form-control-sm font-bold border-2 border-black rounded-none">
+            </div>
+            <button class="btn btn-primary btn-sm bg-neoBlue text-white font-black border-2 border-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] px-3" style="height: 31px;" onclick="loadTonaseKendaraan()">
+              Cari
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rekap Tonase Table -->
+      <div id="subtab-rekap">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <input type="text" id="searchTonase"
+            class="form-control form-control-sm font-bold border-2 border-black rounded-none" style="max-width:300px;"
+            placeholder="Cari No. Polisi (BM) / Supir..." oninput="loadTonaseKendaraan()">
+          <span class="text-xs font-black uppercase text-black" id="tonaseCountBadge">Total Data: 0</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>No. Polisi (BM)</th>
+                <th>Nama Supir</th>
+                <th>Jumlah Trip</th>
+                <th>Total Netto (Kg)</th>
+                <th>Total Tonase (Ton)</th>
+                <th>Transaksi Terakhir</th>
+              </tr>
+            </thead>
+            <tbody id="tonaseBody">
+              <tr>
+                <td colspan="7" class="text-center py-3">Memuat data tonase...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -62,16 +180,19 @@
       <div class="row">
         <div class="col-md-6 mx-auto">
           <div class="card border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-100">
-            <div class="card-header bg-neoYellow border-bottom-2 border-black text-black d-flex justify-content-between align-items-center rounded-none">
-              <h5 class="mb-0 font-black"><i class="fas fa-cubes"></i> Kelola Material</h5>
+            <div
+              class="card-header bg-neoYellow border-bottom-2 border-black text-black d-flex justify-content-between align-items-center rounded-none">
+              <h5 class="mb-0 font-black">Kelola Material</h5>
               <span class="badge bg-black text-white border border-black rounded-none" id="materialCount">0</span>
             </div>
             <div class="card-body">
-              <p class="text-muted small mb-3">Tambah atau hapus jenis material. Material yang ditambahkan akan otomatis muncul di dropdown Timbangan 1 dan tabel Excel export.</p>
+              <p class="text-muted small mb-3">Tambah atau hapus jenis material. Material yang ditambahkan akan otomatis
+                muncul di dropdown Timbangan 1 dan tabel Excel export.</p>
               <div class="input-group mb-3">
-                <input type="text" class="form-control" id="newMaterialInput" placeholder="Nama material baru (misal: pasir, batu)" style="text-transform:uppercase;">
-                <button class="btn btn-success" type="button" id="btnAddMaterial">
-                  <i class="fas fa-plus"></i> Tambah
+                <input type="text" class="form-control" id="newMaterialInput"
+                  placeholder="Nama material baru (misal: pasir, batu)" style="text-transform:uppercase;">
+                <button class="btn btn-primary bg-neoBlue text-white border-2 border-black font-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" type="button" id="btnAddMaterial">
+                  Tambah
                 </button>
               </div>
               <div id="materialListContainer" style="max-height:300px;overflow-y:auto;">
@@ -89,10 +210,11 @@
         <div class="col-md-6 mx-auto">
           <div class="card border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
             <div class="card-header bg-neoYellow border-bottom-2 border-black text-black rounded-none">
-              <h5 class="mb-0 font-black"><i class="fas fa-envelope"></i> Konfigurasi Email (SMTP)</h5>
+              <h5 class="mb-0 font-black">Konfigurasi Email (SMTP)</h5>
             </div>
             <div class="card-body">
-              <p class="text-muted small mb-3">Atur konfigurasi SMTP agar aplikasi bisa mengirim laporan Excel ke email. Hanya perlu diatur sekali.</p>
+              <p class="text-muted small mb-3">Atur konfigurasi SMTP agar aplikasi bisa mengirim laporan Excel ke email.
+                Hanya perlu diatur sekali.</p>
               <form id="smtpForm">
                 <div class="mb-3">
                   <label class="form-label">SMTP Host</label>
@@ -111,7 +233,8 @@
                 <div class="mb-3">
                   <label class="form-label">Password / App Password</label>
                   <input type="password" class="form-control" id="smtpPass" placeholder="App Password Gmail">
-                  <small class="text-muted">Untuk Gmail, gunakan <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a>, bukan password biasa.</small>
+                  <small class="text-muted">Untuk Gmail, gunakan <a href="https://myaccount.google.com/apppasswords"
+                      target="_blank">App Password</a>, bukan password biasa.</small>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Simpan Konfigurasi SMTP</button>
               </form>
@@ -134,17 +257,17 @@
   <script src="/assets/js/bootstrap.bundle.min.js"></script>
   <script src="/assets/js/sweetalert2.min.js"></script>
   <script>
-    window.onerror = function(message, source, lineno, colno, error) {
+    window.onerror = function (message, source, lineno, colno, error) {
       alert("JS Error in Masterdata: " + message + " at " + source + ":" + lineno + ":" + colno);
       return false;
     };
-    window.onunhandledrejection = function(event) {
+    window.onunhandledrejection = function (event) {
       alert("Unhandled Promise Rejection in Masterdata: " + event.reason);
     };
     window.activePage = 'masterdata';
     let users = [];
     let suppliers = [];
-  
+
     // --- MATERIAL LOGIC ---
     let currentMaterials = ['tbs', 'brondolan'];
     const DEFAULT_MATERIALS = ['tbs', 'brondolan'];
@@ -162,12 +285,12 @@
             } else {
               currentMaterials = ['tbs', 'brondolan'];
             }
-          } catch(e) {
+          } catch (e) {
             currentMaterials = ['tbs', 'brondolan'];
           }
         }
         renderMaterialList();
-      } catch(e) {
+      } catch (e) {
         console.error('Load materials error:', e);
         Swal.fire({ icon: 'error', title: 'Error API', text: 'Gagal memuat material dari server' });
       }
@@ -191,7 +314,7 @@
             ${isDefault ? '<span class="badge bg-neoGreen text-black border border-black rounded-none" style="font-size:10px;">Default</span>' : ''}
           </div>
           ${isDefault
-            ? '<span class="text-muted" style="font-size:11px;"><i class="fas fa-lock text-black"></i></span>'
+            ? '<span class="text-muted" style="font-size:11px;">[Terkunci]</span>'
             : `<button class="btn btn-sm bg-neoPink text-white border-2 border-black py-1 px-2 rounded-none" onclick="removeMaterial(${i})" title="Hapus material">HAPUS</button>`
           }
         </div>`;
@@ -211,14 +334,14 @@
           Swal.fire('Error Database', r.message, 'error');
         }
         return r.success;
-      } catch(e) {
+      } catch (e) {
         console.error('Save materials error:', e);
         Swal.fire('Error Jaringan', e.message, 'error');
         return false;
       }
     }
 
-    document.getElementById('btnAddMaterial').addEventListener('click', async function() {
+    document.getElementById('btnAddMaterial').addEventListener('click', async function () {
       const input = document.getElementById('newMaterialInput');
       const name = input.value.trim().toLowerCase();
       if (!name) {
@@ -239,7 +362,7 @@
       }
     });
 
-    document.getElementById('newMaterialInput').addEventListener('keypress', function(e) {
+    document.getElementById('newMaterialInput').addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
         document.getElementById('btnAddMaterial').click();
@@ -276,87 +399,91 @@
       const res = await fetch('/users/list');
       const data = await res.json();
       const tbody = document.getElementById('userBody');
-      if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;">Tidak ada data</td></tr>'; return; }
-      tbody.innerHTML = data.data.map((u,i)=>{
+      if (!data.success || data.data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Tidak ada data</td></tr>'; return; }
+      tbody.innerHTML = data.data.map((u, i) => {
         const usernameEscaped = u.username.replace(/'/g, "\\'");
         const namaEscaped = u.nama_lengkap.replace(/'/g, "\\'");
         return `<tr>
-          <td>${i+1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
-          <td>${u.role==='admin'?'<span class="badge bg-neoBlue text-white border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Admin</span>':'<span class="badge bg-neoYellow text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Operator</span>'}</td>
-          <td>${u.status==='active'?'<span class="badge bg-neoGreen text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Aktif</span>':'<span class="badge bg-white text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Nonaktif</span>'}</td>
+          <td>${i + 1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
+          <td>${u.role === 'admin' ? '<span class="badge bg-neoBlue text-white border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Admin</span>' : '<span class="badge bg-neoYellow text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Operator</span>'}</td>
+          <td>${u.status === 'active' ? '<span class="badge bg-neoGreen text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Aktif</span>' : '<span class="badge bg-white text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Nonaktif</span>'}</td>
           <td>
             <button class="btn btn-sm btn-warning" onclick="editUser(${u.id},'${usernameEscaped}','${namaEscaped}','${u.role}','${u.status}')">Edit</button>
-            ${u.username!=='admin' ? `
+            ${u.username !== 'admin' ? `
               <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Nonaktifkan</button>
               <button class="btn btn-sm btn-dark" onclick="hardDeleteUser(${u.id})" style="margin-left:4px;">Hapus Permanen</button>
-            `:''}
+            `: ''}
           </td>
         </tr>`;
       }).join('');
     }
 
     async function showAddUser() {
-      const {value:form} = await Swal.fire({title:'Tambah User',html:`
+      const { value: form } = await Swal.fire({
+        title: 'Tambah User', html: `
         <input id="uUsername" class="swal2-input" placeholder="Username">
         <input id="uName" class="swal2-input" placeholder="Nama Lengkap">
         <input id="uPass" type="password" class="swal2-input" placeholder="Password">
         <select id="uRole" class="swal2-input"><option value="operator">Operator</option><option value="admin">Admin</option></select>
-      `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
-        username:document.getElementById('uUsername').value,
-        nama_lengkap:document.getElementById('uName').value,
-        password:document.getElementById('uPass').value,
-        role:document.getElementById('uRole').value
-      })});
-      if(!form||!form.username||!form.password) return;
-      const res = await fetch('/users/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+          username: document.getElementById('uUsername').value,
+          nama_lengkap: document.getElementById('uName').value,
+          password: document.getElementById('uPass').value,
+          role: document.getElementById('uRole').value
+        })
+      });
+      if (!form || !form.username || !form.password) return;
+      const res = await fetch('/users/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadUsers();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadUsers(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     async function editUser(id, user, name, role, status) {
-      const {value:form} = await Swal.fire({title:'Edit User',html:`
+      const { value: form } = await Swal.fire({
+        title: 'Edit User', html: `
         <input id="eUsername" class="swal2-input" value="${user}" readonly>
         <input id="eName" class="swal2-input" value="${name}">
         <input id="ePass" type="password" class="swal2-input" placeholder="Password Baru (Kosongkan jika tidak diubah)">
-        <select id="eRole" class="swal2-input" ${user==='admin'?'disabled':''}><option value="operator" ${role==='operator'?'selected':''}>Operator</option><option value="admin" ${role==='admin'?'selected':''}>Admin</option></select>
-        <select id="eStatus" class="swal2-input" ${user==='admin'?'disabled':''}><option value="active" ${status==='active'?'selected':''}>Aktif</option><option value="inactive" ${status!=='active'?'selected':''}>Nonaktif</option></select>
-      `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
-        nama_lengkap:document.getElementById('eName').value,
-        password:document.getElementById('ePass').value,
-        role:document.getElementById('eRole').value,
-        status:document.getElementById('eStatus').value
-      })});
-      if(!form) return;
-      const res = await fetch(`/users/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+        <select id="eRole" class="swal2-input" ${user === 'admin' ? 'disabled' : ''}><option value="operator" ${role === 'operator' ? 'selected' : ''}>Operator</option><option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option></select>
+        <select id="eStatus" class="swal2-input" ${user === 'admin' ? 'disabled' : ''}><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
+      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+          nama_lengkap: document.getElementById('eName').value,
+          password: document.getElementById('ePass').value,
+          role: document.getElementById('eRole').value,
+          status: document.getElementById('eStatus').value
+        })
+      });
+      if (!form) return;
+      const res = await fetch(`/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadUsers();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadUsers(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     async function deleteUser(id) {
-      const conf = await Swal.fire({icon:'warning',title:'Nonaktifkan?',showCancelButton:true,confirmButtonColor:'#dc2626'});
-      if(!conf.isConfirmed) return;
-      const res = await fetch(`/users/${id}`,{method:'DELETE'});
+      const conf = await Swal.fire({ icon: 'warning', title: 'Nonaktifkan?', showCancelButton: true, confirmButtonColor: '#dc2626' });
+      if (!conf.isConfirmed) return;
+      const res = await fetch(`/users/${id}`, { method: 'DELETE' });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadUsers();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadUsers(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     async function hardDeleteUser(id) {
       const conf = await Swal.fire({
-        icon:'warning',
-        title:'Hapus Permanen?',
-        text:'Tindakan ini tidak bisa dibatalkan!',
-        showCancelButton:true,
-        confirmButtonText:'Hapus Permanen',
-        confirmButtonColor:'#dc2626'
+        icon: 'warning',
+        title: 'Hapus Permanen?',
+        text: 'Tindakan ini tidak bisa dibatalkan!',
+        showCancelButton: true,
+        confirmButtonText: 'Hapus Permanen',
+        confirmButtonColor: '#dc2626'
       });
-      if(!conf.isConfirmed) return;
-      const res = await fetch(`/users/${id}/hard`,{method:'DELETE'});
+      if (!conf.isConfirmed) return;
+      const res = await fetch(`/users/${id}/hard`, { method: 'DELETE' });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadUsers();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadUsers(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     async function loadSupplier() {
@@ -364,17 +491,17 @@
       const res = await fetch('/masterdata/supplier?search=' + search);
       const data = await res.json();
       const tbody = document.getElementById('supplierBody');
-      if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;">Tidak ada data</td></tr>'; return; }
-      tbody.innerHTML = data.data.map((s,i)=>{
+      if (!data.success || data.data.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Tidak ada data</td></tr>'; return; }
+      tbody.innerHTML = data.data.map((s, i) => {
         const nameEscaped = s.nama_supplier.replace(/'/g, "\\'");
         return `<tr>
-          <td>${i+1}</td><td>${s.nama_supplier}</td>
-          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.default_harga||0)}</td>
-          <td>${s.default_potongan||0} %</td>
-          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang||0)}</td>
-          <td>${s.status==='active'?'<span class="badge bg-neoGreen text-black border border-black rounded-none">Aktif</span>':'<span class="badge bg-white text-black border border-black rounded-none">Nonaktif</span>'}</td>
+          <td>${i + 1}</td><td>${s.nama_supplier}</td>
+          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.default_harga || 0)}</td>
+          <td>${s.default_potongan || 0} %</td>
+          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang || 0)}</td>
+          <td>${s.status === 'active' ? '<span class="badge bg-neoGreen text-black border border-black rounded-none">Aktif</span>' : '<span class="badge bg-white text-black border border-black rounded-none">Nonaktif</span>'}</td>
           <td>
-            <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.id},'${nameEscaped}','${s.status}',${s.default_harga||0},${s.default_potongan||0},${s.total_hutang||0})">Edit</button>
+            <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.id},'${nameEscaped}','${s.status}',${s.default_harga || 0},${s.default_potongan || 0},${s.total_hutang || 0})">Edit</button>
             <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.id})">Hapus</button>
           </td>
         </tr>`;
@@ -382,52 +509,56 @@
     }
 
     async function showAddSupplier() {
-      const {value:form} = await Swal.fire({title:'Tambah Supplier',html:`
+      const { value: form } = await Swal.fire({
+        title: 'Tambah Supplier', html: `
         <input id="sName" class="swal2-input" placeholder="Nama Supplier" style="text-transform:uppercase;">
         <input id="sHarga" type="number" class="swal2-input" placeholder="Default Harga (opsional)">
         <input id="sPot" type="number" step="0.01" class="swal2-input" placeholder="Default Potongan % (opsional)">
         <input id="sHutang" type="number" class="swal2-input" placeholder="Hutang Awal Rp (opsional)">
-      `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
-        nama_supplier:document.getElementById('sName').value,
-        default_harga:document.getElementById('sHarga').value,
-        default_potongan:document.getElementById('sPot').value,
-        total_hutang:document.getElementById('sHutang').value
-      })});
-      if(!form||!form.nama_supplier) return;
-      const res = await fetch('/masterdata/supplier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+          nama_supplier: document.getElementById('sName').value,
+          default_harga: document.getElementById('sHarga').value,
+          default_potongan: document.getElementById('sPot').value,
+          total_hutang: document.getElementById('sHutang').value
+        })
+      });
+      if (!form || !form.nama_supplier) return;
+      const res = await fetch('/masterdata/supplier', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupplier();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadSupplier(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     async function editSupplier(id, name, status, harga, pot, hutang) {
-      const {value:form} = await Swal.fire({title:'Edit Supplier',html:`
+      const { value: form } = await Swal.fire({
+        title: 'Edit Supplier', html: `
         <input id="eSName" class="swal2-input" value="${name}" style="text-transform:uppercase;">
         <input id="eSHarga" type="number" class="swal2-input" value="${harga}">
         <input id="eSPot" type="number" step="0.01" class="swal2-input" value="${pot}">
         <input id="eSHutang" type="number" class="swal2-input" value="${hutang}">
-        <select id="eSStatus" class="swal2-input"><option value="active" ${status==='active'?'selected':''}>Aktif</option><option value="inactive" ${status!=='active'?'selected':''}>Nonaktif</option></select>
-      `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
-        nama_supplier:document.getElementById('eSName').value,
-        default_harga:document.getElementById('eSHarga').value,
-        default_potongan:document.getElementById('eSPot').value,
-        total_hutang:document.getElementById('eSHutang').value,
-        status:document.getElementById('eSStatus').value
-      })});
-      if(!form) return;
-      const res = await fetch(`/masterdata/supplier/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+        <select id="eSStatus" class="swal2-input"><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
+      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+          nama_supplier: document.getElementById('eSName').value,
+          default_harga: document.getElementById('eSHarga').value,
+          default_potongan: document.getElementById('eSPot').value,
+          total_hutang: document.getElementById('eSHutang').value,
+          status: document.getElementById('eSStatus').value
+        })
+      });
+      if (!form) return;
+      const res = await fetch(`/masterdata/supplier/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupplier();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadSupplier(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     async function deleteSupplier(id) {
-      const conf = await Swal.fire({icon:'warning',title:'Nonaktifkan?',showCancelButton:true,confirmButtonColor:'#dc2626'});
-      if(!conf.isConfirmed) return;
-      const res = await fetch(`/masterdata/supplier/${id}`,{method:'DELETE'});
+      const conf = await Swal.fire({ icon: 'warning', title: 'Nonaktifkan?', showCancelButton: true, confirmButtonColor: '#dc2626' });
+      if (!conf.isConfirmed) return;
+      const res = await fetch(`/masterdata/supplier/${id}`, { method: 'DELETE' });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupplier();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadSupplier(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     // --- SUPIR CRUD LOGIC ---
@@ -436,20 +567,20 @@
       const res = await fetch('/masterdata/supir?search=' + search);
       const data = await res.json();
       const tbody = document.getElementById('supirBody');
-      if(!data.success || data.data.length===0) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;">Tidak ada data</td></tr>'; return; }
-      tbody.innerHTML = data.data.map((s,i)=>{
+      if (!data.success || data.data.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Tidak ada data</td></tr>'; return; }
+      tbody.innerHTML = data.data.map((s, i) => {
         const nameEscaped = s.nama_supir.replace(/'/g, "\\'");
-        const telpEscaped = (s.no_telepon||'').replace(/'/g, "\\'");
-        const alamatEscaped = (s.alamat||'').replace(/'/g, "\\'");
+        const telpEscaped = (s.no_telepon || '').replace(/'/g, "\\'");
+        const alamatEscaped = (s.alamat || '').replace(/'/g, "\\'");
         return `<tr>
-          <td>${i+1}</td>
+          <td>${i + 1}</td>
           <td>${s.nama_supir}</td>
-          <td>${s.no_telepon||'-'}</td>
-          <td>${s.alamat||'-'}</td>
-          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang||0)}</td>
-          <td>${s.status==='active'?'<span class="badge bg-neoGreen text-black border border-black rounded-none">Aktif</span>':'<span class="badge bg-white text-black border border-black rounded-none">Nonaktif</span>'}</td>
+          <td>${s.no_telepon || '-'}</td>
+          <td>${s.alamat || '-'}</td>
+          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang || 0)}</td>
+          <td>${s.status === 'active' ? '<span class="badge bg-neoGreen text-black border border-black rounded-none">Aktif</span>' : '<span class="badge bg-white text-black border border-black rounded-none">Nonaktif</span>'}</td>
           <td>
-            <button class="btn btn-sm btn-warning" onclick="editSupir(${s.id},'${nameEscaped}','${telpEscaped}','${alamatEscaped}','${s.status}',${s.total_hutang||0})">Edit</button>
+            <button class="btn btn-sm btn-warning" onclick="editSupir(${s.id},'${nameEscaped}','${telpEscaped}','${alamatEscaped}','${s.status}',${s.total_hutang || 0})">Edit</button>
             <button class="btn btn-sm btn-danger" onclick="deleteSupir(${s.id})">Hapus</button>
           </td>
         </tr>`;
@@ -457,52 +588,56 @@
     }
 
     async function showAddSupir() {
-      const {value:form} = await Swal.fire({title:'Tambah Supir',html:`
+      const { value: form } = await Swal.fire({
+        title: 'Tambah Supir', html: `
         <input id="spName" class="swal2-input" placeholder="Nama Supir" style="text-transform:uppercase;">
         <input id="spTelp" class="swal2-input" placeholder="No Telepon (opsional)">
         <input id="spAlamat" class="swal2-input" placeholder="Alamat (opsional)">
         <input id="spHutang" type="number" class="swal2-input" placeholder="Hutang Awal Rp (opsional)">
-      `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
-        nama_supir:document.getElementById('spName').value,
-        no_telepon:document.getElementById('spTelp').value,
-        alamat:document.getElementById('spAlamat').value,
-        total_hutang:document.getElementById('spHutang').value
-      })});
-      if(!form||!form.nama_supir) return;
-      const res = await fetch('/masterdata/supir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+          nama_supir: document.getElementById('spName').value,
+          no_telepon: document.getElementById('spTelp').value,
+          alamat: document.getElementById('spAlamat').value,
+          total_hutang: document.getElementById('spHutang').value
+        })
+      });
+      if (!form || !form.nama_supir) return;
+      const res = await fetch('/masterdata/supir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupir();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadSupir(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     async function editSupir(id, name, telp, alamat, status, hutang) {
-      const {value:form} = await Swal.fire({title:'Edit Supir',html:`
+      const { value: form } = await Swal.fire({
+        title: 'Edit Supir', html: `
         <input id="eSpName" class="swal2-input" value="${name}" style="text-transform:uppercase;">
         <input id="eSpTelp" class="swal2-input" value="${telp}">
         <input id="eSpAlamat" class="swal2-input" value="${alamat}">
         <input id="eSpHutang" type="number" class="swal2-input" value="${hutang}">
-        <select id="eSpStatus" class="swal2-input"><option value="active" ${status==='active'?'selected':''}>Aktif</option><option value="inactive" ${status!=='active'?'selected':''}>Nonaktif</option></select>
-      `,focusConfirm:false,showCancelButton:true,preConfirm:()=>({
-        nama_supir:document.getElementById('eSpName').value,
-        no_telepon:document.getElementById('eSpTelp').value,
-        alamat:document.getElementById('eSpAlamat').value,
-        total_hutang:document.getElementById('eSpHutang').value,
-        status:document.getElementById('eSpStatus').value
-      })});
-      if(!form) return;
-      const res = await fetch(`/masterdata/supir/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+        <select id="eSpStatus" class="swal2-input"><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
+      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+          nama_supir: document.getElementById('eSpName').value,
+          no_telepon: document.getElementById('eSpTelp').value,
+          alamat: document.getElementById('eSpAlamat').value,
+          total_hutang: document.getElementById('eSpHutang').value,
+          status: document.getElementById('eSpStatus').value
+        })
+      });
+      if (!form) return;
+      const res = await fetch(`/masterdata/supir/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupir();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadSupir(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     async function deleteSupir(id) {
-      const conf = await Swal.fire({icon:'warning',title:'Nonaktifkan supir?',showCancelButton:true,confirmButtonColor:'#dc2626'});
-      if(!conf.isConfirmed) return;
-      const res = await fetch(`/masterdata/supir/${id}`,{method:'DELETE'});
+      const conf = await Swal.fire({ icon: 'warning', title: 'Nonaktifkan supir?', showCancelButton: true, confirmButtonColor: '#dc2626' });
+      if (!conf.isConfirmed) return;
+      const res = await fetch(`/masterdata/supir/${id}`, { method: 'DELETE' });
       const r = await res.json();
-      if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadSupir();}
-      else Swal.fire({icon:'error',title:'Gagal',text:r.message});
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadSupir(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     // --- EMAIL SMTP LOGIC ---
@@ -516,10 +651,10 @@
           document.getElementById('smtpUser').value = r.data.smtp_user || '';
           document.getElementById('smtpPass').value = r.data.smtp_pass || '';
         }
-      } catch(e) { console.error('Load SMTP config error:', e); }
+      } catch (e) { console.error('Load SMTP config error:', e); }
     }
 
-    document.getElementById('smtpForm').addEventListener('submit', async function(e) {
+    document.getElementById('smtpForm').addEventListener('submit', async function (e) {
       e.preventDefault();
       const data = {
         smtp_host: document.getElementById('smtpHost').value,
@@ -537,10 +672,10 @@
       else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     });
 
-    document.getElementById('btnTestEmail').addEventListener('click', async function() {
+    document.getElementById('btnTestEmail').addEventListener('click', async function () {
       const email = document.getElementById('testEmailRecipient').value.trim();
       if (!email) return Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Masukkan alamat email tujuan' });
-      
+
       const resultEl = document.getElementById('emailTestResult');
       resultEl.textContent = 'Mengirim email test...';
       resultEl.className = 'small mt-2 text-info';
@@ -561,48 +696,122 @@
           resultEl.textContent = '✗ Gagal: ' + r.message;
           resultEl.className = 'small mt-2 text-danger fw-bold';
         }
-      } catch(e) {
+      } catch (e) {
         resultEl.textContent = '✗ Error: ' + e.message;
         resultEl.className = 'small mt-2 text-danger fw-bold';
       }
       this.disabled = false;
     });
 
-    document.addEventListener('DOMContentLoaded', async function() {
+    document.addEventListener('DOMContentLoaded', async function () {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab') || 'supplier';
-      
+
       document.getElementById('tab-users').style.display = 'none';
       document.getElementById('tab-supplier').style.display = 'none';
       document.getElementById('tab-supir').style.display = 'none';
+      document.getElementById('tab-kendaraan').style.display = 'none';
       document.getElementById('tab-material').style.display = 'none';
       document.getElementById('tab-email').style.display = 'none';
-      
+
       if (tab === 'users') {
-          document.getElementById('tab-users').style.display = 'block';
-          document.getElementById('mdTitle').textContent = 'Master Data - Pengguna';
-          await loadUsers();
+        document.getElementById('tab-users').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Pengguna';
+        await loadUsers();
+      } else if (tab === 'kendaraan') {
+        document.getElementById('tab-kendaraan').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Data Tonase Ramp (Mobil & Supir)';
+        await loadTonaseKendaraan();
       } else if (tab === 'supir') {
-          document.getElementById('tab-supir').style.display = 'block';
-          document.getElementById('mdTitle').textContent = 'Master Data - Supir';
-          await loadSupir();
+        document.getElementById('tab-supir').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Supir';
+        await loadSupir();
       } else if (tab === 'material') {
-          document.getElementById('tab-material').style.display = 'block';
-          document.getElementById('mdTitle').textContent = 'Master Data - Material';
-          await loadMaterials();
+        document.getElementById('tab-material').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Material';
+        await loadMaterials();
       } else if (tab === 'email') {
-          document.getElementById('tab-email').style.display = 'block';
-          document.getElementById('mdTitle').textContent = 'Master Data - Konfigurasi Email';
-          await loadSmtpConfig();
+        document.getElementById('tab-email').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Konfigurasi Email';
+        await loadSmtpConfig();
       } else {
-          document.getElementById('tab-supplier').style.display = 'block';
-          document.getElementById('mdTitle').textContent = 'Master Data - Supplier';
-          await loadSupplier();
+        document.getElementById('tab-supplier').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Supplier';
+        await loadSupplier();
       }
-      
+
       await loadSessionInfo();
     });
+
+    // --- TONASE KENDARAAN & SUPIR LOGIC ---
+    function handleTonaseFilterChange() {
+      const val = document.getElementById('tonaseDateFilterSelect').value;
+      const customRow = document.getElementById('tonaseCustomDateRow');
+      if (val === 'custom_range') {
+        customRow.style.display = 'flex';
+      } else {
+        customRow.style.display = 'none';
+        loadTonaseKendaraan();
+      }
+    }
+
+    async function loadTonaseKendaraan() {
+      try {
+        const filterSelect = document.getElementById('tonaseDateFilterSelect');
+        const filter = filterSelect ? filterSelect.value : 'today';
+        const start = document.getElementById('tonaseStartDate')?.value || '';
+        const end = document.getElementById('tonaseEndDate')?.value || '';
+        const search = document.getElementById('searchTonase')?.value || '';
+
+        let queryParams = new URLSearchParams({
+          date_filter: filter,
+          search: search
+        });
+
+        if (filter === 'custom_range') {
+          if (start) queryParams.append('start_date', start);
+          if (end) queryParams.append('end_date', end);
+        }
+
+        const res = await fetch('/masterdata/tonase-kendaraan?' + queryParams.toString());
+        const data = await res.json();
+        const tbody = document.getElementById('tonaseBody');
+
+        if (!data.success) {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">Gagal memuat data: ${data.message}</td></tr>`;
+          return;
+        }
+
+        const items = data.data.items || [];
+        const summary = data.data.summary || {};
+
+        if (document.getElementById('grandTotalTonaseDisplay')) document.getElementById('grandTotalTonaseDisplay').textContent = `${summary.grand_total_tonase || 0} Ton`;
+        if (document.getElementById('grandTotalTripDisplay')) document.getElementById('grandTotalTripDisplay').textContent = `${summary.grand_total_trip || 0} Trip`;
+        if (document.getElementById('tonaseCountBadge')) document.getElementById('tonaseCountBadge').textContent = `Total Data: ${items.length}`;
+
+        if (items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3">Tidak ada data tonase ditemukan</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = items.map((item, i) => {
+          const formatNetto = new Intl.NumberFormat('id-ID').format(item.total_netto_kg || 0);
+          return `<tr>
+            <td>${i + 1}</td>
+            <td class="font-extrabold">${item.no_polisi}</td>
+            <td>${item.nama_supir}</td>
+            <td class="text-center font-bold">${item.total_trip} Trip</td>
+            <td class="text-end font-bold">${formatNetto} Kg</td>
+            <td class="text-end font-extrabold text-success">${item.total_tonase} Ton</td>
+            <td class="text-center small">${item.transaksi_terakhir || '-'}</td>
+          </tr>`;
+        }).join('');
+      } catch (err) {
+        console.error('Error loadTonaseKendaraan:', err);
+      }
+    }
   </script>
   <script src="/js/sidebar.js"></script>
 </body>
+
 </html>

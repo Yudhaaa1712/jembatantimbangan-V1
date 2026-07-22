@@ -13,10 +13,10 @@
 <body>
   <div id="site-header"></div>
   <div class="main-container">
-    <div class="page-header"><h1 class="page-title"><i class="fas fa-users"></i> Master Data TKBM (Tenaga Kerja Bongkar Muat)</h1></div>
+    <div class="page-header"><h1 class="page-title">Master Data TKBM (Tenaga Kerja Bongkar Muat)</h1></div>
     <div class="d-flex justify-content-between mb-3">
       <input type="text" id="searchTKBM" class="form-control" style="max-width:300px;" placeholder="Cari pekerja TKBM..." oninput="loadTKBM()">
-      <button class="btn btn-success" onclick="showAddTKBM()"><i class="bi bi-plus"></i> Tambah Karyawan TKBM</button>
+      <button class="btn btn-success" onclick="showAddTKBM()">Tambah Karyawan TKBM</button>
     </div>
     <div class="table-container">
       <table class="data-table">
@@ -68,8 +68,8 @@
         <td>${k.alamat || '-'}</td>
         <td>${k.status==='active'?'<span class="badge bg-success">Aktif</span>':'<span class="badge bg-secondary">Nonaktif</span>'}</td>
         <td>
-          <button class="btn btn-sm btn-warning" onclick="editTKBM(${k.id},'${namaEscaped}','${k.no_telepon||''}','${k.alamat||''}','${k.status}')"><i class="fas fa-edit"></i> Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteTKBM(${k.id})"><i class="fas fa-trash"></i> Hapus</button>
+          <button class="btn btn-sm btn-warning" onclick="editTKBM(${k.id},'${namaEscaped}','${k.no_telepon||''}','${k.alamat||''}','${k.status}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteTKBM(${k.id})">Hapus</button>
         </td>
       </tr>`;
     }).join('');

@@ -95,7 +95,7 @@ function updateConnectionUI2(connected) {
     if (connected) {
         if (weightStatus2) weightStatus2.textContent = 'Terhubung ke Indikator';
         if (toggleBtn2) {
-            toggleBtn2.innerHTML = '<i class="bi bi-plug-fill"></i> PUTUSKAN';
+            toggleBtn2.innerHTML = 'PUTUSKAN';
             toggleBtn2.className = 'terminal-btn';
             toggleBtn2.style.background = '#dc2626';
         }
@@ -108,7 +108,7 @@ function updateConnectionUI2(connected) {
     } else {
         if (weightStatus2) weightStatus2.textContent = 'Menunggu...';
         if (toggleBtn2) {
-            toggleBtn2.innerHTML = '<i class="bi bi-plug-fill"></i> SAMBUNGKAN';
+            toggleBtn2.innerHTML = 'SAMBUNGKAN';
             toggleBtn2.className = 'terminal-btn terminal-btn-info';
             toggleBtn2.style.background = '';
         }
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     window.capturedWeight2 = beratTaraFromDB;
 
                     if (captureBtn) {
-                        captureBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> BERAT TERISI';
+                        captureBtn.innerHTML = 'BERAT TERISI';
                         captureBtn.disabled = true;
                     }
                     if (weightDisplay2Large) {
@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     if (beratInput2) beratInput2.value = '0';
                     if (beratInputForm2) beratInputForm2.value = '0';
                     if (captureBtn) {
-                        captureBtn.innerHTML = '<i class="bi bi-camera-fill"></i> CAPTURE';
+                        captureBtn.innerHTML = 'CAPTURE';
                         captureBtn.disabled = false;
                     }
                     if (weightDisplay2Large) {
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         const captureBtn = document.getElementById('captureWeight2');
         if (captureBtn) {
-            captureBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> BERAT TERAMBIL';
+            captureBtn.innerHTML = 'BERAT TERAMBIL';
             captureBtn.disabled = true;
             captureBtn.style.background = '#10b981';
         }
@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             const port = await navigator.serial.requestPort();
             const portInfo = port.getInfo();
             localStorage.setItem('serialPortInfo', JSON.stringify(portInfo));
-            document.getElementById('portInfoDisplay2').innerHTML = '<span class="text-success"><i class="bi bi-check-circle-fill"></i> Port Terpilih</span>';
+            document.getElementById('portInfoDisplay2').innerHTML = '<span class="text-success">Port Terpilih</span>';
             showNotification2('Port dipilih!', 'success');
         } catch (error) {
             if (error.name !== 'NotFoundError') {
@@ -591,7 +591,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         } catch (error) {
             showNotification2('Error: ' + error.message, 'error');
         } finally {
-            this.innerHTML = '<i class="bi bi-save-fill"></i> Simpan & Reconnect';
+            this.innerHTML = 'Simpan & Reconnect';
             this.disabled = false;
         }
     });

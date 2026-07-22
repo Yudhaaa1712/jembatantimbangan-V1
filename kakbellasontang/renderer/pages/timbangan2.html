@@ -424,25 +424,34 @@
       document.getElementById('result_potongan_hutang_supplier').style.display = potonganHutangSupplier > 0 ? '' : 'none';
       document.getElementById('hasilPotonganHutangSupplier').textContent = '- Rp ' + formatRibuan(potonganHutangSupplier);
       
-      const opsiBongkar = document.getElementById('opsiUpahBongkar').value;
+      const fieldBongkarContainer = document.getElementById('t2field_potongan_muat');
+      const isBongkarDisabled = fieldBongkarContainer && fieldBongkarContainer.style.display === 'none';
+      
       let potonganMuat = 0;
-      if (opsiBongkar === '15') {
-        potonganMuat = nettoAkhir * 15;
-        document.getElementById('potonganMuatInput').value = potonganMuat;
-        document.getElementById('potonganMuatInput').readOnly = true;
-      } else if (opsiBongkar === '10') {
-        potonganMuat = nettoAkhir * 10;
-        document.getElementById('potonganMuatInput').value = potonganMuat;
-        document.getElementById('potonganMuatInput').readOnly = true;
-      } else if (opsiBongkar === '0') {
+      if (isBongkarDisabled) {
         potonganMuat = 0;
-        document.getElementById('potonganMuatInput').value = 0;
-        document.getElementById('potonganMuatInput').readOnly = true;
+        if (document.getElementById('potonganMuatInput')) document.getElementById('potonganMuatInput').value = 0;
+        if (document.getElementById('opsiUpahBongkar')) document.getElementById('opsiUpahBongkar').value = '0';
       } else {
-        document.getElementById('potonganMuatInput').readOnly = false;
-        potonganMuat = parseFloat(document.getElementById('potonganMuatInput').value) || 0;
+        const opsiBongkar = document.getElementById('opsiUpahBongkar').value;
+        if (opsiBongkar === '15') {
+          potonganMuat = nettoAkhir * 15;
+          document.getElementById('potonganMuatInput').value = potonganMuat;
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else if (opsiBongkar === '10') {
+          potonganMuat = nettoAkhir * 10;
+          document.getElementById('potonganMuatInput').value = potonganMuat;
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else if (opsiBongkar === '0') {
+          potonganMuat = 0;
+          document.getElementById('potonganMuatInput').value = 0;
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else {
+          document.getElementById('potonganMuatInput').readOnly = false;
+          potonganMuat = parseFloat(document.getElementById('potonganMuatInput').value) || 0;
+        }
       }
-      document.getElementById('result_potongan_muat').style.display = potonganMuat > 0 ? '' : 'none';
+      document.getElementById('result_potongan_muat').style.display = (potonganMuat > 0 && !isBongkarDisabled) ? '' : 'none';
       document.getElementById('hasilPotonganMuat').textContent = '- Rp ' + formatRibuan(potonganMuat);
       
       const totalAkhir = Math.max(0, totalAwal - potonganHutang - potonganHutangSupplier - potonganMuat);

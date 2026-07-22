@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS kendaraan (
   nama_supir TEXT,
   tara_avg REAL DEFAULT 0,
   jenis_kendaraan TEXT DEFAULT 'truk',
+  kepemilikan TEXT DEFAULT 'Perusahaan',
   status TEXT CHECK(status IN ('active','inactive')) DEFAULT 'active',
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT
