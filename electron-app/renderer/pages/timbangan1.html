@@ -59,6 +59,7 @@
                           <input type="text" name="nama_suplier" id="supplierInput" class="form-control" style="text-transform:uppercase;" list="supplierList" autocomplete="off">
                           <datalist id="supplierList"></datalist>
                           <div id="supplierValidationText" class="small mt-1" style="display:none; font-weight: bold;"></div>
+                          <div id="supplierHutangWarning" class="text-warning small mt-1" style="display:none; font-weight: bold;"></div>
                         </div>
                         <div class="col-md-6 mb-3" id="field_material">
                           <label class="form-label text-danger">Jenis Material</label>
@@ -228,6 +229,7 @@
           try {
             const features = JSON.parse(r.data.active_features);
             isHutangActive = features.hutang === true;
+            window.isSupplierAutofillActive = features.supplier_autofill === true;
           } catch(e) {}
         }
         
@@ -288,35 +290,61 @@
     }, 400);
   });
   
-  // ─── Check Supplier & Autofill Price on Input ─────────────────────────────
+  let supplierHutangTimeout = null;
   document.getElementById('supplierInput').addEventListener('input', function() {
     const val = this.value.trim().toUpperCase();
     const validationEl = document.getElementById('supplierValidationText');
+    const warningEl = document.getElementById('supplierHutangWarning');
     const hargaInput = document.getElementById('hargaInput');
     const hargaHidden = document.getElementById('hargaHidden');
     const fieldHarga = document.getElementById('field_harga');
 
     if (!val) {
       validationEl.style.display = 'none';
+      warningEl.style.display = 'none';
       if (fieldHarga) fieldHarga.style.display = 'none';
       return;
     }
 
     const matchedSupplier = allSuppliers.find(s => s.nama_supplier.toUpperCase() === val);
     if (matchedSupplier) {
-      // Auto-fill price
-      const price = matchedSupplier.default_harga || 0;
-      hargaHidden.value = price;
-      hargaInput.value = new Intl.NumberFormat('id-ID').format(price);
-
-      // Display validation info (small green text)
-      validationEl.textContent = `Harga = Rp ${new Intl.NumberFormat('id-ID').format(price)} | Potongan = ${matchedSupplier.default_potongan || 0}%`;
-      validationEl.className = 'small mt-1 text-success';
-      validationEl.style.display = 'block';
-      if (fieldHarga) fieldHarga.style.display = '';
+      // Auto-fill price (only if active)
+      if (window.isSupplierAutofillActive) {
+        const price = matchedSupplier.default_harga || 0;
+        hargaHidden.value = price;
+        hargaInput.value = new Intl.NumberFormat('id-ID').format(price);
+        validationEl.textContent = `Harga = Rp ${new Intl.NumberFormat('id-ID').format(price)} | Potongan = ${matchedSupplier.default_potongan || 0}%`;
+        validationEl.className = 'small mt-1 text-success';
+        validationEl.style.display = 'block';
+        if (fieldHarga) fieldHarga.style.display = '';
+      } else {
+        validationEl.style.display = 'none';
+      }
+      
+      // Dynamic Check for Debt (Hutang)
+      if (isHutangActive) {
+        clearTimeout(supplierHutangTimeout);
+        supplierHutangTimeout = setTimeout(async () => {
+          try {
+            const res = await fetch('/hutang-supir-api/supplier/check-debt?name=' + encodeURIComponent(val));
+            const data = await res.json();
+            if (data.success && data.data && data.data.total_hutang > 0) {
+              warningEl.textContent = `⚠️ Supplier ini memiliki sisa hutang: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.data.total_hutang)}`;
+              warningEl.style.display = 'block';
+            } else {
+              warningEl.style.display = 'none';
+            }
+          } catch(e) {
+            warningEl.style.display = 'none';
+          }
+        }, 400);
+      } else {
+        warningEl.style.display = 'none';
+      }
     } else {
-      // Unregistered supplier -> do nothing (hide validation element)
+      // Unregistered supplier -> do nothing
       validationEl.style.display = 'none';
+      warningEl.style.display = 'none';
       if (fieldHarga) fieldHarga.style.display = 'none';
     }
   });
@@ -368,6 +396,7 @@
           isWeightLocked = false;
           window.isWeightLocked = false;
           document.getElementById('supirHutangWarning').style.display = 'none';
+          document.getElementById('supplierHutangWarning').style.display = 'none';
           document.getElementById('supplierValidationText').style.display = 'none';
         });
       } else {
@@ -411,7 +440,9 @@
     document.getElementById('captureWeight').className = 'btn btn-warning w-100 mt-2';
     document.getElementById('weightDisplay').textContent = '0 KG';
     document.getElementById('supirHutangWarning').style.display = 'none';
+    document.getElementById('supplierHutangWarning').style.display = 'none';
     document.getElementById('supplierValidationText').style.display = 'none';
+    document.getElementById('materialValidationText').style.display = 'none';
   });
 
   // ─── Serial Settings Modal ─────────────────────────────────────────────────

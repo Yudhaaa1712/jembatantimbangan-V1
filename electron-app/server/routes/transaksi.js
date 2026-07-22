@@ -136,6 +136,7 @@ router.get('/receipt/:no_tiket', async (req, res) => {
       pot_muat: calc.potMuat,
       total_pot_rp: calc.totPot,
       total_akhir: calc.sisa,
+      sisa_hutang: data.sisa_hutang_snapshot,
       company: settingsMap
     });
   } catch (err) {

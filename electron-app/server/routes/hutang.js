@@ -272,4 +272,178 @@ router.post('/supir/add', async (req, res) => {
   }
 });
 
+// ==========================================
+// SUPPLIER DEBT ENDPOINTS
+// ==========================================
+
+// GET /hutang-supir-api/supplier-aktif
+router.get('/supplier-aktif', async (req, res) => {
+  try {
+    const data = await query(
+      `SELECT DISTINCT s.* FROM supplier s
+       INNER JOIN hutang_supplier_history h ON s.id = h.id_supplier
+       WHERE s.status = 'active'
+       ORDER BY s.nama_supplier`
+    );
+    return jsonResponse(res, true, 'List supplier aktif', data);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// GET /hutang-supir-api/supplier/check-debt
+router.get('/supplier/check-debt', async (req, res) => {
+  try {
+    const cleanName = cleanInput(req.query.name).trim().toUpperCase();
+    if (!cleanName) return jsonResponse(res, false, 'Nama supplier tidak valid');
+    
+    let supplier = await queryOne(`SELECT * FROM supplier WHERE UPPER(nama_supplier) = ?`, [cleanName]);
+    if (!supplier) {
+      supplier = {
+        id: null,
+        nama_supplier: cleanName,
+        total_hutang: 0,
+        status: 'active'
+      };
+    }
+    return jsonResponse(res, true, 'Debt info', supplier);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// GET /hutang-supir-api/supplier/:id/history
+router.get('/supplier/:id/history', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const history = await query(
+      `SELECT h.*, u.nama_lengkap as nama_operator 
+       FROM hutang_supplier_history h
+       LEFT JOIN users u ON h.operator_id = u.id
+       WHERE h.id_supplier = ? 
+       ORDER BY h.created_at DESC`,
+      [id]
+    );
+    return jsonResponse(res, true, 'History hutang supplier', history);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// POST /hutang-supir-api/supplier/bayar
+router.post('/supplier/bayar', async (req, res) => {
+  try {
+    const { id_supplier, jumlah, keterangan, tanggal } = req.body;
+    const amount = parseFloat(jumlah);
+    if (!id_supplier || isNaN(amount) || amount <= 0) {
+      return jsonResponse(res, false, 'Data tidak valid');
+    }
+
+    const tgl = tanggal || new Date().toISOString().split('T')[0];
+
+    const supplier = await queryOne(`SELECT * FROM supplier WHERE id = ?`, [id_supplier]);
+    if (!supplier) return jsonResponse(res, false, 'Supplier tidak ditemukan');
+
+    const newHutang = Math.max(0, supplier.total_hutang - amount);
+    const tx = beginTransaction();
+    try {
+      tx.execute(`UPDATE supplier SET total_hutang = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`, [newHutang, id_supplier]);
+      tx.execute(
+        `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id) 
+         VALUES (?, ?, 'bayar', ?, ?, ?, ?)`,
+        [id_supplier, tgl, amount, keterangan || 'Pembayaran Manual', newHutang, req.session.user_id]
+      );
+      tx.commit();
+      return jsonResponse(res, true, 'Pembayaran hutang supplier berhasil dicatat');
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// POST /hutang-supir-api/supplier/tambah
+router.post('/supplier/tambah', async (req, res) => {
+  try {
+    const { id_supplier, jumlah, keterangan, tanggal } = req.body;
+    const amount = parseFloat(jumlah);
+    if (!id_supplier || isNaN(amount) || amount <= 0) {
+      return jsonResponse(res, false, 'Data tidak valid');
+    }
+
+    const tgl = tanggal || new Date().toISOString().split('T')[0];
+
+    const supplier = await queryOne(`SELECT * FROM supplier WHERE id = ?`, [id_supplier]);
+    if (!supplier) return jsonResponse(res, false, 'Supplier tidak ditemukan');
+
+    const newHutang = supplier.total_hutang + amount;
+    const tx = beginTransaction();
+    try {
+      tx.execute(`UPDATE supplier SET total_hutang = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`, [newHutang, id_supplier]);
+      tx.execute(
+        `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id) 
+         VALUES (?, ?, 'tambah', ?, ?, ?, ?)`,
+        [id_supplier, tgl, amount, keterangan || 'Penambahan Manual', newHutang, req.session.user_id]
+      );
+      tx.commit();
+      return jsonResponse(res, true, 'Penambahan hutang supplier berhasil dicatat');
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+// POST /hutang-supir-api/supplier/add
+router.post('/supplier/add', async (req, res) => {
+  try {
+    const name = cleanInput(req.body.nama_supplier).trim().toUpperCase();
+    const kode = 'S' + Math.floor(Date.now() / 1000); // generate kode sementara
+    const initialDebt = parseFloat(req.body.initial_debt) || 0;
+    
+    if (!name) return jsonResponse(res, false, 'Nama supplier harus diisi');
+
+    const existing = await queryOne(`SELECT * FROM supplier WHERE UPPER(nama_supplier) = ?`, [name]);
+    if (existing) {
+      return jsonResponse(res, false, 'Supplier dengan nama tersebut sudah terdaftar');
+    }
+
+    const tx = beginTransaction();
+    try {
+      const [result] = await tx.execute(
+        `INSERT INTO supplier (kode_supplier, nama_supplier, total_hutang, status) VALUES (?, ?, ?, 'active')`,
+        [kode, name, initialDebt]
+      );
+      const supplierId = result.insertId;
+
+      // Insert history record
+      if (initialDebt > 0) {
+        tx.execute(
+          `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
+           VALUES (?, date('now', 'localtime'), 'tambah', ?, 'Hutang awal saat pendaftaran', ?, ?)`,
+          [supplierId, initialDebt, initialDebt, req.session.user_id]
+        );
+      } else {
+        tx.execute(
+          `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
+           VALUES (?, date('now', 'localtime'), 'tambah', 0, 'Pendaftaran Supplier Baru', 0, ?)`,
+          [supplierId, req.session.user_id]
+        );
+      }
+
+      tx.commit();
+      return jsonResponse(res, true, 'Supplier baru berhasil ditambahkan');
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
 module.exports = router;

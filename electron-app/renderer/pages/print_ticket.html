@@ -339,8 +339,11 @@ Memuat data...
                     out += '─'.repeat(38) + '\n';
                 }
                 out += rpLine('Total Bayar', d.total_akhir) + '\n';
-
-
+                
+                const setts = window.setupSettings || {};
+                if (setts.print_show_sisa_hutang === 'true' && d.sisa_hutang !== null && d.sisa_hutang !== undefined) {
+                    out += rpLine('Sisa Hutang', d.sisa_hutang) + '\n';
+                }
             }
             out += '\n\n';
 

@@ -176,6 +176,20 @@ CREATE TABLE IF NOT EXISTS hutang_supir_history (
   FOREIGN KEY (id_supir) REFERENCES supir(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS hutang_supplier_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_supplier INTEGER NOT NULL,
+  tanggal TEXT NOT NULL,
+  jenis TEXT CHECK(jenis IN ('tambah','bayar')) NOT NULL,
+  jumlah REAL NOT NULL DEFAULT 0,
+  keterangan TEXT,
+  id_transaksi INTEGER,
+  saldo_setelah REAL NOT NULL DEFAULT 0,
+  operator_id INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_supplier) REFERENCES supplier(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS pengaturan_gaji (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tarif_per_kg REAL NOT NULL DEFAULT 3000,

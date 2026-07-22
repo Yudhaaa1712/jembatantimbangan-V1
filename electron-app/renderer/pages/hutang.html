@@ -56,12 +56,15 @@
         <div class="card shadow-sm">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fs-6">Daftar Nama</h5>
-            <button class="btn btn-sm btn-primary" id="btnRegisterSupir"><i class="bi bi-person-plus-fill"></i>
-              Tambah</button>
+            <button class="btn btn-sm btn-primary" id="btnRegister"><i class="bi bi-person-plus-fill"></i> Tambah</button>
           </div>
           <div class="card-body p-2">
-            <input type="text" id="searchSupir" class="form-control form-control-sm mb-2" placeholder="Cari nama...">
-            <div class="list-group list-group-flush" id="supirListGroup" style="max-height: 500px; overflow-y: auto;">
+            <select id="tipeHutang" class="form-select form-select-sm mb-2">
+              <option value="supir">Supir</option>
+              <option value="supplier">Supplier</option>
+            </select>
+            <input type="text" id="searchInput" class="form-control form-control-sm mb-2" placeholder="Cari nama supir...">
+            <div class="list-group list-group-flush" id="listGroup" style="max-height: 500px; overflow-y: auto;">
               <!-- Dynamic list -->
               <div class="text-muted text-center p-3">Memuat data...</div>
             </div>
@@ -131,32 +134,45 @@
   <script src="/assets/js/sweetalert2.min.js"></script>
   <script>
     window.activePage = 'hutang';
-    let supirData = [];
-    let selectedSupirId = null;
+    let currentType = 'supir'; // 'supir' or 'supplier'
+    let dataList = [];
+    let selectedId = null;
 
     function formatRupiah(number) {
       return 'Rp ' + new Intl.NumberFormat('id-ID').format(number);
     }
 
-    async function loadSupir() {
+    document.getElementById('tipeHutang').addEventListener('change', async (e) => {
+      currentType = e.target.value;
+      selectedId = null;
+      document.getElementById('noSelectionPlaceholder').style.display = 'flex';
+      document.getElementById('detailCard').style.display = 'none';
+      document.getElementById('searchInput').placeholder = currentType === 'supir' ? 'Cari nama supir...' : 'Cari nama supplier...';
+      document.getElementById('searchInput').value = '';
+      await loadData();
+    });
+
+    async function loadData() {
       try {
-        const res = await fetch('/hutang-supir-api/supir-aktif');
+        const endpoint = currentType === 'supir' ? '/hutang-supir-api/supir-aktif' : '/hutang-supir-api/supplier-aktif';
+        const res = await fetch(endpoint);
         const r = await res.json();
         if (r.success) {
-          supirData = r.data;
-          renderSupirList();
+          dataList = r.data;
+          renderList();
         }
       } catch (e) {
         console.error(e);
       }
     }
 
-    function renderSupirList() {
-      const searchVal = document.getElementById('searchSupir').value.toUpperCase();
-      const container = document.getElementById('supirListGroup');
+    function renderList() {
+      const searchVal = document.getElementById('searchInput').value.toUpperCase();
+      const container = document.getElementById('listGroup');
       container.innerHTML = '';
+      const nameKey = currentType === 'supir' ? 'nama_supir' : 'nama_supplier';
 
-      const filtered = supirData.filter(s => s.nama_supir.toUpperCase().includes(searchVal));
+      const filtered = dataList.filter(s => s[nameKey].toUpperCase().includes(searchVal));
 
       if (filtered.length === 0) {
         container.innerHTML = '<div class="text-muted text-center p-3">Nama tidak ditemukan</div>';
@@ -165,13 +181,13 @@
 
       filtered.forEach(s => {
         const item = document.createElement('div');
-        item.className = `list-group-item list-group-item-custom d-flex justify-content-between align-items-center ${selectedSupirId === s.id ? 'active' : ''}`;
-        item.onclick = () => selectSupir(s.id);
+        item.className = `list-group-item list-group-item-custom d-flex justify-content-between align-items-center ${selectedId === s.id ? 'active' : ''}`;
+        item.onclick = () => selectItem(s.id);
 
         item.innerHTML = `
         <div>
-          <strong class="d-block">${s.nama_supir}</strong>
-          <span class="small text-muted">${s.no_telepon || '-'}</span>
+          <strong class="d-block">${s[nameKey]}</strong>
+          <span class="small text-muted">${currentType === 'supir' ? (s.no_telepon || '-') : (s.kode_supplier || '-')}</span>
         </div>
         <span class="badge ${s.total_hutang > 0 ? 'bg-danger' : 'bg-success'} rounded-pill">
           ${formatRupiah(s.total_hutang)}
@@ -181,23 +197,25 @@
       });
     }
 
-    async function selectSupir(id) {
-      selectedSupirId = id;
+    async function selectItem(id) {
+      selectedId = id;
 
       // Highlight item
       document.querySelectorAll('.list-group-item-custom').forEach(el => el.classList.remove('active'));
-      renderSupirList();
+      renderList();
 
-      const supir = supirData.find(s => s.id === id);
-      if (!supir) return;
+      const itemData = dataList.find(s => s.id === id);
+      if (!itemData) return;
+
+      const nameKey = currentType === 'supir' ? 'nama_supir' : 'nama_supplier';
 
       // Show details panel
       document.getElementById('noSelectionPlaceholder').style.display = 'none';
       document.getElementById('detailCard').style.display = 'block';
 
-      document.getElementById('detailSupirName').innerHTML = `<i class="bi bi-person-fill"></i> Detail Hutang: ${supir.nama_supir}`;
-      document.getElementById('detailTotalHutang').textContent = formatRupiah(supir.total_hutang);
-      document.getElementById('detailStatus').innerHTML = supir.status === 'active'
+      document.getElementById('detailSupirName').innerHTML = `<i class="bi bi-person-fill"></i> Detail Hutang: ${itemData[nameKey]}`;
+      document.getElementById('detailTotalHutang').textContent = formatRupiah(itemData.total_hutang);
+      document.getElementById('detailStatus').innerHTML = itemData.status === 'active'
         ? '<span class="badge bg-success">Aktif</span>'
         : '<span class="badge bg-secondary">Nonaktif</span>';
 
@@ -206,7 +224,8 @@
       historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Memuat histori...</td></tr>';
 
       try {
-        const res = await fetch(`/hutang-supir-api/supir/${id}/history`);
+        const endpoint = currentType === 'supir' ? `/hutang-supir-api/supir/${id}/history` : `/hutang-supir-api/supplier/${id}/history`;
+        const res = await fetch(endpoint);
         const r = await res.json();
         if (r.success) {
           if (r.data.length === 0) {
@@ -238,20 +257,22 @@
     }
 
     // Handle search input
-    document.getElementById('searchSupir').addEventListener('input', renderSupirList);
+    document.getElementById('searchInput').addEventListener('input', renderList);
 
     // Handle Bayar Hutang
     document.getElementById('btnBayar').addEventListener('click', async () => {
-      if (!selectedSupirId) return;
-      const supir = supirData.find(s => s.id === selectedSupirId);
-      if (!supir) return;
+      if (!selectedId) return;
+      const itemData = dataList.find(s => s.id === selectedId);
+      if (!itemData) return;
+      
+      const nameKey = currentType === 'supir' ? 'nama_supir' : 'nama_supplier';
 
       const { value: formValues } = await Swal.fire({
-        title: `Bayar Hutang: ${supir.nama_supir}`,
+        title: `Bayar Hutang: ${itemData[nameKey]}`,
         html: `
         <div class="mb-3 text-start">
           <label class="form-label">Jumlah Pembayaran (Rp)</label>
-          <input id="swal-bayar-jumlah" type="number" class="form-control" placeholder="0" max="${supir.total_hutang}">
+          <input id="swal-bayar-jumlah" type="number" class="form-control" placeholder="0" max="${itemData.total_hutang}">
         </div>
         <div class="mb-3 text-start">
           <label class="form-label">Keterangan</label>
@@ -272,8 +293,9 @@
             Swal.showValidationMessage('Jumlah pembayaran harus valid dan lebih dari 0');
             return false;
           }
+          const idKey = currentType === 'supir' ? 'id_supir' : 'id_supplier';
           return {
-            id_supir: selectedSupirId,
+            [idKey]: selectedId,
             jumlah: jumlah,
             keterangan: document.getElementById('swal-bayar-ket').value,
             tanggal: document.getElementById('swal-bayar-tgl').value
@@ -283,7 +305,8 @@
 
       if (formValues) {
         try {
-          const res = await fetch('/hutang-supir-api/bayar', {
+          const endpoint = currentType === 'supir' ? '/hutang-supir-api/bayar' : '/hutang-supir-api/supplier/bayar';
+          const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formValues)
@@ -291,8 +314,8 @@
           const r = await res.json();
           if (r.success) {
             Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
-            await loadSupir();
-            await selectSupir(selectedSupirId);
+            await loadData();
+            await selectItem(selectedId);
           } else {
             Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
           }
@@ -304,12 +327,14 @@
 
     // Handle Tambah Hutang
     document.getElementById('btnTambah').addEventListener('click', async () => {
-      if (!selectedSupirId) return;
-      const supir = supirData.find(s => s.id === selectedSupirId);
-      if (!supir) return;
+      if (!selectedId) return;
+      const itemData = dataList.find(s => s.id === selectedId);
+      if (!itemData) return;
+      
+      const nameKey = currentType === 'supir' ? 'nama_supir' : 'nama_supplier';
 
       const { value: formValues } = await Swal.fire({
-        title: `Tambah Hutang: ${supir.nama_supir}`,
+        title: `Tambah Hutang: ${itemData[nameKey]}`,
         html: `
         <div class="mb-3 text-start">
           <label class="form-label">Jumlah Penambahan Hutang (Rp)</label>
@@ -334,8 +359,9 @@
             Swal.showValidationMessage('Jumlah penambahan harus valid dan lebih dari 0');
             return false;
           }
+          const idKey = currentType === 'supir' ? 'id_supir' : 'id_supplier';
           return {
-            id_supir: selectedSupirId,
+            [idKey]: selectedId,
             jumlah: jumlah,
             keterangan: document.getElementById('swal-tambah-ket').value,
             tanggal: document.getElementById('swal-tambah-tgl').value
@@ -345,7 +371,8 @@
 
       if (formValues) {
         try {
-          const res = await fetch('/hutang-supir-api/tambah', {
+          const endpoint = currentType === 'supir' ? '/hutang-supir-api/tambah' : '/hutang-supir-api/supplier/tambah';
+          const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formValues)
@@ -353,8 +380,8 @@
           const r = await res.json();
           if (r.success) {
             Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
-            await loadSupir();
-            await selectSupir(selectedSupirId);
+            await loadData();
+            await selectItem(selectedId);
           } else {
             Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
           }
@@ -364,13 +391,16 @@
       }
     });
 
-    // Handle Register Supir Baru
-    document.getElementById('btnRegisterSupir').addEventListener('click', async () => {
+    // Handle Register Baru
+    document.getElementById('btnRegister').addEventListener('click', async () => {
+      const typeLabel = currentType === 'supir' ? 'Supir' : 'Supplier';
+      const nameKey = currentType === 'supir' ? 'nama_supir' : 'nama_supplier';
+      
       const { value: formValues } = await Swal.fire({
-        title: 'Pendaftaran Nama Baru',
+        title: `Pendaftaran ${typeLabel} Baru`,
         html: `
         <div class="mb-3 text-start">
-          <label class="form-label">Nama</label>
+          <label class="form-label">Nama ${typeLabel}</label>
           <input id="swal-reg-nama" class="form-control" placeholder="Nama">
         </div>
         <div class="mb-3 text-start">
@@ -389,7 +419,7 @@
             return false;
           }
           return {
-            nama_supir: nama,
+            [nameKey]: nama,
             no_telepon: '',
             alamat: '',
             initial_debt: parseFloat(document.getElementById('swal-reg-hutang').value) || 0
@@ -399,7 +429,8 @@
 
       if (formValues) {
         try {
-          const res = await fetch('/hutang-supir-api/supir/add', {
+          const endpoint = currentType === 'supir' ? '/hutang-supir-api/supir/add' : '/hutang-supir-api/supplier/add';
+          const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formValues)
@@ -407,7 +438,7 @@
           const r = await res.json();
           if (r.success) {
             Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
-            await loadSupir();
+            await loadData();
           } else {
             Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
           }
@@ -419,7 +450,7 @@
 
     document.addEventListener('DOMContentLoaded', async function () {
       await loadSessionInfo();
-      await loadSupir();
+      await loadData();
     });
   </script>
   <script src="/js/sidebar.js"></script>
