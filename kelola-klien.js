@@ -13,17 +13,24 @@ const readline = require('readline');
 const { execSync } = require('child_process');
 
 const ROOT_DIR = __dirname;
-const TEMPLATE_DIR = path.join(ROOT_DIR, 'electron-app');
+const TEMPLATE_NAME = 'arroyan-app';
+const TEMPLATE_DIR = path.join(ROOT_DIR, TEMPLATE_NAME);
+
+// Folder yang tidak boleh dianggap sebagai klien
+const EXCLUDED_DIRS = [TEMPLATE_NAME, 'electron-app', 'node_modules', '.git', '.claude', '.agents'];
 
 // Folder & file yang harus dicopy per klien (source code saja)
 const COPY_ITEMS = [
     'electron',
     'server',
     'renderer',
+    'styles',
     'build-resources',
     'scripts',
     'package.json',
     'package-lock.json',
+    'tailwind.config.js',
+    '.gitignore',
     '.env',
     'keygen.js',
     'kill-zombies.bat'
@@ -48,7 +55,7 @@ function copyRecursiveSync(src, dest) {
 function getClients() {
     if (!fs.existsSync(ROOT_DIR)) return [];
     return fs.readdirSync(ROOT_DIR).filter(name => {
-        if (name === 'electron-app' || name === '.git' || name === '.claude' || name === '.agents' || name.startsWith('.')) return false;
+        if (EXCLUDED_DIRS.includes(name) || name.startsWith('.')) return false;
         const fullPath = path.join(ROOT_DIR, name);
         return fs.statSync(fullPath).isDirectory() && fs.existsSync(path.join(fullPath, 'package.json'));
     });
@@ -83,7 +90,12 @@ function getDirSize(dirPath) {
 
 function createClient(folderName, clientName) {
     const clientDir = path.join(ROOT_DIR, folderName);
-    
+
+    if (!fs.existsSync(TEMPLATE_DIR)) {
+        console.log(`\n❌ Folder template "${TEMPLATE_NAME}" tidak ditemukan!`);
+        return false;
+    }
+
     if (fs.existsSync(clientDir)) {
         console.log(`\n❌ Folder "${folderName}" sudah ada!`);
         return false;
@@ -154,7 +166,7 @@ function listClients() {
     const templateSize = getDirSize(path.join(TEMPLATE_DIR, 'renderer')) + 
                          getDirSize(path.join(TEMPLATE_DIR, 'server')) + 
                          getDirSize(path.join(TEMPLATE_DIR, 'electron'));
-    console.log(`   📌 Template (electron-app/)`);
+    console.log(`   📌 Template (${TEMPLATE_NAME}/)`);
     console.log(`      Source code: ${formatSize(templateSize)}`);
     console.log('');
 

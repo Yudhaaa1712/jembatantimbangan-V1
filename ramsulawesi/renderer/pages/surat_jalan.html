@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Surat Jalan</title>
+  <link rel="stylesheet" href="/assets/css/print.css">
+</head>
+
+<body class="receipt-screen">
+  <div class="receipt-container">
+    <pre id="isiStruk">Memuat data...</pre>
+  </div>
+  <button class="print-btn no-print" onclick="window.print()">Cetak Surat Jalan</button>
+
+  <script src="/js/print-struk.js"></script>
+  <script>
+    // Surat jalan memakai kerangka struk yang sama dengan nota timbangan:
+    // ukuran kertas, lebar kolom, font, dan kop semuanya dari Pengaturan.
+    async function load() {
+      const P = await StrukPrinter.init();
+      const id = window.location.pathname.split('/').pop();
+
+      let d = null;
+      try {
+        const r = await (await fetch(`/pengiriman/detail/${id}`)).json();
+        if (r.success) d = r.data;
+      } catch (e) { console.error('[SuratJalan]', e); }
+
+      if (!d) {
+        document.getElementById('isiStruk').textContent = 'Data surat jalan tidak ditemukan';
+        return;
+      }
+
+      const tgl = d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID') : '-';
+
+      let out = P.kop('Surat Jalan');
+      out += P.baris('No. Surat Jalan', d.no_surat_jalan || '-') + '\n';
+      out += P.baris('Tanggal', tgl) + '\n';
+      out += P.garis('-') + '\n';
+      out += P.baris('No. Polisi', (d.no_polisi || '-').toUpperCase()) + '\n';
+      out += P.baris('Nama Supir', (d.nama_supir || '-').toUpperCase()) + '\n';
+      out += P.baris('Tujuan Pabrik', (d.nama_pabrik || '-').toUpperCase()) + '\n';
+      if (d.jenis_material) out += P.baris('Material', String(d.jenis_material).toUpperCase()) + '\n';
+      out += P.garis('-') + '\n';
+      out += P.barisKanan('Berat Bruto', P.angka(d.berat_bruto) + ' kg') + '\n';
+      out += P.barisKanan('Berat Tara', P.angka(d.berat_tara) + ' kg') + '\n';
+      out += P.garis('-') + '\n';
+      out += P.barisKanan('NETTO', P.angka(d.netto_ram) + ' kg') + '\n';
+      out += P.garis('=') + '\n';
+      if (d.keterangan) {
+        out += 'Keterangan:\n';
+        out += P.wrapText(d.keterangan, P.W).join('\n') + '\n';
+        out += P.garis('-') + '\n';
+      }
+      out += P.tandaTangan('Pengirim', '', 'Supir', (d.nama_supir || '').toUpperCase());
+
+      P.render(out);
+    }
+    document.addEventListener('DOMContentLoaded', load);
+  </script>
+  <script src="/js/sidebar.js"></script>
+</body>
+
+</html>

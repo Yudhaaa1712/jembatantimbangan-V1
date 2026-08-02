@@ -66,7 +66,7 @@ try {
   console.error('[DB Migration] Error migrating supplier table:', e);
 }
 
-// Migration: Check if id_supir and id_gaji_supir exist in pengiriman_pabrik
+// Migration: Check if id_supir, id_gaji_supir, harga_per_kg, pinjaman, biaya_es_jalan exist in pengiriman_pabrik
 try {
   const tableInfo = db.prepare("PRAGMA table_info(pengiriman_pabrik)").all();
   if (!tableInfo.some(col => col.name === 'id_supir')) {
@@ -76,6 +76,31 @@ try {
   if (!tableInfo.some(col => col.name === 'id_gaji_supir')) {
     db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN id_gaji_supir INTEGER").run();
     console.log('[DB Migration] Added id_gaji_supir column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'harga_per_kg')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN harga_per_kg REAL DEFAULT 0").run();
+    console.log('[DB Migration] Added harga_per_kg column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'pinjaman')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN pinjaman REAL DEFAULT 0").run();
+    console.log('[DB Migration] Added pinjaman column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'biaya_es_jalan')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN biaya_es_jalan REAL DEFAULT 0").run();
+    console.log('[DB Migration] Added biaya_es_jalan column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'status_bayar')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN status_bayar TEXT DEFAULT 'belum_bayar'").run();
+    console.log('[DB Migration] Added status_bayar column to pengiriman_pabrik table');
+  }
+  // Penanda potongan pinjaman supir yang sudah disinkronkan ke Manajemen Hutang
+  if (!tableInfo.some(col => col.name === 'pinjaman_diproses')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN pinjaman_diproses INTEGER DEFAULT 0").run();
+    console.log('[DB Migration] Added pinjaman_diproses column to pengiriman_pabrik table');
+  }
+  if (!tableInfo.some(col => col.name === 'id_potong_ledger')) {
+    db.prepare("ALTER TABLE pengiriman_pabrik ADD COLUMN id_potong_ledger INTEGER").run();
+    console.log('[DB Migration] Added id_potong_ledger column to pengiriman_pabrik table');
   }
 } catch (e) {
   console.error('[DB Migration] Error migrating pengiriman_pabrik table:', e);
@@ -123,16 +148,42 @@ try {
   console.error('[DB Migration] Error migrating hutang_supplier_history table:', e);
 }
 
-// Migration: Check kepemilikan in kendaraan
+// Migration: Check kepemilikan in kendaraan (fitur newdesain)
 try {
   const tableInfoKendaraan = db.prepare("PRAGMA table_info(kendaraan)").all();
-  const hasKepemilikan = tableInfoKendaraan.some(col => col.name === 'kepemilikan');
-  if (!hasKepemilikan) {
+  if (!tableInfoKendaraan.some(col => col.name === 'kepemilikan')) {
     db.prepare("ALTER TABLE kendaraan ADD COLUMN kepemilikan TEXT DEFAULT 'Perusahaan'").run();
     console.log('[DB Migration] Added kepemilikan column to kendaraan table');
   }
 } catch (e) {
   console.error('[DB Migration] Error migrating kendaraan table:', e);
+}
+
+// Migration: Check and create pabrik table
+try {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS pabrik (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nama_pabrik TEXT NOT NULL UNIQUE,
+      tarif_angkut REAL DEFAULT 0,
+      status TEXT CHECK(status IN ('active','inactive')) DEFAULT 'active',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT
+    )
+  `).run();
+  
+  const countRow = db.prepare("SELECT COUNT(*) as cnt FROM pabrik").get();
+  if (countRow && countRow.cnt === 0) {
+    const insertStmt = db.prepare("INSERT INTO pabrik (nama_pabrik, tarif_angkut, status) VALUES (?, ?, 'active')");
+    insertStmt.run('RSM', 110);
+    insertStmt.run('RSI', 95);
+    insertStmt.run('INTAN', 80);
+    insertStmt.run('SAI', 95);
+    console.log('[DB Migration] Seeded default pabrik data (RSM, RSI, INTAN, SAI)');
+  }
+  console.log('[DB Migration] Checked/Created pabrik table');
+} catch (e) {
+  console.error('[DB Migration] Error migrating pabrik table:', e);
 }
 
 // Migration: Check new columns in transaksi_timbangan
@@ -170,6 +221,70 @@ try {
   }
 } catch (e) {
   console.error('[DB Migration] Error migrating transaksi_timbangan columns:', e);
+}
+
+// Migration: Backfill buku besar hutang (hutang_ledger) untuk saldo lama.
+// Sebagian data punya total_hutang di master TAPI belum punya baris riwayat di
+// hutang_ledger (mis. diinput sebelum buku besar ada). Tanpa ini, saldo tampil
+// di tabel/daftar tetapi tidak terbaca di riwayat/laporan. Idempoten: hanya
+// menambah entri "saldo awal" bila pihak tsb belum punya riwayat sama sekali.
+try {
+  const today = new Date().toISOString().split('T')[0];
+  const hasLedger = db.prepare("SELECT 1 FROM hutang_ledger WHERE party_type = ? AND party_id = ? LIMIT 1");
+  const insLedger = db.prepare(
+    `INSERT INTO hutang_ledger (party_type, party_id, tanggal, jenis, jumlah, keterangan, sumber, saldo_setelah, created_at)
+     VALUES (?, ?, ?, 'tambah', ?, 'Saldo awal (data sebelum riwayat dicatat)', 'manual', ?, datetime('now','localtime'))`
+  );
+  const backfill = (partyType, rows) => {
+    for (const r of rows) {
+      if (!hasLedger.get(partyType, r.id)) {
+        insLedger.run(partyType, r.id, today, r.total_hutang, r.total_hutang);
+      }
+    }
+  };
+  backfill('supir',    db.prepare("SELECT id, total_hutang FROM supir WHERE total_hutang > 0").all());
+  backfill('supplier', db.prepare("SELECT id, total_hutang FROM supplier WHERE total_hutang > 0 AND is_temporary = 0").all());
+  backfill('tkbm',     db.prepare("SELECT id, total_hutang FROM karyawan_tkbm WHERE total_hutang > 0").all());
+  for (const r of db.prepare("SELECT id, total_hutang, tipe FROM kontak WHERE total_hutang > 0").all()) {
+    if (!hasLedger.get(r.tipe, r.id)) insLedger.run(r.tipe, r.id, today, r.total_hutang, r.total_hutang);
+  }
+} catch (e) {
+  console.error('[DB Migration] Backfill hutang_ledger error:', e.message);
+}
+
+// Migration: kolom tarif_pemuat & potongan_lainnya di gaji_tkbm (dipakai saat payout TKBM).
+try {
+  const cols = db.prepare("PRAGMA table_info(gaji_tkbm)").all().map(c => c.name);
+  if (!cols.includes('tarif_pemuat'))    db.prepare("ALTER TABLE gaji_tkbm ADD COLUMN tarif_pemuat REAL DEFAULT 0").run();
+  if (!cols.includes('potongan_lainnya')) db.prepare("ALTER TABLE gaji_tkbm ADD COLUMN potongan_lainnya REAL DEFAULT 0").run();
+} catch (e) {
+  console.error('[DB Migration] gaji_tkbm migration error:', e.message);
+}
+
+// Migration: kolom id_gaji_tkbm di pengiriman_tkbm (untuk menandai trip yang sudah dibayar).
+try {
+  const cols = db.prepare("PRAGMA table_info(pengiriman_tkbm)").all().map(c => c.name);
+  if (!cols.includes('id_gaji_tkbm')) {
+    db.prepare("ALTER TABLE pengiriman_tkbm ADD COLUMN id_gaji_tkbm INTEGER").run();
+    console.log('[DB Migration] Added id_gaji_tkbm column to pengiriman_tkbm');
+  }
+} catch (e) {
+  console.error('[DB Migration] pengiriman_tkbm migration error:', e.message);
+}
+
+// Migration: Pastikan pengaturan_gaji punya kolom tarif & baris default (tarif_pemuat = 30).
+// Upah TKBM = netto (kg) × tarif_pemuat ÷ jumlah pekerja. Default pemuat Rp 30/kg, tetap bisa diubah.
+try {
+  const cols = db.prepare("PRAGMA table_info(pengaturan_gaji)").all().map(c => c.name);
+  if (!cols.includes('tarif_supir'))  db.prepare("ALTER TABLE pengaturan_gaji ADD COLUMN tarif_supir REAL DEFAULT 0").run();
+  if (!cols.includes('tarif_pemuat')) db.prepare("ALTER TABLE pengaturan_gaji ADD COLUMN tarif_pemuat REAL DEFAULT 0").run();
+  const cnt = db.prepare("SELECT COUNT(*) as c FROM pengaturan_gaji").get().c;
+  if (cnt === 0) {
+    db.prepare("INSERT INTO pengaturan_gaji (tarif_per_kg, tarif_supir, tarif_pemuat) VALUES (0, 0, 30)").run();
+    console.log('[DB Migration] Seed pengaturan_gaji default (tarif_pemuat = 30)');
+  }
+} catch (e) {
+  console.error('[DB Migration] pengaturan_gaji default error:', e.message);
 }
 
 // Seed default settings and admin user if empty

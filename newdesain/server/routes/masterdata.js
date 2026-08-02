@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { query, queryOne, pool, jsonResponse, cleanInput, beginTransaction } = require('../config/database');
 const { cacheDelete } = require('../helpers/cache');
+const { catatHutangTx } = require('../helpers/hutang');
 const { isLoggedIn, requireRole, getCurrentUser } = require('../middleware/auth');
 
 router.use(isLoggedIn);
@@ -41,15 +42,14 @@ router.post('/supplier', requireRole('admin'), async (req, res) => {
     
     const tx = beginTransaction();
     try {
-      const result = tx.execute(`INSERT INTO supplier (kode_supplier, nama_supplier, status, created_at, default_harga, default_potongan, total_hutang, hutang_terakhir_update) VALUES (?,?,'active',CURRENT_TIMESTAMP,?,?,?,datetime('now', 'localtime'))`, [kode, nama, defaultHarga, defaultPotongan, totalHutang]);
+      const result = tx.execute(`INSERT INTO supplier (kode_supplier, nama_supplier, status, created_at, default_harga, default_potongan, total_hutang, hutang_terakhir_update) VALUES (?,?,'active',CURRENT_TIMESTAMP,?,?,0,datetime('now', 'localtime'))`, [kode, nama, defaultHarga, defaultPotongan]);
       const supplierId = result[0].insertId;
-      
+
       if (totalHutang > 0) {
-        tx.execute(
-          `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
-           VALUES (?, date('now', 'localtime'), 'tambah', ?, 'Hutang awal saat pendaftaran', ?, ?)`,
-          [supplierId, totalHutang, totalHutang, req.session.user_id]
-        );
+        catatHutangTx(tx, {
+          type: 'supplier', partyId: supplierId, jenis: 'tambah', jumlah: totalHutang,
+          keterangan: 'Hutang awal saat pendaftaran', sumber: 'manual', operatorId: req.session.user_id
+        });
       }
       tx.commit();
       cacheDelete('active_suppliers_list');
@@ -76,17 +76,15 @@ router.put('/supplier/:id', requireRole('admin'), async (req, res) => {
     
     const tx = beginTransaction();
     try {
-      tx.execute(`UPDATE supplier SET nama_supplier=?, status=?, default_harga=?, default_potongan=?, total_hutang=?, hutang_terakhir_update=datetime('now', 'localtime'), updated_at=CURRENT_TIMESTAMP WHERE id=?`, [nama, status, defaultHarga, defaultPotongan, totalHutang, id]);
-      
+      // Update field non-hutang (saldo hutang dikelola lewat buku besar)
+      tx.execute(`UPDATE supplier SET nama_supplier=?, status=?, default_harga=?, default_potongan=?, hutang_terakhir_update=datetime('now', 'localtime'), updated_at=CURRENT_TIMESTAMP WHERE id=?`, [nama, status, defaultHarga, defaultPotongan, id]);
+
       if (totalHutang !== oldHutang) {
         const diff = totalHutang - oldHutang;
-        const jenis = diff > 0 ? 'tambah' : 'bayar';
-        const jumlah = Math.abs(diff);
-        tx.execute(
-          `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
-           VALUES (?, date('now', 'localtime'), ?, ?, 'Penyesuaian nominal hutang (edit supplier)', ?, ?)`,
-          [id, jenis, jumlah, totalHutang, req.session.user_id]
-        );
+        catatHutangTx(tx, {
+          type: 'supplier', partyId: id, jenis: diff > 0 ? 'tambah' : 'bayar', jumlah: Math.abs(diff),
+          keterangan: 'Penyesuaian nominal hutang (edit supplier)', sumber: 'manual', operatorId: req.session.user_id
+        });
       }
       tx.commit();
       cacheDelete('active_suppliers_list');
@@ -101,9 +99,17 @@ router.put('/supplier/:id', requireRole('admin'), async (req, res) => {
 router.delete('/supplier/:id', requireRole('admin'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await query(`UPDATE supplier SET status='inactive', updated_at=CURRENT_TIMESTAMP WHERE id=?`, [id]);
+    const tx = beginTransaction();
+    try {
+      tx.execute(`DELETE FROM hutang_ledger WHERE party_type = 'supplier' AND party_id = ?`, [id]);
+      tx.execute(`DELETE FROM supplier WHERE id = ?`, [id]);
+      tx.commit();
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
     cacheDelete('active_suppliers_list');
-    return jsonResponse(res, true, 'Supplier dinonaktifkan');
+    return jsonResponse(res, true, 'Supplier berhasil dihapus permanen');
   } catch (err) { return jsonResponse(res, false, err.message); }
 });
 
@@ -122,13 +128,13 @@ router.get('/kendaraan', async (req, res) => {
 
 router.post('/kendaraan', requireRole('admin', 'operator'), async (req, res) => {
   try {
-    const noPolisi    = cleanInput(req.body.no_polisi).toUpperCase();
-    const namaSopir   = cleanInput(req.body.nama_supir);
-    const taraAvg     = parseFloat(req.body.tara_avg) || 0;
-    const jenis       = cleanInput(req.body.jenis_kendaraan) || 'truk';
+    const noPolisi = cleanInput(req.body.no_polisi).toUpperCase();
+    const namaSopir = cleanInput(req.body.nama_supir);
+    const taraAvg   = parseFloat(req.body.tara_avg) || 0;
+    const jenis     = cleanInput(req.body.jenis_kendaraan) || 'truk';
     const kepemilikan = cleanInput(req.body.kepemilikan) || 'Perusahaan';
     const existing = await queryOne(`SELECT id FROM kendaraan WHERE no_polisi=?`, [noPolisi]);
-    if (existing) return jsonResponse(res, false, 'No polisi (BM) sudah terdaftar');
+    if (existing) return jsonResponse(res, false, 'No polisi sudah terdaftar');
     const result = await query(
       `INSERT INTO kendaraan (no_polisi, nama_supir, tara_avg, jenis_kendaraan, kepemilikan, status, created_at) VALUES (?,?,?,?,?,'active',datetime('now', 'localtime'))`,
       [noPolisi, namaSopir, taraAvg, jenis, kepemilikan]
@@ -140,10 +146,10 @@ router.post('/kendaraan', requireRole('admin', 'operator'), async (req, res) => 
 router.put('/kendaraan/:id', requireRole('admin'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const noPolisi    = cleanInput(req.body.no_polisi).toUpperCase();
-    const namaSopir   = cleanInput(req.body.nama_supir);
-    const taraAvg     = parseFloat(req.body.tara_avg) || 0;
-    const status      = cleanInput(req.body.status) || 'active';
+    const noPolisi  = cleanInput(req.body.no_polisi).toUpperCase();
+    const namaSopir = cleanInput(req.body.nama_supir);
+    const taraAvg   = parseFloat(req.body.tara_avg) || 0;
+    const status    = cleanInput(req.body.status) || 'active';
     const kepemilikan = cleanInput(req.body.kepemilikan) || 'Perusahaan';
     await query(`UPDATE kendaraan SET no_polisi=?, nama_supir=?, tara_avg=?, status=?, kepemilikan=?, updated_at=datetime('now', 'localtime') WHERE id=?`, [noPolisi, namaSopir, taraAvg, status, kepemilikan, id]);
     return jsonResponse(res, true, 'Kendaraan berhasil diupdate');
@@ -152,8 +158,8 @@ router.put('/kendaraan/:id', requireRole('admin'), async (req, res) => {
 
 router.delete('/kendaraan/:id', requireRole('admin'), async (req, res) => {
   try {
-    await query(`UPDATE kendaraan SET status='inactive', updated_at=datetime('now', 'localtime') WHERE id=?`, [parseInt(req.params.id)]);
-    return jsonResponse(res, true, 'Kendaraan dinonaktifkan');
+    await query(`DELETE FROM kendaraan WHERE id=?`, [parseInt(req.params.id)]);
+    return jsonResponse(res, true, 'Kendaraan berhasil dihapus permanen');
   } catch (err) { return jsonResponse(res, false, err.message); }
 });
 
@@ -291,17 +297,16 @@ router.post('/supir', requireRole('admin'), async (req, res) => {
     const tx = beginTransaction();
     try {
       const result = tx.execute(
-        `INSERT INTO supir (nama_supir, no_telepon, alamat, total_hutang, status, created_at) VALUES (?, ?, ?, ?, 'active', datetime('now', 'localtime'))`,
-        [nama, telepon, alamat, totalHutang]
+        `INSERT INTO supir (nama_supir, no_telepon, alamat, total_hutang, status, created_at) VALUES (?, ?, ?, 0, 'active', datetime('now', 'localtime'))`,
+        [nama, telepon, alamat]
       );
       const supirId = result[0].insertId;
-      
+
       if (totalHutang > 0) {
-        tx.execute(
-          `INSERT INTO hutang_supir_history (id_supir, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
-           VALUES (?, date('now', 'localtime'), 'tambah', ?, 'Hutang awal saat pendaftaran', ?, ?)`,
-          [supirId, totalHutang, totalHutang, req.session.user_id]
-        );
+        catatHutangTx(tx, {
+          type: 'supir', partyId: supirId, jenis: 'tambah', jumlah: totalHutang,
+          keterangan: 'Hutang awal saat pendaftaran', sumber: 'manual', operatorId: req.session.user_id
+        });
       }
       tx.commit();
       return jsonResponse(res, true, 'Supir berhasil ditambahkan', { id: supirId });
@@ -327,20 +332,18 @@ router.put('/supir/:id', requireRole('admin'), async (req, res) => {
     
     const tx = beginTransaction();
     try {
+      // Update field non-hutang (saldo hutang dikelola lewat buku besar)
       tx.execute(
-        `UPDATE supir SET nama_supir=?, no_telepon=?, alamat=?, status=?, total_hutang=?, updated_at=datetime('now', 'localtime') WHERE id=?`,
-        [nama, telepon, alamat, status, totalHutang, id]
+        `UPDATE supir SET nama_supir=?, no_telepon=?, alamat=?, status=?, updated_at=datetime('now', 'localtime') WHERE id=?`,
+        [nama, telepon, alamat, status, id]
       );
-      
+
       if (totalHutang !== oldHutang) {
         const diff = totalHutang - oldHutang;
-        const jenis = diff > 0 ? 'tambah' : 'bayar';
-        const jumlah = Math.abs(diff);
-        tx.execute(
-          `INSERT INTO hutang_supir_history (id_supir, tanggal, jenis, jumlah, keterangan, saldo_setelah, operator_id)
-           VALUES (?, date('now', 'localtime'), ?, ?, 'Penyesuaian nominal hutang (edit supir)', ?, ?)`,
-          [id, jenis, jumlah, totalHutang, req.session.user_id]
-        );
+        catatHutangTx(tx, {
+          type: 'supir', partyId: id, jenis: diff > 0 ? 'tambah' : 'bayar', jumlah: Math.abs(diff),
+          keterangan: 'Penyesuaian nominal hutang (edit supir)', sumber: 'manual', operatorId: req.session.user_id
+        });
       }
       tx.commit();
       return jsonResponse(res, true, 'Supir berhasil diupdate');
@@ -354,9 +357,89 @@ router.put('/supir/:id', requireRole('admin'), async (req, res) => {
 router.delete('/supir/:id', requireRole('admin'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await query(`UPDATE supir SET status='inactive', updated_at=datetime('now', 'localtime') WHERE id=?`, [id]);
-    return jsonResponse(res, true, 'Supir dinonaktifkan');
+    const tx = beginTransaction();
+    try {
+      tx.execute(`DELETE FROM potongan_gaji WHERE id_gaji IN (SELECT id FROM gaji_supir WHERE id_supir = ?)`, [id]);
+      tx.execute(`DELETE FROM gaji_supir WHERE id_supir = ?`, [id]);
+      tx.execute(`DELETE FROM hutang_ledger WHERE party_type = 'supir' AND party_id = ?`, [id]);
+      tx.execute(`DELETE FROM supir WHERE id = ?`, [id]);
+      tx.commit();
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
+    return jsonResponse(res, true, 'Supir berhasil dihapus permanen');
   } catch (err) { return jsonResponse(res, false, err.message); }
+});
+
+// ─── PABRIK (PKS) ─────────────────────────────────────────────────────────────
+
+router.get('/pabrik', async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    let sql = `SELECT * FROM pabrik WHERE 1=1`;
+    const params = [];
+    if (search) {
+      sql += ` AND nama_pabrik LIKE ?`;
+      params.push(`%${search}%`);
+    }
+    sql += ` ORDER BY nama_pabrik ASC`;
+    const data = await query(sql, params);
+    return jsonResponse(res, true, 'Pabrik list', data);
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.post('/pabrik', requireRole('admin'), async (req, res) => {
+  try {
+    const nama = cleanInput(req.body.nama_pabrik).toUpperCase();
+    const tarif = parseFloat(req.body.tarif_angkut) || 0;
+
+    if (!nama) return jsonResponse(res, false, 'Nama Pabrik tidak boleh kosong');
+
+    const existing = await queryOne(`SELECT id FROM pabrik WHERE LOWER(nama_pabrik) = LOWER(?)`, [nama]);
+    if (existing) return jsonResponse(res, false, 'Pabrik dengan nama tersebut sudah ada');
+
+    const result = await query(
+      `INSERT INTO pabrik (nama_pabrik, tarif_angkut, status, created_at) VALUES (?, ?, 'active', datetime('now', 'localtime'))`,
+      [nama, tarif]
+    );
+
+    return jsonResponse(res, true, 'Pabrik berhasil ditambahkan', { id: result.insertId });
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.put('/pabrik/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const nama = cleanInput(req.body.nama_pabrik).toUpperCase();
+    const tarif = parseFloat(req.body.tarif_angkut) || 0;
+    const status = cleanInput(req.body.status) || 'active';
+
+    if (!id || !nama) return jsonResponse(res, false, 'Data tidak valid');
+
+    await query(
+      `UPDATE pabrik SET nama_pabrik = ?, tarif_angkut = ?, status = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`,
+      [nama, tarif, status, id]
+    );
+
+    return jsonResponse(res, true, 'Pabrik berhasil diperbarui');
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
+});
+
+router.delete('/pabrik/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await query(`DELETE FROM pabrik WHERE id = ?`, [id]);
+    return jsonResponse(res, true, 'Pabrik berhasil dihapus permanen');
+  } catch (err) {
+    return jsonResponse(res, false, err.message);
+  }
 });
 
 // ─── ACTIVITY LOGS ────────────────────────────────────────────────────────────

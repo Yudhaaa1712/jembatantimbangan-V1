@@ -1,0 +1,19 @@
+# Enable browser caching for CSS files
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # CSS files - cache for 1 year
+    ExpiresByType text/css "access plus 1 year"
+</IfModule>
+
+# Add Cache-Control headers
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+</IfModule>
+
+# Enable GZIP compression for CSS
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/css
+</IfModule>

@@ -205,9 +205,9 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // Intercept external links but allow print ticket & surat jalan
+  // Intercept external links but allow print ticket, surat jalan & riwayat hutang
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.includes('/print-ticket') || url.includes('/surat-jalan')) {
+    if (url.includes('/print-ticket') || url.includes('/surat-jalan') || url.includes('/hutang-print')) {
         return { 
             action: 'allow',
             overrideBrowserWindowOptions: {

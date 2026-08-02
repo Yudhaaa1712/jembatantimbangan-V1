@@ -16,7 +16,7 @@
     <div class="page-header"><h1 class="page-title">Manajemen User</h1></div>
     <div class="d-flex justify-content-between mb-3">
       <input type="text" id="searchUser" class="form-control" style="max-width:300px;" placeholder="Cari user..." oninput="loadUsers()">
-      <button class="btn btn-success" onclick="showAddUser()">Tambah User</button>
+      <button class="btn btn-success" onclick="showAddUser()"><i class="bi bi-plus"></i> Tambah User</button>
     </div>
     <div class="table-container">
       <table class="data-table">
@@ -65,7 +65,7 @@
       role:document.getElementById('uRole').value
     })});
     if(!form||!form.username||!form.password) return;
-    const res = await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+    const res = await fetch('/users/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
     const r = await res.json();
     if(r.success){Swal.fire({icon:'success',title:'Berhasil',text:r.message,timer:1500,showConfirmButton:false});loadUsers();}
     else Swal.fire({icon:'error',title:'Gagal',text:r.message});

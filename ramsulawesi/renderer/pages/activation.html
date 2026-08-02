@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aktivasi Aplikasi - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+    <link href="/assets/css/sweetalert2.min.css" rel="stylesheet">
+</head>
+<body class="no-sidebar page-activation">
+
+  <div class="card activation-card">
+    <div class="card-header">
+      <svg class="icon w-6 h-6" aria-hidden="true"><use href="#i-lock-fill"></use></svg><br>
+      APLIKASI TERKUNCI (AKTIVASI DIBUTUHKAN)
+    </div>
+    <div class="card-body p-6">
+      <p class="text-center text-ink-500 mb-6">Aplikasi ini belum diaktivasi atau lisensi tidak valid untuk komputer ini.</p>
+      
+      <div class="mb-4">
+        <label class="form-label font-bold">1. Hardware ID Anda:</label>
+        <div class="input-group">
+          <input type="text" class="form-control hwid-box" id="hwidDisplay" readonly value="Memuat...">
+          <button class="btn btn-outline-secondary" onclick="copyHwid()" title="Salin Hardware ID">
+            <svg class="icon" aria-hidden="true"><use href="#i-clipboard"></use></svg> Salin
+          </button>
+        </div>
+        <small class="text-ink-500 block mt-1">Kirimkan Hardware ID ini ke Arroyan Jv Teknik untuk mendapatkan Kunci Lisensi.</small>
+      </div>
+
+      <hr class="my-6">
+
+      <form id="activationForm">
+        <div class="mb-4">
+          <label class="form-label font-bold">2. Masukkan Kunci Lisensi:</label>
+          <textarea class="form-control" id="licenseKey" rows="4" required placeholder="Paste lisensi dari Arroyan Jv Teknik di sini..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-success w-full py-2 font-bold">
+          <svg class="icon" aria-hidden="true"><use href="#i-key-fill"></use></svg> Aktivasi Sekarang
+        </button>
+      </form>
+    </div>
+    <div class="card-footer text-center text-ink-500 text-[12px]">
+      &copy; 2024 Arroyan Jv Teknik
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+    // Fetch HWID on load
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch('/license/hwid');
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('hwidDisplay').value = data.hwid;
+        } else {
+          document.getElementById('hwidDisplay').value = 'Gagal memuat HWID';
+        }
+      } catch (error) {
+        document.getElementById('hwidDisplay').value = 'Koneksi error';
+      }
+    });
+
+    function copyHwid() {
+      const hwid = document.getElementById('hwidDisplay');
+      hwid.select();
+      document.execCommand('copy');
+      Swal.fire({
+        icon: 'success',
+        title: 'Disalin!',
+        text: 'Hardware ID berhasil disalin ke clipboard.',
+        toast: true,
+        position: 'top-end',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    }
+
+    document.getElementById('activationForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const key = document.getElementById('licenseKey').value;
+      if (!key.trim()) return;
+
+      try {
+        const res = await fetch('/license/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ license_key: key.trim() })
+        });
+        const r = await res.json();
+        if (r.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Aktivasi Berhasil!',
+            text: 'Aplikasi Anda sekarang dapat digunakan.',
+            confirmButtonText: 'Masuk Aplikasi'
+          }).then(() => {
+            window.location.href = '/';
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Aktivasi Gagal',
+            text: r.message
+          });
+        }
+      } catch (error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Gagal terhubung ke server.'
+        });
+      }
+    });
+  </script>
+  <script src="/js/icons.js"></script>
+</body>
+</html>

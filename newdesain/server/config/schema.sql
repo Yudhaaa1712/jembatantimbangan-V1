@@ -273,6 +273,7 @@ CREATE TABLE IF NOT EXISTS pengiriman_tkbm (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   id_pengiriman INTEGER NOT NULL,
   id_tkbm INTEGER NOT NULL,
+  id_gaji_tkbm INTEGER,
   FOREIGN KEY (id_pengiriman) REFERENCES pengiriman_pabrik(id) ON DELETE CASCADE,
   FOREIGN KEY (id_tkbm) REFERENCES karyawan_tkbm(id) ON DELETE CASCADE
 );
@@ -298,8 +299,10 @@ CREATE TABLE IF NOT EXISTS gaji_tkbm (
   periode_akhir TEXT NOT NULL,
   total_berat_kg REAL DEFAULT 0,
   total_trip INTEGER DEFAULT 0,
+  tarif_pemuat REAL DEFAULT 0,
   gaji_kotor REAL DEFAULT 0,
   total_potongan REAL DEFAULT 0,
+  potongan_lainnya REAL DEFAULT 0,
   gaji_bersih REAL DEFAULT 0,
   status TEXT CHECK(status IN ('draft','final','paid')) DEFAULT 'draft',
   catatan TEXT,
@@ -317,3 +320,37 @@ CREATE TABLE IF NOT EXISTS potongan_gaji_tkbm (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (id_gaji) REFERENCES gaji_tkbm(id) ON DELETE CASCADE
 );
+
+-- ─── MANAJEMEN HUTANG TERPADU ───────────────────────────────────────────────
+-- Tabel kontak generik untuk pihak yang tidak punya tabel transaksi sendiri
+-- (petani, karyawan lain). Supir/supplier/tkbm tetap pakai tabel masternya.
+CREATE TABLE IF NOT EXISTS kontak (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nama TEXT NOT NULL,
+  tipe TEXT NOT NULL,                 -- 'petani' | 'karyawan'
+  no_telepon TEXT,
+  alamat TEXT,
+  total_hutang REAL DEFAULT 0,
+  status TEXT CHECK(status IN ('active','inactive')) DEFAULT 'active',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT
+);
+
+-- Buku besar hutang terpadu untuk SEMUA jenis pihak.
+-- party_type: 'supir'|'supplier'|'tkbm'|'petani'|'karyawan'
+-- sumber:     'manual'|'timbangan'|'gaji'  (dari mana entri berasal)
+CREATE TABLE IF NOT EXISTS hutang_ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  party_type TEXT NOT NULL,
+  party_id INTEGER NOT NULL,
+  tanggal TEXT NOT NULL,
+  jenis TEXT CHECK(jenis IN ('tambah','bayar')) NOT NULL,
+  jumlah REAL NOT NULL DEFAULT 0,
+  keterangan TEXT,
+  id_referensi INTEGER,               -- id transaksi/gaji terkait (utk potongan otomatis)
+  sumber TEXT DEFAULT 'manual',
+  saldo_setelah REAL NOT NULL DEFAULT 0,
+  operator_id INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_hutang_ledger_party ON hutang_ledger(party_type, party_id);

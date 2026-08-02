@@ -10,6 +10,21 @@ const { isLoggedIn } = require('../middleware/auth');
 
 router.use(isLoggedIn);
 
+// ─── Helper date filter (sama seperti transaksi.js) ──────────────────────────
+function buildDateCondition(dateFilter, startDate, endDate) {
+  switch (dateFilter) {
+    case 'today':      return { sql: `pp.tanggal = date('now', 'localtime')`, params: [] };
+    case 'yesterday':  return { sql: `pp.tanggal = date('now', 'localtime', '-1 day')`, params: [] };
+    case 'week':       return { sql: `pp.tanggal >= date('now', 'localtime', '-7 days')`, params: [] };
+    case 'half_month': return { sql: `pp.tanggal >= date('now', 'localtime', '-15 days')`, params: [] };
+    case 'month':      return { sql: `strftime('%m', pp.tanggal) = strftime('%m', 'now', 'localtime') AND strftime('%Y', pp.tanggal) = strftime('%Y', 'now', 'localtime')`, params: [] };
+    case 'half_year':  return { sql: `pp.tanggal >= date('now', 'localtime', '-6 months')`, params: [] };
+    case 'year':       return { sql: `strftime('%Y', pp.tanggal) = strftime('%Y', 'now', 'localtime')`, params: [] };
+    case 'custom_range': return { sql: `pp.tanggal BETWEEN ? AND ?`, params: [startDate, endDate] };
+    default:           return { sql: `pp.tanggal = date('now', 'localtime')`, params: [] };
+  }
+}
+
 // ─── Generate No Surat Jalan ─────────────────────────────────────────────────
 async function generateNoSuratJalan() {
   const today = new Date();
@@ -19,7 +34,11 @@ async function generateNoSuratJalan() {
     String(today.getDate()).padStart(2, '0')
   ].join('');
 
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0')
+  ].join('-');
   const pattern = `SJ-${datePrefix}%`;
 
   const row = await queryOne(
@@ -35,12 +54,19 @@ async function generateNoSuratJalan() {
 // ─── GET /pengiriman/list — Daftar pengiriman ────────────────────────────────
 router.get('/list', async (req, res) => {
   try {
+    const dateFilter = req.query.date_filter || 'today';
+    const startDate  = req.query.start_date || new Date().toISOString().split('T')[0];
+    const endDate    = req.query.end_date   || new Date().toISOString().split('T')[0];
+
+    const { sql: dateSql, params: dateParams } = buildDateCondition(dateFilter, startDate, endDate);
+
     const rows = await query(
       `SELECT pp.*, u.nama_lengkap as operator_nama
        FROM pengiriman_pabrik pp
        LEFT JOIN users u ON pp.operator_id = u.id
-       WHERE pp.tanggal >= date('now', 'localtime', '-30 days')
-       ORDER BY pp.created_at DESC`
+       WHERE ${dateSql}
+       ORDER BY pp.created_at ASC, pp.id ASC`,
+      dateParams
     );
     return jsonResponse(res, true, 'Data pengiriman', rows);
   } catch (err) {
@@ -117,6 +143,10 @@ router.post('/timbang1', async (req, res) => {
     const jenis_material = req.body.jenis_material || 'tbs';
     const tkbmWorkers = req.body.tkbm_workers || []; // array of id_tkbm
 
+    const hargaKg = parseFloat(req.body.harga_per_kg) || 0;
+    const pinjaman = parseFloat(req.body.pinjaman) || 0;
+    const biayaEsJalan = parseFloat(req.body.biaya_es_jalan) || 0;
+
     if (berat1 <= 0) {
       return jsonResponse(res, false, 'Berat Timbangan 1 harus lebih dari 0');
     }
@@ -128,9 +158,9 @@ router.post('/timbang1', async (req, res) => {
       const result = tx.execute(
         `INSERT INTO pengiriman_pabrik 
          (no_surat_jalan, tanggal, no_polisi, id_supir, nama_supir, nama_pabrik, 
-          berat_timbangan1, waktu_timbangan1, keterangan, jenis_material, status, operator_id, created_at)
-         VALUES (?, CURDATE(), ?, ?, ?, ?, ?, NOW(), ?, ?, 'timbang_1', ?, NOW())`,
-        [noSJ, noPolisi, idSupir, namaSupir, namaPabrik, berat1, keterangan, jenis_material, req.session.user_id]
+          berat_timbangan1, waktu_timbangan1, keterangan, jenis_material, harga_per_kg, pinjaman, biaya_es_jalan, status, operator_id, created_at)
+         VALUES (?, CURDATE(), ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, 'timbang_1', ?, NOW())`,
+        [noSJ, noPolisi, idSupir, namaSupir, namaPabrik, berat1, keterangan, jenis_material, hargaKg, pinjaman, biayaEsJalan, req.session.user_id]
       );
       
       const insertId = result[0].insertId;
@@ -164,9 +194,10 @@ router.post('/timbang1', async (req, res) => {
 router.get('/pending', async (req, res) => {
   try {
     const rows = await query(
-      `SELECT id, no_surat_jalan, no_polisi, nama_supir, nama_pabrik, jenis_material, berat_timbangan1, waktu_timbangan1 
-       FROM pengiriman_pabrik 
-       WHERE status = 'timbang_1' 
+      `SELECT id, no_surat_jalan, no_polisi, nama_supir, nama_pabrik, jenis_material, berat_timbangan1, waktu_timbangan1,
+              (SELECT GROUP_CONCAT(id_tkbm) FROM pengiriman_tkbm WHERE id_pengiriman = pengiriman_pabrik.id) AS tkbm_ids
+       FROM pengiriman_pabrik
+       WHERE status = 'timbang_1'
        ORDER BY waktu_timbangan1 DESC`
     );
     return jsonResponse(res, true, 'Data pending', rows);
@@ -180,6 +211,7 @@ router.post('/timbang2', async (req, res) => {
   try {
     const id = parseInt(req.body.id);
     const berat2 = parseFloat(req.body.berat) || 0;
+    const tkbmWorkers = req.body.tkbm_workers; // opsional: daftar id TKBM dari timbang 2
 
     if (!id || berat2 <= 0) {
       return jsonResponse(res, false, 'Pilih surat jalan dan ambil berat yang valid');
@@ -192,15 +224,30 @@ router.post('/timbang2', async (req, res) => {
     const bruto = Math.max(berat1, berat2);
     const tara = Math.min(berat1, berat2);
     const netto_ram = bruto - tara;
-    
-    await query(
-      `UPDATE pengiriman_pabrik SET 
-       berat_timbangan2 = ?, waktu_timbangan2 = NOW(),
-       berat_bruto = ?, berat_tara = ?, netto_ram = ?,
-       status = 'timbang_2', updated_at = NOW()
-       WHERE id = ?`,
-      [berat2, bruto, tara, netto_ram, id]
-    );
+
+    const tx = beginTransaction();
+    try {
+      tx.execute(
+        `UPDATE pengiriman_pabrik SET
+         berat_timbangan2 = ?, waktu_timbangan2 = NOW(),
+         berat_bruto = ?, berat_tara = ?, netto_ram = ?,
+         status = 'timbang_2', updated_at = NOW()
+         WHERE id = ?`,
+        [berat2, bruto, tara, netto_ram, id]
+      );
+
+      // Jika daftar TKBM dikirim dari timbang 2, ganti set pekerjanya (bisa lihat/ubah pilihan timbang 1)
+      if (Array.isArray(tkbmWorkers)) {
+        tx.execute(`DELETE FROM pengiriman_tkbm WHERE id_pengiriman = ?`, [id]);
+        for (const idTkbm of tkbmWorkers) {
+          if (idTkbm) tx.execute(`INSERT INTO pengiriman_tkbm (id_pengiriman, id_tkbm) VALUES (?, ?)`, [id, parseInt(idTkbm)]);
+        }
+      }
+      tx.commit();
+    } catch (txErr) {
+      tx.rollback();
+      throw txErr;
+    }
 
     console.log(`[Pengiriman] Timbang 2: ID ${id}, Berat 2: ${berat2} kg`);
 
@@ -262,15 +309,23 @@ router.post('/delete', async (req, res) => {
 // ─── GET /pengiriman/export-excel — Export to Excel ────────────────────────
 router.get('/export-excel', async (req, res) => {
   try {
+    const dateFilter = req.query.date_filter || 'today';
+    const startDate  = req.query.start_date || new Date().toISOString().split('T')[0];
+    const endDate    = req.query.end_date   || new Date().toISOString().split('T')[0];
+
+    const { sql: dateSql, params: dateParams } = buildDateCondition(dateFilter, startDate, endDate);
+
     const rows = await query(
       `SELECT pp.*, u.nama_lengkap as operator_nama
        FROM pengiriman_pabrik pp
        LEFT JOIN users u ON pp.operator_id = u.id
-       ORDER BY pp.tanggal DESC, pp.created_at DESC`
+       WHERE ${dateSql}
+       ORDER BY pp.tanggal DESC, pp.created_at DESC`,
+      dateParams
     );
 
     const settingRow = await queryOne(`SELECT setting_value FROM settings WHERE setting_key = 'company_name'`);
-    const companyName = settingRow ? settingRow.setting_value : 'Laporan Pengiriman Pabrik';
+    const companyName = settingRow ? settingRow.setting_value : 'Laporan Timbangan Jual';
 
     let html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -283,7 +338,7 @@ router.get('/export-excel', async (req, res) => {
         </style>
       </head>
       <body>
-        <h3>${companyName} - Data Pengiriman Pabrik</h3>
+        <h3>${companyName} - Data Timbangan Jual</h3>
         <table border="1">
           <thead>
             <tr style="background-color: #4CAF50; color: white;">

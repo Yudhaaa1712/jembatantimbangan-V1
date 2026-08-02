@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transaksi - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+</head>
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header"><h1 class="page-title">Data Transaksi</h1></div>
+
+    <!-- Filter -->
+    <div class="filter-section">
+      <div class="filter-row items-end gap-[15px]">
+        <div class="filter-group">
+          <label>Pilih Periode</label>
+          <select id="dateFilterSelect" class="filter-control" onchange="handleFilterChange()">
+            <option value="today">Hari Ini</option>
+            <option value="yesterday">Kemarin</option>
+            <option value="week">7 Hari Terakhir</option>
+            <option value="half_month">15 Hari Terakhir</option>
+            <option value="month">Bulan Ini</option>
+            <option value="half_year">6 Bulan Terakhir</option>
+            <option value="year">Tahun Ini</option>
+            <option value="custom_range">Pilih Tanggal (Custom)</option>
+          </select>
+        </div>
+        <div class="gap-[10px] items-end" id="customDateRow" style="display:none">
+          <div class="filter-group"><label>Dari Tanggal</label><input type="date" id="startDateInput" class="filter-control"></div>
+          <div class="filter-group"><label>Sampai Tanggal</label><input type="date" id="endDateInput" class="filter-control"></div>
+          <button class="btn-filter h-[42px]" onclick="loadTransaksi()"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg> Cari</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-section">
+      <div class="stat-card"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total Transaksi</div></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-section">
+      <div class="action-buttons">
+        <button class="btn-action" id="btnExportExcel" onclick="exportExcel()">EXPORT EXCEL</button>
+        <button class="btn-action bg-gradient-to-br from-emerald-600 to-emerald-500" id="btnSendEmail" onclick="sendReportEmail('transaksi')">📧 KIRIM KE EMAIL</button>
+      </div>
+      <div class="total-records"><span id="totalRecords">Total Records: 0</span></div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+      <table class="data-table" id="transaksiTable">
+        <thead>
+            <tr>
+                <th class="align-middle" rowspan="2">NO</th>
+                <th class="align-middle" rowspan="2">NO. TIKET</th>
+                <th class="align-middle" rowspan="2">STATUS</th>
+                <th class="align-middle" rowspan="2">TANGGAL</th>
+                <th class="text-center" colspan="2">WAKTU</th>
+                <th class="text-center" colspan="2">KENDARAAN</th>
+                <th class="text-center" colspan="2">SUPPLIER</th>
+                <th class="text-center" colspan="3">TIMBANGAN (KG)</th>
+                <th class="text-center" colspan="2">POTONGAN BERAT</th>
+                <th class="align-middle" rowspan="2">NETTO 2 (KG)</th>
+                <th class="align-middle" rowspan="2">HARGA</th>
+                <th class="align-middle" rowspan="2">TOTAL AWAL</th>
+                <th class="align-middle" rowspan="2">POTONG HUTANG</th>
+                <th class="align-middle" rowspan="2">TOTAL AKHIR</th>
+                <th class="align-middle" rowspan="2">KETERANGAN</th>
+                <th class="align-middle" rowspan="2">OPERATOR</th>
+                <th class="align-middle" rowspan="2">AKSI</th>
+            </tr>
+            <tr>
+                <th>MASUK</th>
+                <th>KELUAR</th>
+                <th>NO. POLISI</th>
+                <th>SUPIR</th>
+                <th>NAMA</th>
+                <th>MATERIAL</th>
+                <th>BRUTO</th>
+                <th>TARA</th>
+                <th>NETTO 1</th>
+                <th>%</th>
+                <th>KG</th>
+            </tr>
+        </thead>
+        <tbody id="transaksiBody"><tr><td class="text-center" colspan="21">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+  window.activePage = 'transaksi';
+
+  function handleFilterChange() {
+    const val = document.getElementById('dateFilterSelect').value;
+    const customRow = document.getElementById('customDateRow');
+    if (val === 'custom_range') { customRow.style.display='flex'; }
+    else { customRow.style.display='none'; loadTransaksi(); }
+  }
+
+  async function loadTransaksi() {
+    const filter = document.getElementById('dateFilterSelect').value;
+    const start = document.getElementById('startDateInput').value;
+    const end = document.getElementById('endDateInput').value;
+    let url = `/transaksi/list?date_filter=${filter}`;
+    if (filter === 'custom_range' && start && end) url += `&start_date=${start}&end_date=${end}`;
+
+    const res = await fetch(url);
+    const result = await res.json();
+    if (!result.success) return;
+
+    document.getElementById('statTotal').textContent = result.stats?.total_transaksi || 0;
+    document.getElementById('totalRecords').textContent = `Total Records: ${result.total}`;
+
+    const tbody = document.getElementById('transaksiBody');
+    const thead = document.querySelector('#transaksiTable thead');
+    const t1 = result.fields?.t1 || { no_kendaraan: true, nama_pengemudi: true, nama_suplier: true, material: true, harga: true, keterangan: true };
+    const t2 = result.fields?.t2 || { persen_potongan: true, harga: true, potongan_hutang: true, potongan_muat: true, keterangan: true };
+    const activeFeatures = result.active_features || {};
+
+    // 1. Build thead HTML dynamically
+    let kendCols = 0;
+    if (t1.no_kendaraan !== false) kendCols++;
+    if (t1.nama_pengemudi !== false) kendCols++;
+    let supCols = 0;
+    if (t1.nama_suplier !== false) supCols++;
+    if (t1.material !== false) supCols++;
+    const showPot = t2.persen_potongan !== false;
+    const showHarga = (t1.harga !== false || t2.harga !== false);
+    const showHutangSupir = (activeFeatures.hutang === true && t2.potongan_hutang !== false);
+    const showHutangSupplier = (activeFeatures.hutang === true && t2.potongan_hutang !== false);
+    const showMuat = (t2.potongan_muat !== false);
+    const showKet = (t1.keterangan !== false || t2.keterangan !== false);
+
+    let theadHtml = `
+      <tr>
+        <th class="align-middle" rowspan="2">NO</th>
+        <th class="align-middle" rowspan="2">NO. TIKET</th>
+        <th class="align-middle" rowspan="2">STATUS</th>
+        <th class="align-middle" rowspan="2">TANGGAL</th>
+        <th class="text-center" colspan="2">WAKTU</th>
+        ${kendCols > 0 ? `<th class="text-center" colspan="${kendCols}">KENDARAAN</th>` : ''}
+        ${supCols > 0 ? `<th class="text-center" colspan="${supCols}">SUPPLIER</th>` : ''}
+        <th class="text-center" colspan="3">TIMBANGAN (KG)</th>
+        ${showPot ? `<th class="text-center" colspan="2">POTONGAN BERAT</th>` : ''}
+        <th class="align-middle" rowspan="2">NETTO 2 (KG)</th>
+        ${showHarga ? `<th class="align-middle" rowspan="2">HARGA</th><th class="align-middle" rowspan="2">TOTAL AWAL</th>` : ''}
+        ${showHutangSupir ? `<th class="align-middle" rowspan="2">POTONG HUTANG SUPIR</th>` : ''}
+        ${showHutangSupplier ? `<th class="align-middle" rowspan="2">POTONG HUTANG SUPPLIER</th>` : ''}
+        ${showMuat ? `<th class="align-middle" rowspan="2">UPAH BONGKAR</th>` : ''}
+        ${showHarga ? `<th class="align-middle" rowspan="2">TOTAL AKHIR</th>` : ''}
+        ${showKet ? `<th class="align-middle" rowspan="2">KETERANGAN</th>` : ''}
+        <th class="align-middle" rowspan="2">OPERATOR</th>
+        <th class="align-middle" rowspan="2">AKSI</th>
+      </tr>
+      <tr>
+        <th>MASUK</th>
+        <th>KELUAR</th>
+        ${t1.no_kendaraan !== false ? `<th>NO. POLISI</th>` : ''}
+        ${t1.nama_pengemudi !== false ? `<th>SUPIR</th>` : ''}
+        ${t1.nama_suplier !== false ? `<th>NAMA</th>` : ''}
+        ${t1.material !== false ? `<th>MATERIAL</th>` : ''}
+        <th>BRUTO</th>
+        <th>TARA</th>
+        <th>NETTO 1</th>
+        ${showPot ? `<th>%</th><th>KG</th>` : ''}
+      </tr>
+    `;
+    thead.innerHTML = theadHtml;
+
+    if (!result.data || result.data.length === 0) {
+      tbody.innerHTML = '<tr><td class="text-center" colspan="25">Tidak ada data transaksi</td></tr>';
+      return;
+    }
+
+    let html = '';
+    result.data.forEach((row, i) => {
+      const isCancel = row.status === 'dibatalkan';
+      const style = isCancel ? 'opacity:0.5;text-decoration:line-through;' : '';
+      const bruto = parseFloat(row.berat_bruto) || parseFloat(row.berat_timbangan1) || 0;
+      const tara = parseFloat(row.berat_tara) || parseFloat(row.berat_timbangan2) || 0;
+      const persen = parseFloat(row.persen_potongan||0);
+      const harga = parseFloat(row.harga_per_kg||0);
+      const nettoAwal = bruto - tara;
+      const kgPot = Math.round((persen/100)*nettoAwal);
+      const nettoAkhir = Math.round(nettoAwal - kgPot);
+      const totalAwal = parseFloat(row.total_harga) > 0 ? parseFloat(row.total_harga) : nettoAkhir*harga;
+      const potPupuk = parseFloat(row.potongan_pupuk_rp||0);
+      const potHutang = parseFloat(row.potongan_hutang_rp||0);
+      const potHutangSupplier = parseFloat(row.potongan_hutang_supplier_rp||0);
+      const potJalan = parseFloat(row.potongan_jalan||0);
+      const potMuat = parseFloat(row.potongan_muat_rp||0);
+      const totalPotRp = potPupuk+potHutang+potHutangSupplier+potJalan+potMuat;
+      const totalAkhir = Math.max(0, totalAwal - totalPotRp);
+      const fmtDate = row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-';
+      const extractTimeOnly = (str) => {
+        if (!str) return '-';
+        const timeStr = String(str).includes(' ') ? String(str).split(' ')[1] : String(str);
+        return timeStr ? timeStr.slice(0, 8) : '-';
+      };
+      const fmtT1 = extractTimeOnly(row.waktu_timbangan1);
+      const fmtKeluar = extractTimeOnly(row.waktu_keluar);
+      const statusBadge = isCancel
+        ? `<span class="bg-[#dc2626] text-[white] py-[2px] px-[8px] rounded-[4px] text-[11px]">BATAL</span>`
+        : `<span class="bg-[#059669] text-[white] py-[2px] px-[8px] rounded-[4px] text-[11px]">SELESAI</span>`;
+      const aksiBtn = isCancel
+        ? `<span class="text-[#6b7280] text-[11px]">Dibatalkan</span>`
+        : `<button class="btn-receipt" onclick="printReceipt('${row.no_tiket}')">Cetak</button>
+           ${ currentUser?.user_role==='admin'||currentUser?.user_role==='operator'
+             ? `<button class="btn-receipt bg-[#dc2626] ml-[4px]" onclick="cancelTransaction(${row.id},'${row.no_tiket}')">Batalkan</button>` : ''}` ;
+      
+      html += `<tr style="${style}">
+        <td>${i+1}</td>
+        <td><strong>${row.no_tiket}</strong></td>
+        <td>${statusBadge}</td>
+        <td>${fmtDate}</td><td>${fmtT1}</td><td>${fmtKeluar}</td>
+        ${t1.no_kendaraan !== false ? `<td>${(row.no_polisi||'-').toUpperCase()}</td>` : ''}
+        ${t1.nama_pengemudi !== false ? `<td>${(row.nama_supir||'-').toUpperCase()}</td>` : ''}
+        ${t1.nama_suplier !== false ? `<td>${(row.nama_supplier||'-').toUpperCase()}</td>` : ''}
+        ${t1.material !== false ? `<td>${(row.jenis_material||'-').toUpperCase()}</td>` : ''}
+        <td class="text-right">${bruto.toLocaleString('id-ID')}</td>
+        <td class="text-right">${tara.toLocaleString('id-ID')}</td>
+        <td class="text-right font-bold">${nettoAwal.toLocaleString('id-ID')}</td>
+        ${showPot ? `<td class="text-center">${persen>0?persen.toFixed(1)+'%':'-'}</td>
+        <td class="text-right">${kgPot>0?kgPot.toLocaleString('id-ID'):'-'}</td>` : ''}
+        <td class="text-right font-bold">${nettoAkhir.toLocaleString('id-ID')}</td>
+        ${showHarga ? `<td class="text-right">${harga>0?'Rp '+harga.toLocaleString('id-ID'):'-'}</td>
+        <td class="text-right">${totalAwal>0?'Rp '+totalAwal.toLocaleString('id-ID'):'-'}</td>` : ''}
+        ${showHutangSupir ? `<td class="text-right text-[#ef4444]">${potHutang>0?'- Rp '+potHutang.toLocaleString('id-ID'):'-'}</td>` : ''}
+        ${showHutangSupplier ? `<td class="text-right text-[#3b82f6]">${potHutangSupplier>0?'- Rp '+potHutangSupplier.toLocaleString('id-ID'):'-'}</td>` : ''}
+        ${showMuat ? `<td class="text-right text-[#f59e0b]">${potMuat>0?'- Rp '+potMuat.toLocaleString('id-ID'):'-'}</td>` : ''}
+        ${showHarga ? `<td class="text-right font-bold text-[#22c55e]">${totalAkhir>0?'Rp '+totalAkhir.toLocaleString('id-ID'):'-'}</td>` : ''}
+        ${showKet ? `<td class="max-w-[200px]">${row.keterangan||'-'}</td>` : ''}
+        <td>${(row.operator_nama||'-').toUpperCase()}</td>
+        <td class="whitespace-nowrap">${aksiBtn}</td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  async function cancelTransaction(id, noTiket) {
+    const { value: formValues } = await Swal.fire({
+      title: 'Batalkan Transaksi',
+      html: `
+        <div class="text-left mb-[15px]">
+            <label class="font-bold block mb-[5px]">Aksi Pembatalan:</label>
+            <div class="mb-[5px]">
+                <input type="radio" id="action_ulang" name="action_type" value="ulang_timbang" checked>
+                <label for="action_ulang">Ulang Timbang (Kembali ke Timbangan Masuk)</label>
+            </div>
+            <div>
+                <input type="radio" id="action_delete" name="action_type" value="delete">
+                <label class="text-[#dc2626]" for="action_delete">Hapus Permanen</label>
+            </div>
+        </div>
+        <div class="text-left">
+            <label class="font-bold block mb-[5px]">Alasan Pembatalan:</label>
+            <input id="cancel_reason" class="swal2-input m-0 w-full" placeholder="Masukkan alasan...">
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Proses Pembatalan',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#dc2626',
+      preConfirm: () => {
+        return {
+          action_type: document.querySelector('input[name="action_type"]:checked').value,
+          cancel_reason: document.getElementById('cancel_reason').value
+        }
+      }
+    });
+
+    if (!formValues) return;
+    if (formValues.action_type === 'ulang_timbang' && !formValues.cancel_reason) {
+        Swal.fire({ icon:'error', title:'Gagal', text:'Alasan pembatalan harus diisi' });
+        return;
+    }
+
+    const res = await fetch('/transaksi/cancel', { 
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body:JSON.stringify({
+            id: id,
+            action_type: formValues.action_type,
+            cancel_reason: formValues.cancel_reason
+        }) 
+    });
+    const result = await res.json();
+    if (result.success) { 
+        Swal.fire({ icon:'success', title:'Berhasil', text:result.message, timer:1500, showConfirmButton:false }); 
+        loadTransaksi(); 
+    } else {
+        Swal.fire({ icon:'error', title:'Gagal', text:result.message });
+    }
+  }
+
+  async function printReceipt(noTiket) {
+    window.open(`/print-ticket/${noTiket}`, '_blank', 'width=800,height=600');
+  }
+
+  function exportExcel() {
+    const filter = document.getElementById('dateFilterSelect').value;
+    const start = document.getElementById('startDateInput').value;
+    const end = document.getElementById('endDateInput').value;
+    let url = `/transaksi/export-excel?date_filter=${filter}`;
+    if (filter==='custom_range'&&start&&end) url+=`&start_date=${start}&end_date=${end}`;
+    window.location.href = url;
+  }
+
+  async function sendReportEmail(reportType) {
+    const { value: email } = await Swal.fire({
+      title: '📧 Kirim Laporan ke Email',
+      html: `<input id="swalEmailInput" class="swal2-input" placeholder="email_tujuan@gmail.com" type="email">
+             <select id="swalReportType" class="swal2-select mt-[10px]">
+               <option value="semua">Semua Laporan</option>
+               <option value="transaksi">Laporan Transaksi Timbangan</option>
+               <option value="keuangan">Laporan Keuangan</option>
+               <option value="pengiriman">Laporan Timbangan Pengiriman</option>
+             </select>`,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Kirim',
+      confirmButtonColor: '#059669',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const emailVal = document.getElementById('swalEmailInput').value.trim();
+        if (!emailVal) { Swal.showValidationMessage('Masukkan alamat email tujuan'); return false; }
+        return {
+          email: emailVal,
+          type: document.getElementById('swalReportType').value
+        };
+      }
+    });
+    if (!email) return;
+
+    Swal.fire({ title: 'Mengirim laporan...', text: 'Mohon tunggu sebentar', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    const filter = document.getElementById('dateFilterSelect').value;
+    const start = document.getElementById('startDateInput').value;
+    const end = document.getElementById('endDateInput').value;
+
+    try {
+      const res = await fetch('/setup/send-report-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient: email.email,
+          report_type: email.type,
+          date_filter: filter,
+          start_date: start,
+          end_date: end
+        })
+      });
+      const r = await res.json();
+      if (r.success) {
+        Swal.fire({ icon: 'success', title: 'Terkirim!', text: r.message, timer: 3000, showConfirmButton: true });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+      }
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal mengirim: ' + e.message });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async function() {
+    await loadSessionInfo();
+    await loadTransaksi();
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('startDateInput').value = today;
+    document.getElementById('endDateInput').value = today;
+  });
+  </script>
+  <script src="/js/icons.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/sidebar.js"></script>
+</body>
+</html>

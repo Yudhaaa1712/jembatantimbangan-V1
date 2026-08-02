@@ -24,7 +24,7 @@
       <div class="d-flex justify-content-between mb-2">
         <input type="text" id="searchUser" class="form-control" style="max-width:300px;" placeholder="Cari user..."
           oninput="loadUsers()">
-        <button class="btn btn-success btn-sm" onclick="showAddUser()">Tambah User</button>
+        <button class="btn btn-success btn-sm" onclick="showAddUser()"><i class="bi bi-plus"></i> Tambah User</button>
       </div>
       <div class="table-container">
         <table class="data-table">
@@ -43,12 +43,37 @@
       </div>
     </div>
 
+    <!-- Pabrik (PKS) Tab -->
+    <div id="tab-pabrik" style="display:none;">
+      <div class="d-flex justify-content-between mb-2">
+        <input type="text" id="searchPabrik" class="form-control" style="max-width:300px;" placeholder="Cari pabrik..."
+          oninput="loadPabrik()">
+        <button class="btn btn-success btn-sm" onclick="showAddPabrik()"><i class="bi bi-plus"></i> Tambah Pabrik
+          (PKS)</button>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama Pabrik (PKS)</th>
+              <th>Tarif Angkut / Kg (Rp)</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="pabrikBody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Supplier Tab -->
     <div id="tab-supplier" style="display:none;">
       <div class="d-flex justify-content-between mb-2">
         <input type="text" id="searchSupplier" class="form-control" style="max-width:300px;"
           placeholder="Cari supplier..." oninput="loadSupplier()">
-        <button class="btn btn-success btn-sm" onclick="showAddSupplier()">Tambah Supplier</button>
+        <button class="btn btn-success btn-sm" onclick="showAddSupplier()"><i class="bi bi-plus"></i> Tambah
+          Supplier</button>
       </div>
       <div class="table-container">
         <table class="data-table">
@@ -73,7 +98,7 @@
       <div class="d-flex justify-content-between mb-2">
         <input type="text" id="searchSupir" class="form-control" style="max-width:300px;" placeholder="Cari supir..."
           oninput="loadSupir()">
-        <button class="btn btn-success btn-sm" onclick="showAddSupir()">Tambah Supir</button>
+        <button class="btn btn-success btn-sm" onclick="showAddSupir()"><i class="bi bi-plus"></i> Tambah Supir</button>
       </div>
       <div class="table-container">
         <table class="data-table">
@@ -179,11 +204,10 @@
     <div id="tab-material" style="display:none;">
       <div class="row">
         <div class="col-md-6 mx-auto">
-          <div class="card border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-100">
-            <div
-              class="card-header bg-neoYellow border-bottom-2 border-black text-black d-flex justify-content-between align-items-center rounded-none">
-              <h5 class="mb-0 font-black">Kelola Material</h5>
-              <span class="badge bg-black text-white border border-black rounded-none" id="materialCount">0</span>
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+              <h5 class="mb-0"><i class="fas fa-cubes"></i> Kelola Material</h5>
+              <span class="badge bg-info" id="materialCount">0</span>
             </div>
             <div class="card-body">
               <p class="text-muted small mb-3">Tambah atau hapus jenis material. Material yang ditambahkan akan otomatis
@@ -191,8 +215,8 @@
               <div class="input-group mb-3">
                 <input type="text" class="form-control" id="newMaterialInput"
                   placeholder="Nama material baru (misal: pasir, batu)" style="text-transform:uppercase;">
-                <button class="btn btn-primary bg-neoBlue text-white border-2 border-black font-black rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" type="button" id="btnAddMaterial">
-                  Tambah
+                <button class="btn btn-success" type="button" id="btnAddMaterial">
+                  <i class="fas fa-plus"></i> Tambah
                 </button>
               </div>
               <div id="materialListContainer" style="max-height:300px;overflow-y:auto;">
@@ -208,9 +232,9 @@
     <div id="tab-email" style="display:none;">
       <div class="row">
         <div class="col-md-6 mx-auto">
-          <div class="card border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-            <div class="card-header bg-neoYellow border-bottom-2 border-black text-black rounded-none">
-              <h5 class="mb-0 font-black">Konfigurasi Email (SMTP)</h5>
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white">
+              <h5 class="mb-0"><i class="fas fa-envelope"></i> Konfigurasi Email (SMTP)</h5>
             </div>
             <div class="card-body">
               <p class="text-muted small mb-3">Atur konfigurasi SMTP agar aplikasi bisa mengirim laporan Excel ke email.
@@ -224,7 +248,7 @@
                 <div class="mb-3">
                   <label class="form-label">SMTP Port</label>
                   <input type="number" class="form-control" id="smtpPort" value="465" placeholder="465">
-                  <small class="text-muted">Umumnya 465 (SSL) or 587 (TLS)</small>
+                  <small class="text-muted">Umumnya 465 (SSL) atau 587 (TLS)</small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Email Pengirim</label>
@@ -239,7 +263,7 @@
                 <button type="submit" class="btn btn-primary w-100">Simpan Konfigurasi SMTP</button>
               </form>
               <hr>
-              <h6 class="font-extrabold uppercase tracking-wider text-xs">Test Kirim Email</h6>
+              <h6>Test Kirim Email</h6>
               <div class="input-group">
                 <input type="email" class="form-control" id="testEmailRecipient" placeholder="email_tujuan@gmail.com">
                 <button class="btn btn-success" type="button" id="btnTestEmail">Test Kirim</button>
@@ -307,17 +331,17 @@
 
       container.innerHTML = currentMaterials.map((m, i) => {
         const isDefault = DEFAULT_MATERIALS.includes(m.toLowerCase());
-        return `<div class="d-flex align-items-center justify-content-between py-2 px-3 mb-1" style="background:${isDefault ? '#f1f5f9' : '#ffffff'};border-radius:0px;border:2px solid #000000;box-shadow:2px 2px 0px 0px rgba(0,0,0,1);">
-          <div class="d-flex align-items-center gap-2">
-            <span style="width:24px;height:24px;border:2px solid #000000;background:${isDefault ? '#00ff66' : '#0066ff'};display:flex;align-items:center;justify-content:center;font-size:11px;color:${isDefault ? '#000' : '#fff'};font-weight:900;">${i + 1}</span>
-            <span class="font-extrabold" style="font-size:14px;letter-spacing:0.5px;color:#000000;">${m.toUpperCase()}</span>
-            ${isDefault ? '<span class="badge bg-neoGreen text-black border border-black rounded-none" style="font-size:10px;">Default</span>' : ''}
-          </div>
-          ${isDefault
-            ? '<span class="text-muted" style="font-size:11px;">[Terkunci]</span>'
-            : `<button class="btn btn-sm bg-neoPink text-white border-2 border-black py-1 px-2 rounded-none" onclick="removeMaterial(${i})" title="Hapus material">HAPUS</button>`
+        return `<div class="d-flex align-items-center justify-content-between py-2 px-3 mb-1" style="background:${isDefault ? '#f1f5f9' : '#ffffff'};border-radius:8px;border:1px solid ${isDefault ? '#cbd5e1' : '#e2e8f0'};">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width:24px;height:24px;border-radius:6px;background:${isDefault ? 'linear-gradient(135deg,#10b981,#059669)' : 'linear-gradient(135deg,#6366f1,#4f46e5)'};display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;">${i + 1}</span>
+          <span class="fw-bold" style="font-size:14px;letter-spacing:0.5px;color:#334155;">${m.toUpperCase()}</span>
+          ${isDefault ? '<span class="badge bg-success bg-opacity-25 text-success" style="font-size:10px;">Default</span>' : ''}
+        </div>
+        ${isDefault
+            ? '<span class="text-muted" style="font-size:11px;"><i class="fas fa-lock"></i></span>'
+            : `<button class="btn btn-sm btn-outline-danger" style="border-radius:6px;padding:2px 8px;" onclick="removeMaterial(${i})" title="Hapus material">HAPUS</button>`
           }
-        </div>`;
+      </div>`;
       }).join('');
     }
 
@@ -404,28 +428,28 @@
         const usernameEscaped = u.username.replace(/'/g, "\\'");
         const namaEscaped = u.nama_lengkap.replace(/'/g, "\\'");
         return `<tr>
-          <td>${i + 1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
-          <td>${u.role === 'admin' ? '<span class="badge bg-neoBlue text-white border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Admin</span>' : '<span class="badge bg-neoYellow text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Operator</span>'}</td>
-          <td>${u.status === 'active' ? '<span class="badge bg-neoGreen text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Aktif</span>' : '<span class="badge bg-white text-black border border-black rounded-none shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Nonaktif</span>'}</td>
-          <td>
-            <button class="btn btn-sm btn-warning" onclick="editUser(${u.id},'${usernameEscaped}','${namaEscaped}','${u.role}','${u.status}')">Edit</button>
-            ${u.username !== 'admin' ? `
-              <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Nonaktifkan</button>
-              <button class="btn btn-sm btn-dark" onclick="hardDeleteUser(${u.id})" style="margin-left:4px;">Hapus Permanen</button>
-            `: ''}
-          </td>
-        </tr>`;
+        <td>${i + 1}</td><td>${u.username}</td><td>${u.nama_lengkap}</td>
+        <td>${u.role === 'admin' ? '<span class="badge bg-primary">Admin</span>' : '<span class="badge bg-info text-dark">Operator</span>'}</td>
+        <td>${u.status === 'active' ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editUser(${u.id},'${usernameEscaped}','${namaEscaped}','${u.role}','${u.status}')">Edit</button>
+          ${u.username !== 'admin' ? `
+            <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Nonaktifkan</button>
+            <button class="btn btn-sm btn-dark" onclick="hardDeleteUser(${u.id})" style="margin-left:4px;">Hapus Permanen</button>
+          `: ''}
+        </td>
+      </tr>`;
       }).join('');
     }
 
     async function showAddUser() {
       const { value: form } = await Swal.fire({
         title: 'Tambah User', html: `
-        <input id="uUsername" class="swal2-input" placeholder="Username">
-        <input id="uName" class="swal2-input" placeholder="Nama Lengkap">
-        <input id="uPass" type="password" class="swal2-input" placeholder="Password">
-        <select id="uRole" class="swal2-input"><option value="operator">Operator</option><option value="admin">Admin</option></select>
-      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+      <input id="uUsername" class="swal2-input" placeholder="Username">
+      <input id="uName" class="swal2-input" placeholder="Nama Lengkap">
+      <input id="uPass" type="password" class="swal2-input" placeholder="Password">
+      <select id="uRole" class="swal2-input"><option value="operator">Operator</option><option value="admin">Admin</option></select>
+    `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
           username: document.getElementById('uUsername').value,
           nama_lengkap: document.getElementById('uName').value,
           password: document.getElementById('uPass').value,
@@ -442,12 +466,12 @@
     async function editUser(id, user, name, role, status) {
       const { value: form } = await Swal.fire({
         title: 'Edit User', html: `
-        <input id="eUsername" class="swal2-input" value="${user}" readonly>
-        <input id="eName" class="swal2-input" value="${name}">
-        <input id="ePass" type="password" class="swal2-input" placeholder="Password Baru (Kosongkan jika tidak diubah)">
-        <select id="eRole" class="swal2-input" ${user === 'admin' ? 'disabled' : ''}><option value="operator" ${role === 'operator' ? 'selected' : ''}>Operator</option><option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option></select>
-        <select id="eStatus" class="swal2-input" ${user === 'admin' ? 'disabled' : ''}><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
-      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+      <input id="eUsername" class="swal2-input" value="${user}" readonly>
+      <input id="eName" class="swal2-input" value="${name}">
+      <input id="ePass" type="password" class="swal2-input" placeholder="Password Baru (Kosongkan jika tidak diubah)">
+      <select id="eRole" class="swal2-input" ${user === 'admin' ? 'disabled' : ''}><option value="operator" ${role === 'operator' ? 'selected' : ''}>Operator</option><option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option></select>
+      <select id="eStatus" class="swal2-input" ${user === 'admin' ? 'disabled' : ''}><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
+    `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
           nama_lengkap: document.getElementById('eName').value,
           password: document.getElementById('ePass').value,
           role: document.getElementById('eRole').value,
@@ -495,31 +519,31 @@
       tbody.innerHTML = data.data.map((s, i) => {
         const nameEscaped = s.nama_supplier.replace(/'/g, "\\'");
         return `<tr>
-          <td>${i + 1}</td><td>${s.nama_supplier}</td>
-          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.default_harga || 0)}</td>
-          <td>${s.default_potongan || 0} %</td>
-          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang || 0)}</td>
-          <td>${s.status === 'active' ? '<span class="badge bg-neoGreen text-black border border-black rounded-none">Aktif</span>' : '<span class="badge bg-white text-black border border-black rounded-none">Nonaktif</span>'}</td>
-          <td>
-            <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.id},'${nameEscaped}','${s.status}',${s.default_harga || 0},${s.default_potongan || 0},${s.total_hutang || 0})">Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.id})">Hapus</button>
-          </td>
-        </tr>`;
+        <td>${i + 1}</td><td>${s.nama_supplier}</td>
+        <td>Rp ${new Intl.NumberFormat('id-ID').format(s.default_harga || 0)}</td>
+        <td>${s.default_potongan || 0} %</td>
+        <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang || 0)}</td>
+        <td>${s.status === 'active' ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editSupplier(${s.id},'${nameEscaped}','${s.status}',${s.default_harga || 0},${s.default_potongan || 0},${s.total_hutang || 0})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.id})">Hapus</button>
+        </td>
+      </tr>`;
       }).join('');
     }
 
     async function showAddSupplier() {
       const { value: form } = await Swal.fire({
         title: 'Tambah Supplier', html: `
-        <input id="sName" class="swal2-input" placeholder="Nama Supplier" style="text-transform:uppercase;">
-        <input id="sHarga" type="number" class="swal2-input" placeholder="Default Harga (opsional)">
-        <input id="sPot" type="number" step="0.01" class="swal2-input" placeholder="Default Potongan % (opsional)">
-        <input id="sHutang" type="number" class="swal2-input" placeholder="Hutang Awal Rp (opsional)">
-      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+      <input id="sName" class="swal2-input" placeholder="Nama Supplier" style="text-transform:uppercase;">
+      <input id="sHarga" type="text" inputmode="numeric" class="swal2-input format-rupiah" placeholder="Default Harga (opsional)">
+      <input id="sPot" type="number" step="0.01" class="swal2-input" placeholder="Default Potongan % (opsional)">
+      <input id="sHutang" type="text" inputmode="numeric" class="swal2-input format-rupiah" placeholder="Hutang Awal Rp (opsional)">
+    `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
           nama_supplier: document.getElementById('sName').value,
-          default_harga: document.getElementById('sHarga').value,
+          default_harga: getRawNumber(document.getElementById('sHarga').value),
           default_potongan: document.getElementById('sPot').value,
-          total_hutang: document.getElementById('sHutang').value
+          total_hutang: getRawNumber(document.getElementById('sHutang').value)
         })
       });
       if (!form || !form.nama_supplier) return;
@@ -532,16 +556,16 @@
     async function editSupplier(id, name, status, harga, pot, hutang) {
       const { value: form } = await Swal.fire({
         title: 'Edit Supplier', html: `
-        <input id="eSName" class="swal2-input" value="${name}" style="text-transform:uppercase;">
-        <input id="eSHarga" type="number" class="swal2-input" value="${harga}">
-        <input id="eSPot" type="number" step="0.01" class="swal2-input" value="${pot}">
-        <input id="eSHutang" type="number" class="swal2-input" value="${hutang}">
-        <select id="eSStatus" class="swal2-input"><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
-      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+      <input id="eSName" class="swal2-input" value="${name}" style="text-transform:uppercase;">
+      <input id="eSHarga" type="text" inputmode="numeric" class="swal2-input format-rupiah" value="${formatRupiah(harga)}">
+      <input id="eSPot" type="number" step="0.01" class="swal2-input" value="${pot}">
+      <input id="eSHutang" type="text" inputmode="numeric" class="swal2-input format-rupiah" value="${formatRupiah(hutang)}">
+      <select id="eSStatus" class="swal2-input"><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
+    `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
           nama_supplier: document.getElementById('eSName').value,
-          default_harga: document.getElementById('eSHarga').value,
+          default_harga: getRawNumber(document.getElementById('eSHarga').value),
           default_potongan: document.getElementById('eSPot').value,
-          total_hutang: document.getElementById('eSHutang').value,
+          total_hutang: getRawNumber(document.getElementById('eSHutang').value),
           status: document.getElementById('eSStatus').value
         })
       });
@@ -553,7 +577,7 @@
     }
 
     async function deleteSupplier(id) {
-      const conf = await Swal.fire({ icon: 'warning', title: 'Nonaktifkan?', showCancelButton: true, confirmButtonColor: '#dc2626' });
+      const conf = await Swal.fire({ icon: 'warning', title: 'Hapus permanen?', text: 'Supplier dan riwayat hutangnya akan dihapus dari database dan tidak bisa dikembalikan.', showCancelButton: true, confirmButtonText: 'Ya, hapus', confirmButtonColor: '#dc2626' });
       if (!conf.isConfirmed) return;
       const res = await fetch(`/masterdata/supplier/${id}`, { method: 'DELETE' });
       const r = await res.json();
@@ -573,32 +597,32 @@
         const telpEscaped = (s.no_telepon || '').replace(/'/g, "\\'");
         const alamatEscaped = (s.alamat || '').replace(/'/g, "\\'");
         return `<tr>
-          <td>${i + 1}</td>
-          <td>${s.nama_supir}</td>
-          <td>${s.no_telepon || '-'}</td>
-          <td>${s.alamat || '-'}</td>
-          <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang || 0)}</td>
-          <td>${s.status === 'active' ? '<span class="badge bg-neoGreen text-black border border-black rounded-none">Aktif</span>' : '<span class="badge bg-white text-black border border-black rounded-none">Nonaktif</span>'}</td>
-          <td>
-            <button class="btn btn-sm btn-warning" onclick="editSupir(${s.id},'${nameEscaped}','${telpEscaped}','${alamatEscaped}','${s.status}',${s.total_hutang || 0})">Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteSupir(${s.id})">Hapus</button>
-          </td>
-        </tr>`;
+        <td>${i + 1}</td>
+        <td>${s.nama_supir}</td>
+        <td>${s.no_telepon || '-'}</td>
+        <td>${s.alamat || '-'}</td>
+        <td>Rp ${new Intl.NumberFormat('id-ID').format(s.total_hutang || 0)}</td>
+        <td>${s.status === 'active' ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editSupir(${s.id},'${nameEscaped}','${telpEscaped}','${alamatEscaped}','${s.status}',${s.total_hutang || 0})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSupir(${s.id})">Hapus</button>
+        </td>
+      </tr>`;
       }).join('');
     }
 
     async function showAddSupir() {
       const { value: form } = await Swal.fire({
         title: 'Tambah Supir', html: `
-        <input id="spName" class="swal2-input" placeholder="Nama Supir" style="text-transform:uppercase;">
-        <input id="spTelp" class="swal2-input" placeholder="No Telepon (opsional)">
-        <input id="spAlamat" class="swal2-input" placeholder="Alamat (opsional)">
-        <input id="spHutang" type="number" class="swal2-input" placeholder="Hutang Awal Rp (opsional)">
-      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+      <input id="spName" class="swal2-input" placeholder="Nama Supir" style="text-transform:uppercase;">
+      <input id="spTelp" class="swal2-input" placeholder="No Telepon (opsional)">
+      <input id="spAlamat" class="swal2-input" placeholder="Alamat (opsional)">
+      <input id="spHutang" type="text" inputmode="numeric" class="swal2-input format-rupiah" placeholder="Hutang Awal Rp (opsional)">
+    `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
           nama_supir: document.getElementById('spName').value,
           no_telepon: document.getElementById('spTelp').value,
           alamat: document.getElementById('spAlamat').value,
-          total_hutang: document.getElementById('spHutang').value
+          total_hutang: getRawNumber(document.getElementById('spHutang').value)
         })
       });
       if (!form || !form.nama_supir) return;
@@ -611,16 +635,16 @@
     async function editSupir(id, name, telp, alamat, status, hutang) {
       const { value: form } = await Swal.fire({
         title: 'Edit Supir', html: `
-        <input id="eSpName" class="swal2-input" value="${name}" style="text-transform:uppercase;">
-        <input id="eSpTelp" class="swal2-input" value="${telp}">
-        <input id="eSpAlamat" class="swal2-input" value="${alamat}">
-        <input id="eSpHutang" type="number" class="swal2-input" value="${hutang}">
-        <select id="eSpStatus" class="swal2-input"><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
-      `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
+      <input id="eSpName" class="swal2-input" value="${name}" style="text-transform:uppercase;">
+      <input id="eSpTelp" class="swal2-input" value="${telp}">
+      <input id="eSpAlamat" class="swal2-input" value="${alamat}">
+      <input id="eSpHutang" type="text" inputmode="numeric" class="swal2-input format-rupiah" value="${formatRupiah(hutang)}">
+      <select id="eSpStatus" class="swal2-input"><option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${status !== 'active' ? 'selected' : ''}>Nonaktif</option></select>
+    `, focusConfirm: false, showCancelButton: true, preConfirm: () => ({
           nama_supir: document.getElementById('eSpName').value,
           no_telepon: document.getElementById('eSpTelp').value,
           alamat: document.getElementById('eSpAlamat').value,
-          total_hutang: document.getElementById('eSpHutang').value,
+          total_hutang: getRawNumber(document.getElementById('eSpHutang').value),
           status: document.getElementById('eSpStatus').value
         })
       });
@@ -632,12 +656,107 @@
     }
 
     async function deleteSupir(id) {
-      const conf = await Swal.fire({ icon: 'warning', title: 'Nonaktifkan supir?', showCancelButton: true, confirmButtonColor: '#dc2626' });
+      const conf = await Swal.fire({ icon: 'warning', title: 'Hapus supir permanen?', text: 'Supir beserta riwayat hutang dan gajinya akan dihapus dari database dan tidak bisa dikembalikan.', showCancelButton: true, confirmButtonText: 'Ya, hapus', confirmButtonColor: '#dc2626' });
       if (!conf.isConfirmed) return;
       const res = await fetch(`/masterdata/supir/${id}`, { method: 'DELETE' });
       const r = await res.json();
       if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false }); loadSupir(); }
       else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+    }
+
+    // --- PABRIK (PKS) LOGIC ---
+    async function loadPabrik() {
+      const search = document.getElementById('searchPabrik') ? document.getElementById('searchPabrik').value : '';
+      const res = await fetch('/masterdata/pabrik?search=' + encodeURIComponent(search));
+      const data = await res.json();
+      const tbody = document.getElementById('pabrikBody');
+      if (!data.success || data.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Tidak ada data pabrik</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.data.map((p, i) => {
+        const nameEscaped = p.nama_pabrik.replace(/'/g, "\\'");
+        return `<tr>
+        <td>${i + 1}</td>
+        <td><strong>${p.nama_pabrik}</strong></td>
+        <td><strong class="text-primary">Rp ${new Intl.NumberFormat('id-ID').format(p.tarif_angkut || 0)} / Kg</strong></td>
+        <td>${p.status === 'active' ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Nonaktif</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editPabrik(${p.id}, '${nameEscaped}', '${p.status}', ${p.tarif_angkut || 0})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deletePabrik(${p.id})">Hapus</button>
+        </td>
+      </tr>`;
+      }).join('');
+    }
+
+    async function showAddPabrik() {
+      const { value: form } = await Swal.fire({
+        title: 'Tambah Pabrik (PKS)',
+        html: `
+        <input id="pName" class="swal2-input" placeholder="Nama Pabrik (misal: RSM, RSI, INTAN)" style="text-transform:uppercase;">
+        <input id="pTarif" type="text" inputmode="numeric" class="swal2-input format-rupiah" placeholder="Tarif Angkut / Kg (Rp)">
+      `,
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => ({
+          nama_pabrik: document.getElementById('pName').value,
+          tarif_angkut: parseRupiah(document.getElementById('pTarif').value)
+        })
+      });
+      if (!form) return;
+      const res = await fetch('/masterdata/pabrik', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      const r = await res.json();
+      if (r.success) {
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+        loadPabrik();
+      } else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+    }
+
+    async function editPabrik(id, nama, status, tarif) {
+      const { value: form } = await Swal.fire({
+        title: 'Edit Pabrik (PKS)',
+        html: `
+        <input id="epName" class="swal2-input" value="${nama}" placeholder="Nama Pabrik" style="text-transform:uppercase;">
+        <input id="epTarif" type="text" inputmode="numeric" class="swal2-input format-rupiah" value="${formatRupiah(tarif)}" placeholder="Tarif Angkut / Kg (Rp)">
+        <select id="epStatus" class="swal2-input">
+          <option value="active" ${status === 'active' ? 'selected' : ''}>Aktif</option>
+          <option value="inactive" ${status === 'inactive' ? 'selected' : ''}>Nonaktif</option>
+        </select>
+      `,
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => ({
+          nama_pabrik: document.getElementById('epName').value,
+          tarif_angkut: parseRupiah(document.getElementById('epTarif').value),
+          status: document.getElementById('epStatus').value
+        })
+      });
+      if (!form) return;
+      const res = await fetch(`/masterdata/pabrik/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      const r = await res.json();
+      if (r.success) {
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+        loadPabrik();
+      } else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+    }
+
+    async function deletePabrik(id) {
+      const conf = await Swal.fire({ icon: 'warning', title: 'Hapus pabrik permanen?', text: 'Pabrik akan dihapus dari database dan tidak bisa dikembalikan.', showCancelButton: true, confirmButtonText: 'Ya, hapus', confirmButtonColor: '#dc2626' });
+      if (!conf.isConfirmed) return;
+      const res = await fetch(`/masterdata/pabrik/${id}`, { method: 'DELETE' });
+      const r = await res.json();
+      if (r.success) {
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1500, showConfirmButton: false });
+        loadPabrik();
+      } else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
     }
 
     // --- EMAIL SMTP LOGIC ---
@@ -703,47 +822,6 @@
       this.disabled = false;
     });
 
-    document.addEventListener('DOMContentLoaded', async function () {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab') || 'supplier';
-
-      document.getElementById('tab-users').style.display = 'none';
-      document.getElementById('tab-supplier').style.display = 'none';
-      document.getElementById('tab-supir').style.display = 'none';
-      document.getElementById('tab-kendaraan').style.display = 'none';
-      document.getElementById('tab-material').style.display = 'none';
-      document.getElementById('tab-email').style.display = 'none';
-
-      if (tab === 'users') {
-        document.getElementById('tab-users').style.display = 'block';
-        document.getElementById('mdTitle').textContent = 'Master Data - Pengguna';
-        await loadUsers();
-      } else if (tab === 'kendaraan') {
-        document.getElementById('tab-kendaraan').style.display = 'block';
-        document.getElementById('mdTitle').textContent = 'Data Tonase Ramp (Mobil & Supir)';
-        await loadTonaseKendaraan();
-      } else if (tab === 'supir') {
-        document.getElementById('tab-supir').style.display = 'block';
-        document.getElementById('mdTitle').textContent = 'Master Data - Supir';
-        await loadSupir();
-      } else if (tab === 'material') {
-        document.getElementById('tab-material').style.display = 'block';
-        document.getElementById('mdTitle').textContent = 'Master Data - Material';
-        await loadMaterials();
-      } else if (tab === 'email') {
-        document.getElementById('tab-email').style.display = 'block';
-        document.getElementById('mdTitle').textContent = 'Master Data - Konfigurasi Email';
-        await loadSmtpConfig();
-      } else {
-        document.getElementById('tab-supplier').style.display = 'block';
-        document.getElementById('mdTitle').textContent = 'Master Data - Supplier';
-        await loadSupplier();
-      }
-
-      await loadSessionInfo();
-    });
-
-    // --- TONASE KENDARAAN & SUPIR LOGIC ---
     function handleTonaseFilterChange() {
       const val = document.getElementById('tonaseDateFilterSelect').value;
       const customRow = document.getElementById('tonaseCustomDateRow');
@@ -810,6 +888,51 @@
         console.error('Error loadTonaseKendaraan:', err);
       }
     }
+
+    document.addEventListener('DOMContentLoaded', async function () {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') || 'supplier';
+
+      document.getElementById('tab-users').style.display = 'none';
+      document.getElementById('tab-pabrik').style.display = 'none';
+      document.getElementById('tab-supplier').style.display = 'none';
+      document.getElementById('tab-supir').style.display = 'none';
+      document.getElementById('tab-kendaraan').style.display = 'none';
+      document.getElementById('tab-material').style.display = 'none';
+      document.getElementById('tab-email').style.display = 'none';
+
+      if (tab === 'users') {
+        document.getElementById('tab-users').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Pengguna';
+        await loadUsers();
+      } else if (tab === 'pabrik') {
+        document.getElementById('tab-pabrik').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Pabrik (PKS) & Tarif';
+        await loadPabrik();
+      } else if (tab === 'supir') {
+        document.getElementById('tab-supir').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Supir';
+        await loadSupir();
+      } else if (tab === 'kendaraan') {
+        document.getElementById('tab-kendaraan').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Data Tonase Ramp';
+        await loadTonaseKendaraan();
+      } else if (tab === 'material') {
+        document.getElementById('tab-material').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Material';
+        await loadMaterials();
+      } else if (tab === 'email') {
+        document.getElementById('tab-email').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Konfigurasi Email';
+        await loadSmtpConfig();
+      } else {
+        document.getElementById('tab-supplier').style.display = 'block';
+        document.getElementById('mdTitle').textContent = 'Master Data - Supplier';
+        await loadSupplier();
+      }
+
+      await loadSessionInfo();
+    });
   </script>
   <script src="/js/sidebar.js"></script>
 </body>

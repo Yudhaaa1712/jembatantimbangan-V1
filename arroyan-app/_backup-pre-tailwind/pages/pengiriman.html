@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timbangan Jual - Weighbridge Arroyan</title>
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+    <link rel="stylesheet" href="/assets/css/bw-theme.css">
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #0f172a;
+        }
+
+        .page-header-box {
+            background: #1e293b;
+            color: #ffffff;
+            padding: 20px 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            color: #ffffff;
+        }
+
+        .card-modern {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .card-header-modern {
+            padding: 16px 20px;
+            background: #e2e8f0;
+            border-bottom: 1px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-body-modern {
+            padding: 20px;
+            background: #ffffff;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 16px 20px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        }
+
+        .stat-val {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #475569;
+            font-weight: 700;
+        }
+
+        .nav-tabs-modern {
+            border-bottom: 2px solid #cbd5e1;
+            background: #f8fafc;
+            padding: 6px 12px 0 12px;
+        }
+
+        .nav-tabs-modern .nav-link {
+            font-weight: 700;
+            font-size: 14px;
+            color: #475569;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 10px 20px;
+        }
+
+        .nav-tabs-modern .nav-link.active {
+            color: #1d4ed8;
+            border-bottom-color: #1d4ed8;
+            background: transparent;
+        }
+
+        .weight-display-card {
+            background: #0f172a;
+            color: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            border: 2px solid #334155;
+        }
+
+        .weight-num {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 48px;
+            font-weight: 900;
+            color: #22c55e;
+        }
+
+        .form-label-custom {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+
+        .form-control-custom,
+        .form-select-custom {
+            background-color: #ffffff;
+            color: #0f172a;
+            border: 1px solid #94a3b8;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .form-control-custom:focus,
+        .form-select-custom:focus {
+            border-color: #1d4ed8;
+            box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+        }
+
+        .susut-badge {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .susut-normal {
+            background: #fef3c7;
+            color: #78350f;
+            border: 1px solid #fde68a;
+        }
+
+        .susut-surplus {
+            background: #d1fae5;
+            color: #064e3b;
+            border: 1px solid #a7f3d0;
+        }
+
+        .table-modern {
+            width: 100%;
+            margin-bottom: 0;
+            background: #ffffff;
+        }
+
+        .table-modern th {
+            background: #1e293b;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 12px 14px;
+            border-bottom: 2px solid #0f172a;
+        }
+
+        .table-modern td {
+            padding: 12px 14px;
+            vertical-align: middle;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+            color: #0f172a;
+        }
+
+        .table-modern tbody tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        .table-modern tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="site-header"></div>
+    <div class="container-fluid py-4 px-4">
+
+        <!-- HEADER BANNER -->
+        <div class="page-header-box d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">Timbangan Jual</h1>
+                <p class="mb-0 text-light small">Kelola data timbangan pengiriman TBS &amp; Brondolan ke Pabrik Kelapa
+                    Sawit (PKS)</p>
+            </div>
+            <div>
+                <span class="badge bg-primary px-3 py-2 fs-6">Timbangan Pabrik</span>
+            </div>
+        </div>
+
+        <!-- FORM & INDIKATOR TIMBANGAN -->
+        <div class="row g-4 mb-4">
+            <!-- Form Tabs (Left) -->
+            <div class="col-lg-7">
+                <div class="card-modern h-100">
+                    <ul class="nav nav-tabs nav-tabs-modern" id="pengirimanTabs" role="tablist">
+                        <li class="nav-item" role="presentation" style="flex:1;">
+                            <button class="nav-link active w-100 text-center" id="timbang1-tab" data-bs-toggle="tab"
+                                data-bs-target="#timbang1" type="button" role="tab">TIMBANG 1 (KENDARAAN MASUK)</button>
+                        </li>
+                        <li class="nav-item" role="presentation" style="flex:1;">
+                            <button class="nav-link w-100 text-center" id="timbang2-tab" data-bs-toggle="tab"
+                                data-bs-target="#timbang2" type="button" role="tab">TIMBANG 2 (KENDARAAN
+                                KELUAR)</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content card-body-modern">
+                        <!-- TAB TIMBANG 1 -->
+                        <div class="tab-pane fade show active" id="timbang1" role="tabpanel">
+                            <form id="formTimbang1" data-formnav>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label-custom">No. Polisi</label>
+                                            <input type="text" class="form-control form-control-custom text-uppercase"
+                                                id="t1_noPolisi" placeholder="Contoh: BM 1234 XX" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom">Supir Pengirim</label>
+                                            <select class="form-select form-select-custom" id="t1_idSupir" required>
+                                                <option value="">-- Pilih Supir --</option>
+                                            </select>
+                                            <input type="hidden" id="t1_namaSupir">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom">Pabrik Tujuan (PKS)</label>
+                                            <select class="form-select form-select-custom" id="t1_namaPabrik" required>
+                                                <option value="">-- Pilih Pabrik (PKS) --</option>
+                                            </select>
+                                        </div>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-4">
+                                                <label class="form-label-custom text-primary">Harga/Kg (Rp)</label>
+                                                <input type="text" inputmode="numeric"
+                                                    class="form-control form-control-custom format-rupiah"
+                                                    id="t1_hargaPerKg" placeholder="0">
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="form-label-custom text-danger">Pinjaman (Rp)</label>
+                                                <input type="text" inputmode="numeric"
+                                                    class="form-control form-control-custom format-rupiah"
+                                                    id="t1_pinjaman" placeholder="0">
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="form-label-custom text-dark">Es+Jalan (Rp)</label>
+                                                <input type="text" inputmode="numeric"
+                                                    class="form-control form-control-custom format-rupiah"
+                                                    id="t1_biayaEsJalan" placeholder="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label-custom">Jenis Material</label>
+                                            <select class="form-select form-select-custom" id="t1_jenisMaterial"
+                                                required>
+                                                <option value="tbs">TBS</option>
+                                                <option value="brondolan">BRONDOLAN</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom">Keterangan</label>
+                                            <input type="text" class="form-control form-control-custom text-uppercase"
+                                                id="t1_keterangan" placeholder="Catatan tambahan...">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom text-primary">Pekerja TKBM yang Memuat (bisa
+                                                lebih dari 1)</label>
+                                            <div id="tkbmCheckboxes" class="bg-white p-2 border rounded"
+                                                style="max-height:120px; overflow-y:auto; border-color:#94a3b8;">
+                                                <small class="text-muted">Memuat data...</small>
+                                            </div>
+                                            <small class="text-muted">Upah = netto × tarif pemuat, dibagi rata jumlah
+                                                TKBM yang dipilih.</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom text-success fw-bold">Berat Timbangan 1
+                                                (Kg)</label>
+                                            <input type="number"
+                                                class="form-control form-control-custom fw-bold fs-5 border-success text-success"
+                                                id="berat1" min="0" step="1" required placeholder="0">
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-3">
+                                        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">
+                                            SIMPAN TIMBANG 1
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- TAB TIMBANG 2 -->
+                        <div class="tab-pane fade" id="timbang2" role="tabpanel">
+                            <form id="formTimbang2" data-formnav>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label-custom text-dark">Pilih Kendaraan Pending</label>
+                                            <select class="form-select form-select-custom border-dark"
+                                                id="t2_idPengiriman" required>
+                                                <option value="">-- Pilih Kendaraan / No SJ --</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom">No. Polisi</label>
+                                            <input type="text" class="form-control form-control-custom bg-light"
+                                                id="t2_noPolisi" readonly>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom">Nama Supir</label>
+                                            <input type="text" class="form-control form-control-custom bg-light"
+                                                id="t2_namaSupir" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label-custom">Pabrik &amp; Material</label>
+                                            <input type="text" class="form-control form-control-custom bg-light"
+                                                id="t2_pabrikMaterial" readonly>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom text-muted">Berat Timbangan 1 (Kg)</label>
+                                            <input type="number" class="form-control form-control-custom bg-light"
+                                                id="t2_berat1" readonly>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom text-success fw-bold">Berat Timbangan 2
+                                                (Kg)</label>
+                                            <input type="number"
+                                                class="form-control form-control-custom fw-bold fs-5 border-success text-success"
+                                                id="berat2" min="0" step="1" required placeholder="0">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label-custom text-primary fw-bold">Netto RAM (Kg)</label>
+                                            <input type="number"
+                                                class="form-control form-control-custom fw-bold fs-5 bg-light text-primary border-primary"
+                                                id="nettoPreview" readonly placeholder="0">
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label-custom text-primary">Pekerja TKBM yang Memuat (bisa
+                                            lebih dari 1)</label>
+                                        <div id="tkbmCheckboxes2" class="bg-white p-2 border rounded"
+                                            style="max-height:120px; overflow-y:auto; border-color:#94a3b8;">
+                                            <small class="text-muted">Memuat data...</small>
+                                        </div>
+                                        <small class="text-muted">Otomatis mengikuti pilihan di Timbang 1; bisa diubah
+                                            di sini bila perlu.</small>
+                                    </div>
+                                    <div class="col-12 mt-3">
+                                        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm"
+                                            id="btnSubmitTimbang2" disabled>
+                                            SIMPAN &amp; CETAK SURAT JALAN
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Indikator Timbangan (Right) -->
+            <div class="col-lg-5">
+                <div class="card-modern h-100 d-flex flex-column justify-content-center p-4">
+                    <div class="text-center mb-3">
+                        <span class="badge bg-secondary px-3 py-2 fs-6">INDIKATOR TIMBANGAN LIVE</span>
+                    </div>
+
+                    <div class="weight-display-card mb-4">
+                        <div class="mb-2">
+                            <span class="badge bg-dark border border-secondary px-3 py-1 text-light"
+                                id="weightStatusPengiriman">Menunggu koneksi...</span>
+                        </div>
+                        <div class="weight-num" id="weightDisplayPengiriman">0 KG</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary w-50 py-2 fw-bold"
+                            id="toggleConnectionPengiriman">SAMBUNGKAN</button>
+                        <button type="button" class="btn btn-warning w-50 py-2 fw-bold text-dark"
+                            id="captureWeightPengiriman">AMBIL BERAT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTER RIWAYAT PENGIRIMAN -->
+        <div class="filter-section">
+            <div class="filter-row" style="align-items:flex-end;gap:15px;">
+                <div class="filter-group">
+                    <label>Pilih Periode</label>
+                    <select id="dateFilterSelect" class="filter-control" onchange="handleFilterChange()">
+                        <option value="today">Hari Ini</option>
+                        <option value="yesterday">Kemarin</option>
+                        <option value="week">7 Hari Terakhir</option>
+                        <option value="half_month">15 Hari Terakhir</option>
+                        <option value="month">Bulan Ini</option>
+                        <option value="half_year">6 Bulan Terakhir</option>
+                        <option value="year">Tahun Ini</option>
+                        <option value="custom_range">Pilih Tanggal (Custom)</option>
+                    </select>
+                </div>
+                <div id="customDateRow" style="display:none;gap:10px;align-items:flex-end;">
+                    <div class="filter-group"><label>Dari Tanggal</label><input type="date" id="startDateInput"
+                            class="filter-control"></div>
+                    <div class="filter-group"><label>Sampai Tanggal</label><input type="date" id="endDateInput"
+                            class="filter-control"></div>
+                    <button class="btn-filter" style="height:42px;" onclick="loadList()"><i class="fas fa-search"></i>
+                        Cari</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIWAYAT PENGIRIMAN -->
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h5 class="mb-0 fw-bold text-dark">Riwayat Timbangan Jual</h5>
+                <div>
+                    <button class="btn btn-sm btn-success me-2 fw-bold" onclick="exportExcel()">Export Excel</button>
+                    <button class="btn btn-sm btn-primary fw-bold" onclick="loadList()">Refresh</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table-modern">
+                    <thead>
+                        <tr>
+                            <th>No. SJ</th>
+                            <th>Tanggal</th>
+                            <th>Kendaraan &amp; Supir</th>
+                            <th>Pabrik Tujuan</th>
+                            <th>Material</th>
+                            <th class="text-end">Netto RAM</th>
+                            <th class="text-end">Netto Pabrik</th>
+                            <th class="text-center">Susut</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center" style="width: 90px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="10" class="text-center py-4 text-dark fw-bold">Memuat data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal Input Berat Pabrik -->
+    <div class="modal fade" id="modalPabrik" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-slate-100">
+                    <h5 class="modal-title fw-bold text-dark">Input Berat Pabrik</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modalId">
+                    <div class="mb-3">
+                        <label class="form-label-custom">No. Surat Jalan</label>
+                        <input type="text" class="form-control form-control-custom bg-light" id="modalNoSJ" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-custom">Netto RAM (Kg)</label>
+                        <input type="number" class="form-control form-control-custom bg-light" id="modalNettoRam"
+                            readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-custom text-primary fw-bold">Netto Pabrik (Kg)</label>
+                        <input type="number" class="form-control form-control-custom border-primary fw-bold"
+                            id="modalNettoPabrik" min="0" step="1" placeholder="Masukkan netto dari timbangan pabrik">
+                    </div>
+                    <div class="p-3 rounded border text-center" id="modalSusutPreview" style="background:#f8fafc;">
+                        <div class="text-dark small text-uppercase fw-bold">Susut</div>
+                        <div id="modalSusutValue" class="fs-4 fw-bold text-dark">- Kg (- %)</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-success fw-bold" onclick="submitPabrik()">Simpan Berat
+                        Pabrik</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/jquery-3.7.1.min.js"></script>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/js/sweetalert2.min.js"></script>
+    <script src="/js/auto-serial-connect.js"></script>
+    <script src="/js/form-nav.js"></script>
+    <script>
+        window.activePage = 'pengiriman';
+
+        function updateNetto() {
+            const b1 = parseFloat(document.getElementById('t2_berat1').value) || 0;
+            const b2 = parseFloat(document.getElementById('berat2').value) || 0;
+            const netto = Math.abs(b1 - b2);
+            document.getElementById('nettoPreview').value = netto;
+        }
+        document.getElementById('berat2').addEventListener('input', updateNetto);
+
+        // Load Pending Tickets
+        let pendingTickets = [];
+        async function loadPending() {
+            try {
+                const res = await fetch('/pengiriman/pending');
+                const r = await res.json();
+                if (r.success) {
+                    pendingTickets = r.data;
+                    const select = document.getElementById('t2_idPengiriman');
+                    const currentSelected = select.value;
+
+                    select.innerHTML = '<option value="">-- Pilih Kendaraan / No SJ --</option>';
+                    pendingTickets.forEach(t => {
+                        const option = document.createElement('option');
+                        option.value = t.id;
+                        option.textContent = `${t.no_polisi} - ${t.nama_supir} (${t.no_surat_jalan})`;
+                        select.appendChild(option);
+                    });
+
+                    if (currentSelected) {
+                        select.value = currentSelected;
+                    }
+                }
+            } catch (e) { }
+        }
+
+        document.getElementById('t2_idPengiriman').addEventListener('change', function () {
+            const id = this.value;
+            if (!id) {
+                document.getElementById('t2_noPolisi').value = '';
+                document.getElementById('t2_namaSupir').value = '';
+                document.getElementById('t2_pabrikMaterial').value = '';
+                document.getElementById('t2_berat1').value = '';
+                document.getElementById('btnSubmitTimbang2').disabled = true;
+                document.querySelectorAll('.tkbm-cb2').forEach(cb => cb.checked = false);
+                updateNetto();
+                return;
+            }
+            const t = pendingTickets.find(x => x.id == id);
+            if (t) {
+                document.getElementById('t2_noPolisi').value = t.no_polisi;
+                document.getElementById('t2_namaSupir').value = t.nama_supir;
+                document.getElementById('t2_pabrikMaterial').value = `${t.nama_pabrik} (${(t.jenis_material || '').toUpperCase()})`;
+                document.getElementById('t2_berat1').value = t.berat_timbangan1;
+                document.getElementById('btnSubmitTimbang2').disabled = false;
+                // Pra-centang TKBM sesuai pilihan di Timbang 1
+                const ids = t.tkbm_ids ? String(t.tkbm_ids).split(',') : [];
+                document.querySelectorAll('.tkbm-cb2').forEach(cb => cb.checked = ids.includes(cb.value));
+                updateNetto();
+            }
+        });
+
+        // Filter periode (sama seperti halaman Transaksi)
+        function handleFilterChange() {
+            const val = document.getElementById('dateFilterSelect').value;
+            const customRow = document.getElementById('customDateRow');
+            if (val === 'custom_range') { customRow.style.display = 'flex'; }
+            else { customRow.style.display = 'none'; loadList(); }
+        }
+
+        function buildListQuery() {
+            const filter = document.getElementById('dateFilterSelect').value;
+            const start = document.getElementById('startDateInput').value;
+            const end = document.getElementById('endDateInput').value;
+            let qs = `date_filter=${filter}`;
+            if (filter === 'custom_range' && start && end) qs += `&start_date=${start}&end_date=${end}`;
+            return qs;
+        }
+
+        function exportExcel() {
+            window.location.href = `/pengiriman/export-excel?${buildListQuery()}`;
+        }
+
+        // Load list
+        async function loadList() {
+            try {
+                const res = await fetch('/pengiriman/list?' + buildListQuery());
+                const r = await res.json();
+                const tbody = document.getElementById('tableBody');
+                if (!r.success || !r.data.length) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-dark fw-bold">Belum ada data pengiriman</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = r.data.map(d => {
+                    const tgl = d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID') : '-';
+                    const nettoRam = Number(d.netto_ram).toLocaleString('id-ID');
+                    const nettoPabrik = d.netto_pabrik !== null ? Number(d.netto_pabrik).toLocaleString('id-ID') : '<span class="text-muted">Belum</span>';
+                    let susutHtml = '-';
+                    if (d.susut !== null) {
+                        const cls = d.susut >= 0 ? 'susut-normal' : 'susut-surplus';
+                        susutHtml = `<span class="susut-badge ${cls}">${Number(d.susut).toLocaleString('id-ID')} Kg (${Number(d.persen_susut).toFixed(1)}%)</span>`;
+                    }
+                    const statusBadge = d.status === 'selesai' ? '<span class="badge bg-success px-2 py-1 fs-6">Selesai</span>' :
+                        d.status === 'timbang_2' ? '<span class="badge bg-warning text-dark px-2 py-1 fs-6">Pending Pabrik</span>' :
+                            '<span class="badge bg-secondary px-2 py-1 fs-6">Pending Timbang 2</span>';
+                    const jenis = (d.jenis_material || 'tbs').toUpperCase();
+
+                    let aksiHtml = `<div class="d-flex flex-column align-items-center gap-1 mx-auto" style="width: 80px;">`;
+                    aksiHtml += `<button class="btn btn-sm btn-success w-100 py-0 fw-bold" style="font-size: 10px; line-height: 1.6;" onclick="printSJ(${d.id})">Cetak</button>`;
+                    if (d.status === 'timbang_2') {
+                        aksiHtml += `<button class="btn btn-sm btn-warning text-dark w-100 py-0 fw-bold" style="font-size: 10px; line-height: 1.6; white-space: nowrap;" onclick="openModalPabrik(${d.id},'${d.no_surat_jalan}',${d.netto_ram})">Input Pabrik</button>`;
+                    }
+                    aksiHtml += `<button class="btn btn-sm btn-danger w-100 py-0 fw-bold" style="font-size: 10px; line-height: 1.6;" onclick="hapus(${d.id})">Hapus</button>`;
+                    aksiHtml += `</div>`;
+
+                    return `<tr>
+              <td><strong class="text-dark">${d.no_surat_jalan}</strong></td>
+              <td class="text-dark fw-semibold">${tgl}</td>
+              <td><span class="fw-bold text-dark">${d.no_polisi}</span> <small class="d-block text-secondary">${d.nama_supir}</small></td>
+              <td class="fw-bold text-dark">${d.nama_pabrik}</td>
+              <td><span class="badge ${jenis === 'TBS' ? 'bg-success' : 'bg-primary'} fs-6">${jenis}</span></td>
+              <td class="text-end font-monospace fw-bold text-dark">${nettoRam}</td>
+              <td class="text-end font-monospace fw-bold text-dark">${nettoPabrik}</td>
+              <td class="text-center">${susutHtml}</td>
+              <td class="text-center">${statusBadge}</td>
+              <td class="text-center">${aksiHtml}</td>
+            </tr>`;
+                }).join('');
+            } catch (e) { console.error('Load list error:', e); }
+        }
+
+        async function loadFormDependencies() {
+            try {
+                // Load Supir
+                const resSupir = await fetch('/masterdata/supir');
+                const dataSupir = await resSupir.json();
+                if (dataSupir.success) {
+                    const sel = document.getElementById('t1_idSupir');
+                    sel.innerHTML = '<option value="">-- Pilih Supir --</option>';
+                    dataSupir.data.forEach(s => {
+                        if (s.status === 'active') sel.innerHTML += `<option value="${s.id}">${s.nama_supir}</option>`;
+                    });
+                }
+
+                // Load Pabrik Master
+                const resPabrik = await fetch('/masterdata/pabrik');
+                const dataPabrik = await resPabrik.json();
+                const selPabrik = document.getElementById('t1_namaPabrik');
+                if (selPabrik && dataPabrik.success && dataPabrik.data.length > 0) {
+                    selPabrik.innerHTML = '<option value="">-- Pilih Pabrik (PKS) --</option>';
+                    dataPabrik.data.forEach(p => {
+                        if (p.status === 'active') {
+                            selPabrik.innerHTML += `<option value="${p.nama_pabrik}" data-tarif="${p.tarif_angkut || 0}">${p.nama_pabrik} (Rp ${Number(p.tarif_angkut || 0).toLocaleString('id-ID')}/Kg)</option>`;
+                        }
+                    });
+                }
+
+                // Load TKBM (untuk Timbang 1 & Timbang 2)
+                const resTkbm = await fetch('/tkbm-api/active');
+                const dataTkbm = await resTkbm.json();
+                const renderTkbm = (arr, cls, prefix) => arr.map(t =>
+                    `<div class="form-check">
+                    <input class="form-check-input ${cls}" type="checkbox" value="${t.id}" id="${prefix}${t.id}">
+                    <label class="form-check-label text-dark fw-semibold" for="${prefix}${t.id}">${t.nama_karyawan}</label>
+                </div>`
+                ).join('');
+                const tkbmDiv = document.getElementById('tkbmCheckboxes');
+                const tkbmDiv2 = document.getElementById('tkbmCheckboxes2');
+                if (dataTkbm.success && dataTkbm.data.length > 0) {
+                    if (tkbmDiv) tkbmDiv.innerHTML = renderTkbm(dataTkbm.data, 'tkbm-cb', 'tkbm_');
+                    if (tkbmDiv2) tkbmDiv2.innerHTML = renderTkbm(dataTkbm.data, 'tkbm-cb2', 'tkbm2_');
+                } else {
+                    const msg = '<small class="text-danger fw-bold">Belum ada data TKBM aktif</small>';
+                    if (tkbmDiv) tkbmDiv.innerHTML = msg;
+                    if (tkbmDiv2) tkbmDiv2.innerHTML = msg;
+                }
+            } catch (e) { console.error('Load deps error:', e); }
+        }
+
+        document.getElementById('t1_idSupir').addEventListener('change', function () {
+            const option = this.options[this.selectedIndex];
+            document.getElementById('t1_namaSupir').value = option ? option.text : '';
+        });
+
+        document.getElementById('t1_namaPabrik').addEventListener('change', function () {
+            const option = this.options[this.selectedIndex];
+            if (option && option.dataset.tarif !== undefined && option.value) {
+                const tarif = parseFloat(option.dataset.tarif) || 0;
+                document.getElementById('t1_hargaPerKg').value = formatRupiah(tarif);
+            } else {
+                document.getElementById('t1_hargaPerKg').value = '';
+            }
+        });
+
+        document.getElementById('formTimbang1').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const tkbmWorkers = [];
+            document.querySelectorAll('.tkbm-cb:checked').forEach(cb => tkbmWorkers.push(cb.value));
+
+            const data = {
+                no_polisi: document.getElementById('t1_noPolisi').value,
+                id_supir: document.getElementById('t1_idSupir').value,
+                nama_supir: document.getElementById('t1_namaSupir').value,
+                nama_pabrik: document.getElementById('t1_namaPabrik').value,
+                harga_per_kg: parseRupiah(document.getElementById('t1_hargaPerKg')?.value),
+                pinjaman: parseRupiah(document.getElementById('t1_pinjaman')?.value),
+                biaya_es_jalan: parseRupiah(document.getElementById('t1_biayaEsJalan')?.value),
+                jenis_material: document.getElementById('t1_jenisMaterial').value,
+                berat: document.getElementById('berat1').value,
+                keterangan: document.getElementById('t1_keterangan').value,
+                tkbm_workers: tkbmWorkers
+            };
+            const res = await fetch('/pengiriman/timbang1', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+            });
+            const r = await res.json();
+            if (r.success) {
+                Swal.fire({ icon: 'success', title: 'Tersimpan', text: `Timbang 1 Selesai: ${r.data.no_surat_jalan}`, timer: 2000, showConfirmButton: false });
+                this.reset();
+                loadList();
+                loadPending();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+            }
+        });
+
+        document.getElementById('formTimbang2').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const tkbmWorkers2 = [];
+            document.querySelectorAll('.tkbm-cb2:checked').forEach(cb => tkbmWorkers2.push(cb.value));
+            const data = {
+                id: document.getElementById('t2_idPengiriman').value,
+                berat: document.getElementById('berat2').value,
+                tkbm_workers: tkbmWorkers2
+            };
+            const res = await fetch('/pengiriman/timbang2', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+            });
+            const r = await res.json();
+            if (r.success) {
+                Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Timbang 2 Selesai, Netto Terhitung!', timer: 2000, showConfirmButton: false });
+                this.reset();
+                document.getElementById('nettoPreview').value = '';
+                document.getElementById('btnSubmitTimbang2').disabled = true;
+                loadList();
+                loadPending();
+                window.open(`/surat-jalan/${data.id}`, '_blank', 'width=800,height=600');
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+            }
+        });
+
+        // Modal Pabrik
+        function openModalPabrik(id, noSJ, nettoRam) {
+            document.getElementById('modalId').value = id;
+            document.getElementById('modalNoSJ').value = noSJ;
+            document.getElementById('modalNettoRam').value = nettoRam;
+            document.getElementById('modalNettoPabrik').value = '';
+            document.getElementById('modalSusutValue').textContent = '- Kg (- %)';
+            new bootstrap.Modal(document.getElementById('modalPabrik')).show();
+        }
+
+        document.getElementById('modalNettoPabrik').addEventListener('input', function () {
+            const nettoRam = parseFloat(document.getElementById('modalNettoRam').value) || 0;
+            const nettoPabrik = parseFloat(this.value) || 0;
+            if (nettoPabrik > 0 && nettoRam > 0) {
+                const susut = nettoRam - nettoPabrik;
+                const persen = ((susut / nettoRam) * 100).toFixed(1);
+                document.getElementById('modalSusutValue').textContent = `${susut.toLocaleString('id-ID')} Kg (${persen}%)`;
+                const preview = document.getElementById('modalSusutPreview');
+                if (susut >= 0) {
+                    preview.style.borderColor = '#f59e0b'; preview.style.background = '#fffbe6';
+                    document.getElementById('modalSusutValue').style.color = '#d97706';
+                } else {
+                    preview.style.borderColor = '#10b981'; preview.style.background = '#ecfdf5';
+                    document.getElementById('modalSusutValue').style.color = '#059669';
+                }
+            }
+        });
+
+        async function submitPabrik() {
+            const id = document.getElementById('modalId').value;
+            const nettoPabrik = document.getElementById('modalNettoPabrik').value;
+            if (!nettoPabrik) return Swal.fire({ icon: 'warning', text: 'Masukkan netto pabrik' });
+            const res = await fetch('/pengiriman/update-pabrik', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, netto_pabrik: nettoPabrik })
+            });
+            const r = await res.json();
+            if (r.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalPabrik')).hide();
+                Swal.fire({ icon: 'success', title: 'Berhasil', text: `Susut: ${r.data.susut} Kg (${r.data.persen_susut}%)`, timer: 2000, showConfirmButton: false });
+                loadList();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+            }
+        }
+
+        // Print & Delete
+        function printSJ(id) { window.open(`/surat-jalan/${id}`, '_blank', 'width=800,height=600'); }
+
+        async function hapus(id) {
+            const result = await Swal.fire({ title: 'Hapus pengiriman ini?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal', confirmButtonColor: '#dc2626' });
+            if (result.isConfirmed) {
+                const res = await fetch('/pengiriman/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+                });
+                const r = await res.json();
+                if (r.success) { Swal.fire({ icon: 'success', text: 'Dihapus', timer: 1500, showConfirmButton: false }); loadList(); }
+                else Swal.fire({ icon: 'error', text: r.message });
+            }
+        }
+
+        // Serial Connector for Pengiriman
+        let isWeightLockedPengiriman = false;
+        let activeInputId = 'berat1';
+
+        // Tab Switcher Logic
+        document.getElementById('timbang1-tab').addEventListener('click', () => {
+            activeInputId = 'berat1';
+            if (window.serialPengiriman) {
+                window.serialPengiriman.targetInputId = 'berat1';
+                const btn = document.getElementById('captureWeightPengiriman');
+                btn.textContent = 'AMBIL BERAT';
+                btn.className = 'btn btn-warning w-50 py-2 fw-bold text-dark';
+                isWeightLockedPengiriman = false;
+            }
+        });
+
+        document.getElementById('timbang2-tab').addEventListener('click', () => {
+            activeInputId = 'berat2';
+            if (window.serialPengiriman) {
+                window.serialPengiriman.targetInputId = 'berat2';
+                const btn = document.getElementById('captureWeightPengiriman');
+                btn.textContent = 'AMBIL BERAT';
+                btn.className = 'btn btn-warning w-50 py-2 fw-bold text-dark';
+                isWeightLockedPengiriman = false;
+            }
+        });
+
+        async function initSerialPengiriman() {
+            if (typeof AutoSerialConnector === 'undefined') { setTimeout(initSerialPengiriman, 200); return; }
+
+            let indicatorModel = 'generic';
+            let customRegex = '';
+            try {
+                const res = await fetch('/setup/settings?_t=' + Date.now());
+                const r = await res.json();
+                if (r.success && r.data) {
+                    indicatorModel = r.data.serial_indicator_model || 'generic';
+                    customRegex = r.data.serial_custom_regex || '';
+
+                    // Populate material dropdown dynamically
+                    if (r.data.material_list) {
+                        try {
+                            let materials = JSON.parse(r.data.material_list);
+                            if (typeof materials === 'string') materials = JSON.parse(materials);
+                            const sel = document.getElementById('t1_jenisMaterial');
+                            if (sel && Array.isArray(materials) && materials.length > 0) {
+                                sel.innerHTML = '';
+                                materials.forEach(m => {
+                                    const opt = document.createElement('option');
+                                    opt.value = m;
+                                    opt.textContent = m.toUpperCase();
+                                    sel.appendChild(opt);
+                                });
+                            }
+                        } catch (e) { console.error('Parse material_list error', e); }
+                    }
+                }
+            } catch (e) { console.error(e); }
+
+            window.serialPengiriman = new AutoSerialConnector({
+                targetInputId: activeInputId,
+                indicatorModel: indicatorModel,
+                customRegex: customRegex,
+                autoReconnect: true,
+                onConnect: () => {
+                    document.getElementById('weightStatusPengiriman').textContent = 'Terhubung';
+                    document.getElementById('weightStatusPengiriman').className = 'badge bg-success px-3 py-1';
+                    document.getElementById('toggleConnectionPengiriman').textContent = 'PUTUSKAN';
+                    document.getElementById('toggleConnectionPengiriman').className = 'btn btn-outline-danger w-50 py-2 fw-bold';
+                },
+                onDisconnect: () => {
+                    document.getElementById('weightDisplayPengiriman').textContent = '0 KG';
+                    document.getElementById('weightStatusPengiriman').textContent = 'Terputus';
+                    document.getElementById('weightStatusPengiriman').className = 'badge bg-secondary px-3 py-1';
+                    document.getElementById('toggleConnectionPengiriman').textContent = 'SAMBUNGKAN';
+                    document.getElementById('toggleConnectionPengiriman').className = 'btn btn-outline-secondary w-50 py-2 fw-bold';
+                },
+                onData: (weight) => {
+                    const wd = document.getElementById('weightDisplayPengiriman');
+                    wd.textContent = Math.floor(weight).toLocaleString('id-ID') + ' KG';
+                    wd.dataset.rawWeight = Math.floor(weight);
+                    if (activeInputId === 'berat2') updateNetto();
+                }
+            });
+            window.serialPengiriman.autoConnect({ maxRetries: 10, skipValidation: true });
+            document.getElementById('toggleConnectionPengiriman').addEventListener('click', async function () {
+                if (window.serialPengiriman.isConnected) await window.serialPengiriman.disconnect();
+                else await window.serialPengiriman.manualConnect();
+            });
+        }
+
+        document.getElementById('captureWeightPengiriman').addEventListener('click', function () {
+            const w = parseInt(document.getElementById('weightDisplayPengiriman').dataset.rawWeight) || 0;
+            if (w > 0) {
+                document.getElementById(activeInputId).value = w;
+                isWeightLockedPengiriman = true;
+                this.textContent = 'TERKUNCI';
+                this.className = 'btn btn-success w-50 py-2 fw-bold';
+                if (activeInputId === 'berat2') updateNetto();
+            } else {
+                Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Belum ada berat dari timbangan' });
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadSessionInfo();
+            loadFormDependencies();
+            loadPending();
+            loadList();
+            setTimeout(initSerialPengiriman, 500);
+        });
+
+        window.addEventListener('beforeunload', function () {
+            if (window.serialPengiriman && window.serialPengiriman.isConnected) {
+                try {
+                    window.serialPengiriman.isConnected = false;
+                    if (window.serialPengiriman.reader) {
+                        window.serialPengiriman.reader.cancel().catch(() => { });
+                        try { window.serialPengiriman.reader.releaseLock(); } catch (e) { }
+                    }
+                    if (window.serialPengiriman.port) {
+                        window.serialPengiriman.port.close().catch(() => { });
+                    }
+                } catch (e) { }
+            }
+        });
+    </script>
+    <script src="/js/sidebar.js"></script>
+</body>
+
+</html>

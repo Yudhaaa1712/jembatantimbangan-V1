@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pembayaran Supplier - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+</head>
+
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header flex justify-between items-center flex-wrap gap-2">
+      <h1 class="page-title"><svg class="icon" aria-hidden="true"><use href="#i-cash-coin"></use></svg> Pembayaran Supplier</h1>
+      <button class="btn btn-sm btn-outline-secondary" id="btnRefresh">
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow-clockwise"></use></svg> Muat Ulang
+      </button>
+    </div>
+
+    <!-- Ringkasan -->
+    <div class="grid grid-cols-12 gap-4 mb-4">
+      <div class="col-span-12 md:col-span-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <span class="text-ink-500 text-sm">Total Belum Dibayar</span>
+            <h3 class="text-red-600 font-bold mb-0" id="sumTotal">Rp 0</h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-span-6 md:col-span-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <span class="text-ink-500 text-sm">Tiket Belum Lunas</span>
+            <h3 class="font-bold mb-0" id="sumTiket">0</h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-span-6 md:col-span-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <span class="text-ink-500 text-sm">Saldo Kas Saat Ini</span>
+            <h3 class="text-green-700 font-bold mb-0" id="sumSaldo">Rp 0</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-12 gap-6">
+      <!-- Daftar supplier yang punya tagihan -->
+      <div class="col-span-12 md:col-span-4">
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h5 class="mb-0 text-base">Supplier Belum Dibayar</h5>
+          </div>
+          <div class="card-body p-2">
+            <input type="text" id="searchSupplier" class="form-control form-control-sm mb-2" placeholder="Cari supplier...">
+            <div class="list-group list-group-flush overflow-y-auto" style="max-height:420px" id="supplierList">
+              <div class="text-ink-500 text-center p-4">Memuat data...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tiket milik supplier terpilih -->
+      <div class="col-span-12 md:col-span-8">
+        <div class="card shadow-sm" id="tiketCard" style="display:none;">
+          <div class="card-header flex justify-between items-center flex-wrap gap-2">
+            <h5 class="mb-0 text-base" id="tiketTitle">Tiket Belum Lunas</h5>
+            <label class="text-xs flex items-center gap-1 mb-0">
+              <input type="checkbox" id="checkAll"> Pilih semua
+            </label>
+          </div>
+          <div class="card-body">
+            <div class="table-container overflow-y-auto" style="max-height:340px">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width:36px;"></th>
+                    <th>Tanggal</th>
+                    <th>No. Tiket</th>
+                    <th>No. Polisi</th>
+                    <th>Supir</th>
+                    <th>Material</th>
+                    <th class="text-right">Netto (kg)</th>
+                    <th class="text-right">Dibayar</th>
+                  </tr>
+                </thead>
+                <tbody id="tiketBody"></tbody>
+              </table>
+            </div>
+
+            <div class="grid grid-cols-12 gap-4 mt-4 p-4 rounded bg-bw-100 border border-bw-300">
+              <div class="col-span-12 md:col-span-5">
+                <span class="text-ink-500 text-sm">Total Dipilih (<span id="countTerpilih">0</span> tiket)</span>
+                <h3 class="font-bold mb-0 text-red-600" id="totalTerpilih">Rp 0</h3>
+                <small class="text-ink-500">Sisa kas setelah bayar: <span id="sisaKasPreview">-</span></small>
+              </div>
+              <div class="col-span-12 md:col-span-3">
+                <label class="form-label text-sm">Metode Bayar</label>
+                <select class="form-control form-control-sm" id="metodeBayar">
+                  <option value="tunai">Tunai</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
+              <div class="col-span-12 md:col-span-4">
+                <label class="form-label text-sm">Keterangan (opsional)</label>
+                <input type="text" class="form-control form-control-sm" id="ketBayar" placeholder="mis. transfer BRI a.n. ...">
+              </div>
+              <div class="col-span-12">
+                <button class="btn btn-success w-full" id="btnSimpanBayar" disabled>
+                  <svg class="icon" aria-hidden="true"><use href="#i-check-circle-fill"></use></svg>
+                  Bayar &amp; Tandai Lunas
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm h-full flex items-center justify-center text-ink-500 p-12" id="placeholderCard">
+          <div class="text-center">
+            <svg class="icon text-[5rem] font-light leading-none text-ink-600" aria-hidden="true"><use href="#i-receipt"></use></svg>
+            <p class="mt-4">Pilih supplier di sebelah kiri untuk melihat tiket yang belum dibayar.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Riwayat pembayaran -->
+    <div class="card shadow-sm mt-6">
+      <div class="card-header">
+        <h5 class="mb-0 text-base"><svg class="icon" aria-hidden="true"><use href="#i-clock-history"></use></svg> Riwayat Pembayaran</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Supplier</th>
+                <th class="text-center">Jumlah Tiket</th>
+                <th>Metode</th>
+                <th class="text-right">Total</th>
+                <th>Operator</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="riwayatBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script src="/js/icons.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    window.activePage = 'pembayaran';
+
+    let rekapSupplier = [];
+    let tiketAktif = [];       // tiket milik supplier yang sedang dipilih
+    let supplierTerpilih = null; // { id_supplier, nama_supplier }
+    let saldoKas = 0;
+    let isAdmin = false;
+
+    // Loloskan teks apa pun ke dalam HTML/atribut dengan aman.
+    const esc = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const rp = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n || 0));
+    const kg = (n) => new Intl.NumberFormat('id-ID').format(Math.round(n || 0));
+    const tgl = (s) => {
+      if (!s) return '-';
+      const d = new Date(String(s).includes(' ') ? String(s).replace(' ', 'T') : s);
+      return isNaN(d) ? s : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    // ─── Muat data ─────────────────────────────────────────────────────────────
+    async function loadSemua() {
+      await Promise.all([loadRekap(), loadSaldo(), loadRiwayat()]);
+      if (supplierTerpilih) {
+        // Supplier yang tadi dipilih mungkin sudah lunas semua → kembali ke placeholder.
+        const masihAda = rekapSupplier.some(s => Number(s.id_supplier) === Number(supplierTerpilih.id_supplier));
+        if (masihAda) await pilihSupplier(supplierTerpilih.id_supplier, supplierTerpilih.nama_supplier);
+        else resetPilihan();
+      }
+      if (window.refreshBadgeBelumLunas) window.refreshBadgeBelumLunas();
+    }
+
+    async function loadRekap() {
+      try {
+        const r = await (await fetch('/pembayaran-api/rekap-supplier')).json();
+        if (!r.success) throw new Error(r.message);
+        rekapSupplier = r.data.supplier || [];
+        document.getElementById('sumTotal').textContent = rp(r.data.total_semua);
+        document.getElementById('sumTiket').textContent = r.data.total_tiket || 0;
+        renderSupplierList();
+      } catch (e) {
+        document.getElementById('supplierList').innerHTML =
+          `<div class="text-red-600 text-center p-4">Gagal memuat: ${e.message}</div>`;
+      }
+    }
+
+    async function loadSaldo() {
+      try {
+        const r = await (await fetch('/kas/saldo')).json();
+        if (r.success) {
+          saldoKas = parseFloat(r.data.saldo) || 0;
+          document.getElementById('sumSaldo').textContent = rp(saldoKas);
+        }
+      } catch (e) { }
+    }
+
+    function renderSupplierList() {
+      const cari = (document.getElementById('searchSupplier').value || '').toLowerCase();
+      const list = rekapSupplier.filter(s => (s.nama_supplier || '').toLowerCase().includes(cari));
+      const el = document.getElementById('supplierList');
+      if (!list.length) {
+        el.innerHTML = '<div class="text-ink-500 text-center p-4">Tidak ada tagihan yang belum dibayar.</div>';
+        return;
+      }
+      // Data supplier dititipkan lewat atribut data-*, bukan inline onclick.
+      // Nama supplier bisa mengandung kutip/apostrof yang akan merusak atribut.
+      el.innerHTML = list.map(s => `
+        <button type="button"
+          class="list-group-item-custom block text-left w-full ${supplierTerpilih && Number(supplierTerpilih.id_supplier) === Number(s.id_supplier) ? 'active' : ''}"
+          data-id="${s.id_supplier}" data-nama="${esc(s.nama_supplier)}">
+          <div class="flex justify-between items-center gap-2">
+            <span class="font-semibold truncate">${esc(s.nama_supplier)}</span>
+            <span class="badge bg-red-600">${s.jumlah_tiket} tiket</span>
+          </div>
+          <div class="text-sm text-ink-500">${rp(s.total)}</div>
+        </button>
+      `).join('');
+    }
+
+    // ─── Tiket per supplier ────────────────────────────────────────────────────
+    async function pilihSupplier(idSupplier, namaSupplier) {
+      supplierTerpilih = { id_supplier: idSupplier, nama_supplier: namaSupplier };
+      renderSupplierList();
+      try {
+        const r = await (await fetch(`/pembayaran-api/tiket-belum-bayar?id_supplier=${idSupplier}`)).json();
+        if (!r.success) throw new Error(r.message);
+        tiketAktif = r.data.tiket || [];
+        document.getElementById('tiketTitle').textContent = `Tiket Belum Lunas — ${namaSupplier}`;
+        document.getElementById('placeholderCard').style.display = 'none';
+        document.getElementById('tiketCard').style.display = '';
+        renderTiket();
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: e.message });
+      }
+    }
+
+    function resetPilihan() {
+      supplierTerpilih = null;
+      tiketAktif = [];
+      document.getElementById('tiketCard').style.display = 'none';
+      document.getElementById('placeholderCard').style.display = 'flex';
+      renderSupplierList();
+    }
+
+    function renderTiket() {
+      document.getElementById('checkAll').checked = false;
+      document.getElementById('tiketBody').innerHTML = tiketAktif.map(t => `
+        <tr>
+          <td><input type="checkbox" class="cbTiket" value="${t.id}" data-total="${t.total_akhir}"></td>
+          <td>${tgl(t.tanggal)}</td>
+          <td class="font-semibold">${t.no_tiket || '-'}</td>
+          <td>${t.no_polisi || '-'}</td>
+          <td>${t.nama_supir || '-'}</td>
+          <td>${(t.jenis_material || '-').toUpperCase()}</td>
+          <td class="text-right">${kg(t.netto_akhir || t.berat_netto)}</td>
+          <td class="text-right font-semibold">${rp(t.total_akhir)}</td>
+        </tr>
+      `).join('');
+      document.querySelectorAll('.cbTiket').forEach(cb => cb.addEventListener('change', hitungTerpilih));
+      hitungTerpilih();
+    }
+
+    function hitungTerpilih() {
+      const dipilih = [...document.querySelectorAll('.cbTiket:checked')];
+      const total = dipilih.reduce((a, cb) => a + parseFloat(cb.dataset.total || 0), 0);
+      document.getElementById('countTerpilih').textContent = dipilih.length;
+      document.getElementById('totalTerpilih').textContent = rp(total);
+      document.getElementById('btnSimpanBayar').disabled = dipilih.length === 0;
+
+      const sisa = saldoKas - total;
+      const el = document.getElementById('sisaKasPreview');
+      el.textContent = dipilih.length ? rp(sisa) : '-';
+      el.className = sisa < 0 ? 'text-red-600 font-semibold' : '';
+    }
+
+    // ─── Simpan pembayaran ─────────────────────────────────────────────────────
+    async function simpanPembayaran() {
+      const ids = [...document.querySelectorAll('.cbTiket:checked')].map(cb => parseInt(cb.value));
+      if (!ids.length) return;
+      const total = [...document.querySelectorAll('.cbTiket:checked')]
+        .reduce((a, cb) => a + parseFloat(cb.dataset.total || 0), 0);
+      const metode = document.getElementById('metodeBayar').value;
+      // Dicatat sebelum daftar dimuat ulang, karena setelah lunas tiketnya hilang
+      // dari antrian dan nomornya tidak bisa diambil lagi dari layar.
+      const noTiketTerpilih = tiketAktif
+        .filter(t => ids.includes(Number(t.id)))
+        .map(t => t.no_tiket);
+
+      const kurang = total > saldoKas;
+      const konfirm = await Swal.fire({
+        icon: kurang ? 'warning' : 'question',
+        title: 'Konfirmasi Pembayaran',
+        html: `
+          <div style="text-align:left">
+            <p><b>Supplier:</b> ${supplierTerpilih.nama_supplier}</p>
+            <p><b>Jumlah tiket:</b> ${ids.length}</p>
+            <p><b>Total:</b> ${rp(total)}</p>
+            <p><b>Metode:</b> ${metode.toUpperCase()}</p>
+            ${kurang ? '<p style="color:#dc2626"><b>Perhatian:</b> total melebihi saldo kas saat ini. Saldo akan menjadi minus.</p>' : ''}
+          </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Bayar',
+        cancelButtonText: 'Batal'
+      });
+      if (!konfirm.isConfirmed) return;
+
+      const btn = document.getElementById('btnSimpanBayar');
+      btn.disabled = true;
+      try {
+        const r = await (await fetch('/pembayaran-api/simpan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            metode,
+            tiket_ids: ids,
+            keterangan: document.getElementById('ketBayar').value
+          })
+        })).json();
+
+        if (!r.success) throw new Error(r.message);
+        document.getElementById('ketBayar').value = '';
+        await Swal.fire({
+          icon: 'success',
+          title: 'Pembayaran Tersimpan',
+          text: r.message,
+          confirmButtonText: `Cetak Struk (${noTiketTerpilih.length})`,
+          showCancelButton: true,
+          cancelButtonText: 'Tutup'
+        }).then(res => {
+          if (res.isConfirmed) bukaStrukTiket(noTiketTerpilih);
+        });
+        await loadSemua();
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: e.message });
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ─── Riwayat ───────────────────────────────────────────────────────────────
+    async function loadRiwayat() {
+      try {
+        const r = await (await fetch('/pembayaran-api/riwayat?limit=100')).json();
+        const rows = r.success ? (r.data || []) : [];
+        const body = document.getElementById('riwayatBody');
+        if (!rows.length) {
+          body.innerHTML = '<tr><td colspan="8" class="text-center text-ink-500 p-4">Belum ada pembayaran.</td></tr>';
+          return;
+        }
+        body.innerHTML = rows.map(p => {
+          const batal = p.status === 'dibatalkan';
+          return `
+          <tr style="${batal ? 'opacity:0.55;text-decoration:line-through;' : ''}">
+            <td>${tgl(p.tanggal)}</td>
+            <td class="font-semibold">${esc(p.nama_supplier) || '-'}</td>
+            <td class="text-center">${p.jumlah_tiket}</td>
+            <td>${(p.metode || '').toUpperCase()}</td>
+            <td class="text-right font-semibold">${rp(p.total)}</td>
+            <td>${esc(p.operator_nama) || '-'}</td>
+            <td class="text-center">
+              <span class="badge" style="background:${batal ? '#6b6b6b' : '#059669'}">${batal ? 'DIBATALKAN' : 'LUNAS'}</span>
+            </td>
+            <td class="text-center whitespace-nowrap">
+              <button type="button" class="btn btn-sm btn-outline-dark" data-cetak="${p.id}" title="Cetak nota">
+                <svg class="icon" aria-hidden="true"><use href="#i-printer"></use></svg>
+              </button>
+              ${!batal && isAdmin ? `
+              <button type="button" class="btn btn-sm btn-outline-danger" data-batal="${p.id}" data-info="${esc((p.nama_supplier || 'supplier') + ' — ' + tgl(p.tanggal))}" title="Batalkan pembayaran">
+                <svg class="icon" aria-hidden="true"><use href="#i-x-circle-fill"></use></svg>
+              </button>` : ''}
+            </td>
+          </tr>`;
+        }).join('');
+      } catch (e) { }
+    }
+
+    // Cetak struk tiap tiket dalam satu pembayaran — format struk yang sama
+    // dengan tombol Cetak di tabel Transaksi, bukan nota tersendiri.
+    async function cetakStrukPembayaran(idPembayaran) {
+      try {
+        const r = await (await fetch(`/pembayaran-api/detail/${idPembayaran}`)).json();
+        if (!r.success) throw new Error(r.message);
+        const tiket = (r.data.detail || []).map(d => d.no_tiket).filter(Boolean);
+        if (!tiket.length) throw new Error('Tidak ada tiket untuk dicetak');
+        bukaStrukTiket(tiket);
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Gagal Cetak', text: e.message });
+      }
+    }
+
+    function bukaStrukTiket(daftarNoTiket) {
+      const url = '/print-ticket/' + daftarNoTiket.map(encodeURIComponent).join(',');
+      window.open(url, '_blank', 'width=800,height=600');
+    }
+
+    async function batalkanPembayaran(id, info) {
+      const konfirm = await Swal.fire({
+        icon: 'warning',
+        title: 'Batalkan pembayaran ini?',
+        footer: info || '',
+        text: 'Baris kas keluar akan dihapus dan semua tiket di dalamnya kembali BELUM LUNAS.',
+        input: 'text',
+        inputPlaceholder: 'Alasan pembatalan',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Batalkan',
+        cancelButtonText: 'Tidak'
+      });
+      if (!konfirm.isConfirmed) return;
+      try {
+        const r = await (await fetch('/pembayaran-api/batal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, alasan: konfirm.value })
+        })).json();
+        if (!r.success) throw new Error(r.message);
+        Swal.fire({ icon: 'success', title: 'Dibatalkan', text: r.message, timer: 1600, showConfirmButton: false });
+        await loadSemua();
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: e.message });
+      }
+    }
+
+    // ─── Event bindings ────────────────────────────────────────────────────────
+    document.getElementById('searchSupplier').addEventListener('input', renderSupplierList);
+    document.getElementById('btnRefresh').addEventListener('click', loadSemua);
+    document.getElementById('btnSimpanBayar').addEventListener('click', simpanPembayaran);
+    document.getElementById('checkAll').addEventListener('change', (e) => {
+      document.querySelectorAll('.cbTiket').forEach(cb => { cb.checked = e.target.checked; });
+      hitungTerpilih();
+    });
+
+    // Delegasi klik: elemen di dalam daftar & tabel dibuat ulang setiap render,
+    // jadi listener dipasang di kontainernya yang tidak pernah diganti.
+    document.getElementById('supplierList').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-id]');
+      if (!btn) return;
+      pilihSupplier(parseInt(btn.dataset.id), btn.dataset.nama);
+    });
+
+    document.getElementById('riwayatBody').addEventListener('click', (e) => {
+      const cetak = e.target.closest('button[data-cetak]');
+      if (cetak) {
+        cetakStrukPembayaran(parseInt(cetak.dataset.cetak));
+        return;
+      }
+      const batal = e.target.closest('button[data-batal]');
+      if (batal) batalkanPembayaran(parseInt(batal.dataset.batal), batal.dataset.info);
+    });
+
+    (async function init() {
+      try {
+        const s = await (await fetch('/auth/session')).json();
+        isAdmin = s.user_role === 'admin';
+      } catch (e) { }
+      await loadSemua();
+    })();
+  </script>
+</body>
+
+</html>

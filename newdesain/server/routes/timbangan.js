@@ -9,6 +9,7 @@ const { query, queryOne, pool, jsonResponse, cleanInput, beginTransaction } = re
 const { isLoggedIn, requireRole, getCurrentUser } = require('../middleware/auth');
 const { generateTicketNumber, isTicketExists, activateReservedTicket } = require('../helpers/ticket');
 const { cacheGet, cacheSet, cacheDelete } = require('../helpers/cache');
+const { catatHutangTx } = require('../helpers/hutang');
 
 // All timbangan routes require login
 router.use(isLoggedIn);
@@ -227,9 +228,18 @@ router.post('/ajax', async (req, res) => {
         const totalHarga = nettoAkhir * hargaPerKg;
 
         // Check if Hutang feature is active
+        let isHutangActive = false;
+        const featureSetting = await queryOne(`SELECT setting_value FROM settings WHERE setting_key = 'active_features'`);
+        if (featureSetting && featureSetting.setting_value) {
+          try {
+            const features = JSON.parse(featureSetting.setting_value);
+            isHutangActive = features.hutang === true;
+          } catch(e) {}
+        }
+
         let supirId = null;
         let currentDebt = 0;
-        if (transaksi.nama_supir) {
+        if (isHutangActive && transaksi.nama_supir) {
           const name = cleanInput(transaksi.nama_supir).trim().toUpperCase();
           if (name) {
             let supir = await queryOne(`SELECT * FROM supir WHERE UPPER(nama_supir) = ?`, [name]);
@@ -243,7 +253,7 @@ router.post('/ajax', async (req, res) => {
         let finalPotonganHutang = 0;
         let finalNewDebt = currentDebt;
 
-        if (supirId) {
+        if (isHutangActive && supirId) {
           finalPotonganHutang = Math.max(0, Math.min(potonganHutang, currentDebt, totalHarga));
           finalNewDebt = Math.max(0, currentDebt - finalPotonganHutang);
         }
@@ -251,13 +261,7 @@ router.post('/ajax', async (req, res) => {
         // Supplier Debt deduction
         let supplierId = transaksi.id_supplier;
         let currentSupplierDebt = 0;
-        if (!supplierId && transaksi.nama_supplier) {
-          const supByName = await queryOne(`SELECT id, total_hutang FROM supplier WHERE UPPER(nama_supplier) = ?`, [cleanInput(transaksi.nama_supplier).toUpperCase()]);
-          if (supByName) {
-            supplierId = supByName.id;
-            currentSupplierDebt = supByName.total_hutang || 0;
-          }
-        } else if (supplierId) {
+        if (supplierId) {
           const sup = await queryOne(`SELECT total_hutang FROM supplier WHERE id = ?`, [supplierId]);
           if (sup) {
             currentSupplierDebt = sup.total_hutang || 0;
@@ -269,7 +273,7 @@ router.post('/ajax', async (req, res) => {
         let finalNewSupplierDebt = currentSupplierDebt;
 
         if (supplierId) {
-          finalPotonganHutangSupplier = Math.max(0, Math.min(potonganHutangSupplier, currentSupplierDebt, Math.max(0, totalHarga - finalPotonganHutang)));
+          finalPotonganHutangSupplier = Math.max(0, Math.min(potonganHutangSupplier, currentSupplierDebt, totalHarga - finalPotonganHutang));
           finalNewSupplierDebt = Math.max(0, currentSupplierDebt - finalPotonganHutangSupplier);
         }
 
@@ -294,26 +298,22 @@ router.post('/ajax', async (req, res) => {
              keterangan, idTransaksi]
           );
 
-          if (supirId) {
-            tx.execute(`UPDATE supir SET total_hutang = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`, [finalNewDebt, supirId]);
-
-            if (finalPotonganHutang > 0) {
-              const debtAfterPay = currentDebt - finalPotonganHutang;
-              tx.execute(
-                `INSERT INTO hutang_supir_history (id_supir, tanggal, jenis, jumlah, keterangan, id_transaksi, saldo_setelah, operator_id)
-                 VALUES (?, date('now', 'localtime'), 'bayar', ?, ?, ?, ?, ?)`,
-                [supirId, finalPotonganHutang, `Potong otomatis tiket ${transaksi.no_tiket}`, idTransaksi, debtAfterPay, req.session.user_id]
-              );
-            }
+          // Potongan hutang supir (otomatis) → buku besar terpadu
+          if (isHutangActive && supirId && finalPotonganHutang > 0) {
+            catatHutangTx(tx, {
+              type: 'supir', partyId: supirId, jenis: 'bayar', jumlah: finalPotonganHutang,
+              keterangan: `Potong otomatis tiket ${transaksi.no_tiket}`,
+              idReferensi: idTransaksi, sumber: 'timbangan', operatorId: req.session.user_id
+            });
           }
 
+          // Potongan hutang supplier (otomatis) → buku besar terpadu
           if (supplierId && finalPotonganHutangSupplier > 0) {
-            tx.execute(`UPDATE supplier SET total_hutang = ?, hutang_terakhir_update = datetime('now', 'localtime') WHERE id = ?`, [finalNewSupplierDebt, supplierId]);
-            tx.execute(
-              `INSERT INTO hutang_supplier_history (id_supplier, tanggal, jenis, jumlah, keterangan, id_transaksi, saldo_setelah, operator_id)
-               VALUES (?, date('now', 'localtime'), 'bayar', ?, ?, ?, ?, ?)`,
-              [supplierId, finalPotonganHutangSupplier, `Potong otomatis tiket ${transaksi.no_tiket}`, idTransaksi, finalNewSupplierDebt, req.session.user_id]
-            );
+            catatHutangTx(tx, {
+              type: 'supplier', partyId: supplierId, jenis: 'bayar', jumlah: finalPotonganHutangSupplier,
+              keterangan: `Potong otomatis tiket ${transaksi.no_tiket}`,
+              idReferensi: idTransaksi, sumber: 'timbangan', operatorId: req.session.user_id
+            });
           }
 
           tx.commit();
@@ -425,7 +425,7 @@ router.post('/ajax', async (req, res) => {
         try {
           const potJln = parseFloat(transaksi?.potongan_jalan || 0);
           const potPpk = parseFloat(transaksi?.potongan_pupuk_rp || 0);
-          const potHut = finalPotonganHutang;
+          const potHut = isHutangActive ? finalPotonganHutang : parseFloat(transaksi?.potongan_hutang_rp || 0);
           const potHutSupplier = finalPotonganHutangSupplier;
           const potMuat = potonganMuat;
           const totalAkhir = Math.max(0, totalHarga - (potJln + potPpk + potHut + potHutSupplier + potMuat));
@@ -724,7 +724,7 @@ router.post('/save-timbangan1', async (req, res) => {
   try {
     const noKendaraan  = cleanInput(req.body.no_kendaraan).toUpperCase() || '-';
     const namaPengemudi = cleanInput(req.body.nama_pengemudi) || '-';
-    const namaSupplier = cleanInput(req.body.nama_suplier).toUpperCase() || 'UMUM';
+    const namaSupplier = cleanInput(req.body.nama_suplier).toUpperCase(); // kosong = tanpa supplier
     const material     = (cleanInput(req.body.material) || 'tbs').toLowerCase();
     const harga        = parseFloat(req.body.harga) || 0;
     const berat        = parseFloat(req.body.berat) || 0;
@@ -769,15 +769,18 @@ router.post('/save-timbangan1', async (req, res) => {
       }
     }
 
-    // Find or create supplier
-    let supplier = await queryOne(`SELECT id FROM supplier WHERE UPPER(nama_supplier) = ?`, [namaSupplier]);
-    let supplierId;
-    if (supplier) {
-      supplierId = supplier.id;
-    } else {
-      const kode = 'SUP-' + new Date().toISOString().slice(2,8).replace(/-/g,'') + '-' + String(Math.floor(Math.random()*999)+1).padStart(3,'0');
-      const result = await query(`INSERT INTO supplier (kode_supplier, nama_supplier, status, is_temporary, created_at) VALUES (?, ?, 'active', 1, NOW())`, [kode, namaSupplier]);
-      supplierId = result.insertId;
+    // Find or create supplier — HANYA jika nama supplier diisi.
+    // Jika kosong, biarkan tanpa supplier (id_supplier = null) agar tampil "-", bukan "UMUM".
+    let supplierId = null;
+    if (namaSupplier && namaSupplier !== '-') {
+      const supplier = await queryOne(`SELECT id FROM supplier WHERE UPPER(nama_supplier) = ?`, [namaSupplier]);
+      if (supplier) {
+        supplierId = supplier.id;
+      } else {
+        const kode = 'SUP-' + new Date().toISOString().slice(2,8).replace(/-/g,'') + '-' + String(Math.floor(Math.random()*999)+1).padStart(3,'0');
+        const result = await query(`INSERT INTO supplier (kode_supplier, nama_supplier, status, is_temporary, created_at) VALUES (?, ?, 'active', 1, NOW())`, [kode, namaSupplier]);
+        supplierId = result.insertId;
+      }
     }
 
     const isJual = (req.body.mode_timbangan || 'beli') === 'jual';

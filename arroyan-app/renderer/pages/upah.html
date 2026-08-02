@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen Upah - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+</head>
+
+<body class="page-upah">
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header">
+      <h1 class="page-title"><svg class="icon" aria-hidden="true"><use href="#i-cash-coin"></use></svg> Manajemen Upah Supir &amp; Pekerja</h1>
+    </div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-6" id="upahTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="rekap-pabrik-tab" data-bs-toggle="tab" data-bs-target="#tab-rekap-pabrik"
+          type="button" role="tab" onclick="initRekapPabrikTab()"><svg class="icon" aria-hidden="true"><use href="#i-file-earmark-excel-fill"></use></svg> Rekap
+          Gaji Supir</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="slip-tkbm-tab" data-bs-toggle="tab" data-bs-target="#tab-slip-tkbm" type="button"
+          role="tab" onclick="initSlipTkbmTab()"><svg class="icon" aria-hidden="true"><use href="#i-people-fill"></use></svg> Rekap Gaji TKBM</button>
+      </li>
+      <!-- Tab supir lama (disembunyikan; workflow supir memakai tab Rekap di atas) -->
+      <li class="nav-item" role="presentation" style="display: none;">
+        <button class="nav-link" id="payout-tab" data-bs-toggle="tab" data-bs-target="#tab-payout" type="button"
+          role="tab" onclick="loadDrivers()"><svg class="icon" aria-hidden="true"><use href="#i-calculator"></use></svg> Kalkulasi &amp; Payout Upah</button>
+      </li>
+      <li class="nav-item" role="presentation" style="display: none;">
+        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#tab-history" type="button"
+          role="tab" onclick="loadRiwayat()"><svg class="icon" aria-hidden="true"><use href="#i-clock-history"></use></svg> Riwayat Gaji Supir</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="upahTabsContent">
+
+      <!-- Tab 2: Payout Upah -->
+      <div class="tab-pane" id="tab-payout" role="tabpanel">
+        <div class="card-settings">
+          <h5>Kalkulator &amp; Preview Upah Supir</h5>
+          <p class="text-ink-500 text-sm">Pilih supir dan tentukan periode tanggal untuk melihat transaksi timbangan yang
+            belum dibayar upahnya.</p>
+
+          <div class="grid grid-cols-12 gap-4 items-end mb-6">
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label">Pilih Supir</label>
+              <select id="payoutSupirSelect" class="form-select">
+                <option value="">-- Pilih Supir --</option>
+              </select>
+            </div>
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label">Tanggal Mulai</label>
+              <input type="date" id="payoutStartDate" class="form-control" value="">
+            </div>
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label">Tanggal Selesai</label>
+              <input type="date" id="payoutEndDate" class="form-control" value="">
+            </div>
+            <div class="col-span-12 md:col-span-3">
+              <button class="btn btn-primary w-full" onclick="hitungPreviewUpah()"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg> Hitung
+                Preview</button>
+            </div>
+          </div>
+
+          <div id="previewResultsContainer" style="display: none;">
+            <hr>
+            <h5 class="mb-4 text-blue-600"><svg class="icon" aria-hidden="true"><use href="#i-list-task"></use></svg> Daftar Tiket Timbangan Belum Dibayar</h5>
+
+            <div class="table-container mb-6">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>No Tiket</th>
+                    <th>Tanggal</th>
+                    <th>No Polisi</th>
+                    <th>Material</th>
+                    <th>Netto Akhir (Kg)</th>
+                    <th>Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody id="previewTableBody">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Summary & Payout Details -->
+            <div class="grid grid-cols-12 gap-4">
+              <div class="col-span-12 md:col-span-6">
+                <div class="card p-4 bg-bw-100 border-0">
+                  <h6>Rincian Upah Bruto</h6>
+                  <div class="flex justify-between mb-2">
+                    <span>Total Netto:</span>
+                    <strong id="previewTotalNetto">0 Kg</strong>
+                  </div>
+                  <div class="flex justify-between mb-2">
+                    <span>Tarif per Kg:</span>
+                    <strong id="previewTarifPerKg">Rp 0</strong>
+                  </div>
+                  <hr class="my-1">
+                  <div class="flex justify-between text-green-600">
+                    <span>Total Gaji Bruto:</span>
+                    <h5 class="mb-0 font-bold" id="previewGajiBruto">Rp 0</h5>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-span-12 md:col-span-6">
+                <div class="card p-4 bg-bw-100 border-0">
+                  <h6>Potongan &amp; Total Bayar</h6>
+                  <div class="flex justify-between mb-2">
+                    <span>Sisa Hutang Supir:</span>
+                    <strong class="text-red-600" id="previewSisaHutang">Rp 0</strong>
+                    <input type="hidden" id="rawSisaHutang" value="0">
+                  </div>
+                  <div class="mb-4">
+                    <label class="form-label text-sm text-ink-500 mb-1">Potongan Hutang (Maksimal disesuaikan gaji
+                      bruto):</label>
+                    <input type="text" inputmode="numeric" id="inputPotonganHutang"
+                      class="form-control form-control-sm format-rupiah" placeholder="0" oninput="hitungUpahNetto()">
+                  </div>
+                  <hr class="my-1">
+                  <div class="flex justify-between text-blue-600">
+                    <span>Gaji Bersih Diterima:</span>
+                    <h5 class="mb-0 font-bold" id="previewGajiNetto">Rp 0</h5>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-right mt-6">
+              <button class="btn btn-success btn-lg" onclick="prosesBayarGaji()"><svg class="icon" aria-hidden="true"><use href="#i-wallet2"></use></svg> Simpan
+                &amp; Bayar Upah</button>
+            </div>
+          </div>
+
+          <div id="noPreviewPlaceholder" class="text-center py-12 text-ink-500">
+            <svg class="icon text-[4rem] font-light leading-none" aria-hidden="true"><use href="#i-calculator-fill"></use></svg>
+            <p class="mt-2">Isi form di atas dan klik tombol "Hitung Preview" untuk memulai perhitungan upah.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Rekap Gaji Supir per Pabrik (PKS) - Format Excel -->
+      <div class="tab-pane show active" id="tab-rekap-pabrik" role="tabpanel">
+        <div class="card-settings mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h5 class="mb-1"><svg class="icon" aria-hidden="true"><use href="#i-truck"></use></svg> Rekap Gaji Supir</h5>
+              <p class="text-ink-500 text-sm mb-0">Lihat &amp; cetak rekap tonase, ongkos angkut per PKS, potongan pinjaman,
+                dan potongan Es + Jalan per supir.</p>
+            </div>
+            <div>
+              <button class="btn btn-outline-success mr-2" onclick="exportRekapPabrikExcel()"><svg class="icon" aria-hidden="true"><use href="#i-file-earmark-excel"></use></svg> Export Excel</button>
+              <button class="btn btn-primary" onclick="cetakRekapPabrik()"><svg class="icon" aria-hidden="true"><use href="#i-printer"></use></svg> Cetak
+                Rekap</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-12 gap-4 items-end mb-4">
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label font-bold">Pilih / Cari Supir</label>
+              <select id="rekapPabrikSupirSelect" class="form-select" onchange="loadRekapPabrikData()">
+                <option value="">-- Semua Supir --</option>
+              </select>
+            </div>
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label font-bold">Pilih Periode</label>
+              <select id="rekapPabrikDateFilter" class="form-select" onchange="handleRekapFilterChange()">
+                <option value="today">Hari Ini</option>
+                <option value="yesterday">Kemarin</option>
+                <option value="week">7 Hari Terakhir</option>
+                <option value="half_month">15 Hari Terakhir</option>
+                <option value="month" selected>Bulan Ini</option>
+                <option value="half_year">6 Bulan Terakhir</option>
+                <option value="year">Tahun Ini</option>
+                <option value="custom_range">Pilih Tanggal (Custom)</option>
+              </select>
+            </div>
+            <div class="col-span-12 md:col-span-6 flex gap-4 items-end" id="rekapPabrikCustomDateRow" style="display:none;">
+              <div class="flex-1">
+                <label class="form-label font-bold">Tanggal Mulai</label>
+                <input type="date" id="rekapPabrikStartDate" class="form-control">
+              </div>
+              <div class="flex-1">
+                <label class="form-label font-bold">Tanggal Selesai</label>
+                <input type="date" id="rekapPabrikEndDate" class="form-control">
+              </div>
+              <div>
+                <button class="btn btn-primary" onclick="loadRekapPabrikData()"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                  Tampilkan</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="rekapPabrikPrintArea" class="card-settings">
+          <div class="text-center mb-4 hidden print:block">
+            <h3 id="printTitleSupir" class="font-bold uppercase mb-0">REKAP ANGKUTAN SUPIR</h3>
+            <p id="printSubTitlePeriode" class="text-ink-500 text-sm mb-0"></p>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle" id="rekapPabrikTable">
+              <thead class="table-dark text-center">
+                <tr>
+                  <th class="w-[50px]">NO</th>
+                  <th>TGL</th>
+                  <th>PKS</th>
+                  <th>DRIVER</th>
+                  <th class="text-right">TONASE ANGKUT</th>
+                  <th class="text-right">HARGA/KG</th>
+                  <th class="text-right">HASIL</th>
+                  <th class="text-right">PINJAMAN</th>
+                  <th class="text-right">ES+JALAN</th>
+                  <th class="text-right">H.BERSIH</th>
+                  <th class="text-center w-[110px]">STATUS</th>
+                  <th class="text-center print:hidden w-[70px]">AKSI</th>
+                </tr>
+              </thead>
+              <tbody id="rekapPabrikTableBody">
+                <tr>
+                  <td colspan="12" class="text-center text-ink-500">Pilih filter dan klik Tampilkan</td>
+                </tr>
+              </tbody>
+              <tfoot id="rekapPabrikTableFooter" class="table-secondary font-bold" style="display: none;">
+                <tr>
+                  <td colspan="4" class="text-center">JUMLAH</td>
+                  <td id="footTotalTonase" class="text-right">0</td>
+                  <td></td>
+                  <td id="footTotalHasil" class="text-right">0</td>
+                  <td id="footTotalPinjaman" class="text-right">0</td>
+                  <td id="footTotalEsJalan" class="text-right">0</td>
+                  <td id="footTotalHasilBersih" class="text-right text-green-600">0</td>
+                  <td></td>
+                  <td class="print:hidden"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <!-- Ringkasan Gaji & Potong Pinjaman Supir - hanya saat 1 supir dipilih -->
+        <div id="rekapSupirPotongPanel" class="card-settings mt-4" style="display:none;">
+          <h6 class="font-bold mb-4"><svg class="icon" aria-hidden="true"><use href="#i-cash-coin"></use></svg> Ringkasan Gaji &amp; Potong Pinjaman Supir</h6>
+          <div class="grid grid-cols-12 gap-4 mb-2">
+            <div class="md:col-span-3 col-span-6">
+              <div class="text-sm text-ink-500">Total Gaji (Hasil)</div>
+              <div class="font-bold text-base" id="potSupirTotalGaji">Rp 0</div>
+            </div>
+            <div class="md:col-span-3 col-span-6">
+              <div class="text-sm text-ink-500">Pinjaman Saat Ini</div>
+              <div class="font-bold text-base text-red-600" id="potSupirPinjaman">Rp 0</div>
+            </div>
+            <div class="md:col-span-3 col-span-6">
+              <div class="text-sm text-ink-500">Potong Pinjaman</div>
+              <div class="font-bold text-base text-red-600" id="potSupirPotong">Rp 0</div>
+            </div>
+            <div class="md:col-span-3 col-span-6">
+              <div class="text-sm text-ink-500">Gaji Diterima</div>
+              <div class="font-bold text-base text-green-600" id="potSupirDiterima">Rp 0</div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-2 print:hidden">
+            <span class="text-sm text-ink-500">Sisa Pinjaman setelah potong: <strong id="potSupirSisa" class="text-ink">Rp
+                0</strong></span>
+            <span class="text-sm text-ink-500 md:ml-4">Belum disinkron: <strong id="potSupirBelum" class="text-amber-500">Rp
+                0</strong></span>
+            <button class="btn btn-danger btn-sm ml-auto" id="btnProsesPotongSupir" onclick="prosesPotongSupir()"><svg class="icon" aria-hidden="true"><use href="#i-arrow-repeat"></use></svg> Proses Potong ke Manajemen Hutang</button>
+          </div>
+          <p class="text-ink-500 text-sm mt-2 mb-0 print:hidden">Isi kolom <strong>Pinjaman</strong> tiap trip (tombol
+            "Lihat"), lalu klik <strong>Proses</strong> untuk mengurangi hutang supir di Manajemen Hutang &amp; mencatat
+            kas keluar.</p>
+          <div id="potSupirRiwayat" class="mt-4 print:hidden"></div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Riwayat Pembayaran -->
+      <div class="tab-pane" id="tab-history" role="tabpanel">
+        <div class="card-settings">
+          <h5>Riwayat Pembayaran Upah Supir</h5>
+          <p class="text-ink-500 text-sm">Cari dan kelola slip pembayaran gaji supir yang telah selesai diproses.</p>
+
+          <div class="grid grid-cols-12 gap-4 items-end mb-6">
+            <div class="col-span-12 md:col-span-4">
+              <label class="form-label">Cari Nama Supir</label>
+              <input type="text" id="searchHistorySupir" class="form-control" placeholder="Ketik nama supir..."
+                oninput="loadRiwayat()">
+            </div>
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label">Dari Tanggal</label>
+              <input type="date" id="historyStartDate" class="form-control" onchange="loadRiwayat()">
+            </div>
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label">Sampai Tanggal</label>
+              <input type="date" id="historyEndDate" class="form-control" onchange="loadRiwayat()">
+            </div>
+            <div class="col-span-12 md:col-span-2">
+              <button class="btn btn-outline-secondary w-full" onclick="resetFilterHistory()">Reset</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>No Slip</th>
+                  <th>Tanggal Bayar</th>
+                  <th>Nama Supir</th>
+                  <th>Periode</th>
+                  <th>Total Netto (Kg)</th>
+                  <th>Potongan Hutang</th>
+                  <th>Total Dibayar</th>
+                  <th>Operator</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <!-- JS populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Slip Gaji TKBM (meniru format Excel klien) -->
+      <div class="tab-pane" id="tab-slip-tkbm" role="tabpanel">
+        <div class="card-settings mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h5 class="mb-1"><svg class="icon" aria-hidden="true"><use href="#i-people-fill"></use></svg> Rekap Gaji TKBM</h5>
+              <p class="text-ink-500 text-sm mb-0">Otomatis dari timbangan jual: tonase &times; 30 dibagi jumlah TKBM yang
+                memuat. Pilih pekerja &amp; periode, lalu cetak slipnya.</p>
+            </div>
+            <div>
+              <button class="btn btn-outline-success mr-2" onclick="exportSlipTkbmExcel()"><svg class="icon" aria-hidden="true"><use href="#i-file-earmark-excel"></use></svg> Export Excel</button>
+              <button class="btn btn-primary" onclick="cetakSlipTkbm()"><svg class="icon" aria-hidden="true"><use href="#i-printer"></use></svg> Cetak
+                Slip</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-12 gap-4 items-end mb-4">
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label font-bold">Pilih TKBM</label>
+              <select id="slipTkbmSelect" class="form-select" onchange="loadSlipTkbm()">
+                <option value="">-- Pilih TKBM --</option>
+              </select>
+            </div>
+            <div class="col-span-12 md:col-span-3">
+              <label class="form-label font-bold">Pilih Periode</label>
+              <select id="slipTkbmDateFilter" class="form-select" onchange="handleSlipTkbmFilterChange()">
+                <option value="today">Hari Ini</option>
+                <option value="yesterday">Kemarin</option>
+                <option value="week">7 Hari Terakhir</option>
+                <option value="half_month">15 Hari Terakhir</option>
+                <option value="month" selected>Bulan Ini</option>
+                <option value="half_year">6 Bulan Terakhir</option>
+                <option value="year">Tahun Ini</option>
+                <option value="custom_range">Pilih Tanggal (Custom)</option>
+              </select>
+            </div>
+            <div class="col-span-12 md:col-span-6 flex gap-4 items-end" id="slipTkbmCustomDateRow" style="display:none;">
+              <div class="flex-1">
+                <label class="form-label font-bold">Tanggal Mulai</label>
+                <input type="date" id="slipTkbmStartDate" class="form-control">
+              </div>
+              <div class="flex-1">
+                <label class="form-label font-bold">Tanggal Selesai</label>
+                <input type="date" id="slipTkbmEndDate" class="form-control">
+              </div>
+              <div>
+                <button class="btn btn-primary" onclick="loadSlipTkbm()"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg> Tampilkan</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="slipTkbmPrintArea" class="card-settings">
+          <div class="text-center mb-2">
+            <h4 class="font-bold uppercase mb-0">SLIP GAJI KARYAWAN</h4>
+            <div class="text-sm text-ink-500" id="slipTkbmTglCetak"></div>
+          </div>
+          <div class="mb-2">
+            <div><strong>Nama :</strong> <span id="slipTkbmNama">-</span></div>
+            <div><strong>Posisi :</strong> TKBM</div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle" id="slipTkbmTable">
+              <thead class="table-dark text-center" id="slipTkbmThead">
+                <tr>
+                  <th>No.</th>
+                  <th>Tanggal</th>
+                  <th>Tonase</th>
+                  <th>Per Kg</th>
+                  <th colspan="1">TKBM</th>
+                  <th>Total</th>
+                  <th>Jumlah Uang</th>
+                </tr>
+              </thead>
+              <tbody id="slipTkbmBody">
+                <tr>
+                  <td colspan="7" class="text-center text-ink-500">Pilih TKBM untuk menampilkan slip</td>
+                </tr>
+              </tbody>
+              <tfoot id="slipTkbmFoot" class="table-secondary font-bold" style="display:none;">
+                <tr>
+                  <td colspan="2" class="text-center">TOTAL</td>
+                  <td class="text-right" id="slipTkbmTotTonase">0</td>
+                  <td></td>
+                  <td id="slipTkbmFootSpacer"></td>
+                  <td class="text-center" id="slipTkbmTotTrip">0</td>
+                  <td class="text-right text-green-600" id="slipTkbmTotUpah">0</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ringkasan Gaji & Potong Pinjaman TKBM (potong dilakukan di Manajemen Hutang) -->
+        <div id="slipTkbmPotongPanel" class="card-settings mt-4" style="display:none;">
+          <h6 class="font-bold mb-4"><svg class="icon" aria-hidden="true"><use href="#i-cash-coin"></use></svg> Ringkasan Gaji &amp; Potong Pinjaman TKBM</h6>
+          <div class="grid grid-cols-12 gap-4 mb-1">
+            <div class="md:col-span-3 col-span-6">
+              <div class="text-sm text-ink-500">Total Gaji</div>
+              <div class="font-bold text-base" id="potTkbmUpah">Rp 0</div>
+            </div>
+            <div class="md:col-span-3 col-span-6">
+              <div class="text-sm text-ink-500">Pinjaman Saat Ini</div>
+              <div class="font-bold text-base text-red-600" id="potTkbmPinjaman">Rp 0</div>
+            </div>
+            <div class="md:col-span-3 col-span-6">
+              <div class="text-sm text-ink-500">Potong Pinjaman (periode)</div>
+              <div class="font-bold text-base text-red-600" id="potTkbmPotong">Rp 0</div>
+            </div>
+            <div class="md:col-span-3 col-span-6">
+              <div class="text-sm text-ink-500">Gaji Diterima</div>
+              <div class="font-bold text-base text-green-600" id="potTkbmDiterima">Rp 0</div>
+            </div>
+          </div>
+          <p class="text-ink-500 text-sm mt-2 mb-0 print:hidden">Angka <strong>Potong Pinjaman</strong> diambil otomatis
+            dari pembayaran hutang TKBM di <strong>Manajemen Hutang</strong> selama periode ini. Lakukan potongan hutang
+            di halaman Manajemen Hutang.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Printable Slip Modal -->
+  <div class="modal" id="slipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Slip Gaji Supir</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="printArea">
+          <div class="text-center mb-4">
+            <h4 class="mb-1 font-extrabold">CV. ARROYAN</h4>
+            <p class="text-sm text-ink-500 mb-0">Laporan Upah/Gaji Supir Timbangan</p>
+            <hr class="my-2 border-t-[2px] border-[#000]">
+          </div>
+          <div class="grid grid-cols-12 gap-2 mb-4">
+            <div class="col-span-6 text-sm">
+              <strong>No Slip:</strong> <span id="slipNo">SLP-xxx</span><br>
+              <strong>Tanggal:</strong> <span id="slipTanggal">2026-xx-xx</span>
+            </div>
+            <div class="col-span-6 text-sm text-right">
+              <strong>Nama Supir:</strong> <span id="slipSupir">Nama Supir</span><br>
+              <strong>Periode:</strong> <span id="slipPeriode">xx s/d xx</span>
+            </div>
+          </div>
+          <table class="table table-bordered table-sm text-sm">
+            <thead>
+              <tr class="table-light">
+                <th>Keterangan</th>
+                <th class="text-right">Rincian</th>
+                <th class="text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Upah Supir (Netto)</td>
+                <td class="text-right" id="slipNettoKg">0 Kg x Rp 0</td>
+                <td class="text-right" id="slipBruto">Rp 0</td>
+              </tr>
+              <tr class="text-red-600">
+                <td>Potongan Hutang</td>
+                <td class="text-right">-</td>
+                <td class="text-right" id="slipPotongan">Rp 0</td>
+              </tr>
+              <tr class="table-info font-bold">
+                <td>Total Gaji Bersih</td>
+                <td class="text-right">-</td>
+                <td class="text-right" id="slipNettoBayar">Rp 0</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="grid grid-cols-12 gap-6 mt-6 text-center text-sm">
+            <div class="col-span-6">
+              <p class="mb-12">Supir</p>
+              <strong>(........................)</strong>
+            </div>
+            <div class="col-span-6">
+              <p class="mb-12">Operator</p>
+              <strong>(<span id="slipOperator">Admin</span>)</strong>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          <button type="button" class="btn btn-primary" onclick="window.print()"><svg class="icon" aria-hidden="true"><use href="#i-printer"></use></svg> Cetak
+            Slip</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script>
+    window.activePage = 'upah';
+    let activeDrivers = [];
+    let currentPreviewData = null;
+    let currentHistoryList = [];
+
+    function formatRupiah(number) {
+      return 'Rp ' + new Intl.NumberFormat('id-ID').format(number);
+    }
+
+    async function loadPengaturan() {
+      try {
+        const res = await fetch('/upah-api/pengaturan?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success && r.data) {
+          const elP = document.getElementById('tarifPetani');
+          const elS = document.getElementById('tarifSupir');
+          const elM = document.getElementById('tarifPemuat');
+          if (elP) elP.value = formatRupiah(r.data.tarif_per_kg || 0);
+          if (elS) elS.value = formatRupiah(r.data.tarif_supir || 0);
+          if (elM) elM.value = formatRupiah(r.data.tarif_pemuat || 0);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function simpanPengaturan() {
+      const payload = {
+        tarif_petani: getRawNumber(document.getElementById('tarifPetani').value),
+        tarif_supir: getRawNumber(document.getElementById('tarifSupir').value),
+        tarif_pemuat: getRawNumber(document.getElementById('tarifPemuat').value)
+      };
+
+      try {
+        const res = await fetch('/upah-api/pengaturan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const r = await res.json();
+        if (r.success) {
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message });
+        } else {
+          Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+        }
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: e.message });
+      }
+    }
+
+    // --- TAB 2: PAYOUT LCGIC ---
+    async function loadDrivers() {
+      try {
+        const res = await fetch('/hutang-supir-api/supir-aktif?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success) {
+          activeDrivers = r.data;
+          const select = document.getElementById('payoutSupirSelect');
+          select.innerHTML = '<option value="">-- Pilih Supir --</option>';
+          activeDrivers.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = `${d.nama_supir} (${formatRupiah(d.total_hutang)})`;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.error('Error load drivers:', e);
+      }
+    }
+
+    async function hitungPreviewUpah() {
+      const idSupir = document.getElementById('payoutSupirSelect').value;
+      const startDate = document.getElementById('payoutStartDate').value;
+      const endDate = document.getElementById('payoutEndDate').value;
+
+      if (!idSupir) {
+        return Swal.fire({ icon: 'warning', text: 'Pilih supir terlebih dahulu!' });
+      }
+
+      try {
+        const url = `/upah-api/supir-gaji-preview?id_supir=${idSupir}&start_date=${startDate}&end_date=${endDate}&_t=${Date.now()}`;
+        const res = await fetch(url);
+        const r = await res.json();
+
+        if (r.success) {
+          currentPreviewData = r.data;
+
+          if (r.data.transaksi.length === 0) {
+            Swal.fire({ icon: 'info', text: 'Tidak ada transaksi timbangan yang belum dibayar untuk supir ini di periode tersebut.' });
+            document.getElementById('previewResultsContainer').style.display = 'none';
+            document.getElementById('noPreviewPlaceholder').style.display = 'block';
+            return;
+          }
+
+          document.getElementById('noPreviewPlaceholder').style.display = 'none';
+          document.getElementById('previewResultsContainer').style.display = 'block';
+
+          // Populate table
+          const tbody = document.getElementById('previewTableBody');
+          tbody.innerHTML = r.data.transaksi.map(t => {
+            const tgl = new Date(t.tanggal).toLocaleDateString('id-ID');
+            return `
+              <tr>
+                <td>${t.no_tiket}</td>
+                <td>${tgl}</td>
+                <td>${t.no_polisi || '-'}</td>
+                <td>${(t.jenis_material || '').toUpperCase()}</td>
+                <td class="text-right font-bold">${new Intl.NumberFormat('id-ID').format(t.netto_akhir || 0)} Kg</td>
+                <td>${t.nama_pabrik || '-'}</td>
+              </tr>
+            `;
+          }).join('');
+
+          // Set summary details
+          document.getElementById('previewTotalNetto').textContent = new Intl.NumberFormat('id-ID').format(r.data.total_berat_kg) + ' Kg';
+          document.getElementById('previewTarifPerKg').textContent = formatRupiah(r.data.tarif_per_kg);
+          document.getElementById('previewGajiBruto').textContent = formatRupiah(r.data.gaji_kotor);
+
+          document.getElementById('previewSisaHutang').textContent = formatRupiah(r.data.supir.total_hutang);
+          document.getElementById('rawSisaHutang').value = r.data.supir.total_hutang;
+
+          // Auto fill potongan dengan sisa hutang jika gaji mencukupi, jika tidak maks seharga gaji bruto
+          const autoPotongan = Math.min(r.data.supir.total_hutang, r.data.gaji_kotor);
+          document.getElementById('inputPotonganHutang').value = formatRupiah(autoPotongan);
+
+          hitungUpahNetto();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal melakukan kalkulasi upah' });
+      }
+    }
+
+    function hitungUpahNetto() {
+      if (!currentPreviewData) return;
+      const bruto = currentPreviewData.gaji_kotor;
+      const sisaHutang = parseFloat(document.getElementById('rawSisaHutang').value) || 0;
+      let pot = getRawNumber(document.getElementById('inputPotonganHutang').value) || 0;
+
+      const maxPot = Math.min(sisaHutang, bruto);
+      if (pot > maxPot) {
+        pot = maxPot;
+        document.getElementById('inputPotonganHutang').value = formatRupiah(pot);
+      }
+      if (pot < 0) {
+        pot = 0;
+        document.getElementById('inputPotonganHutang').value = formatRupiah(pot);
+      }
+
+      const netto = bruto - pot;
+      document.getElementById('previewGajiNetto').textContent = formatRupiah(netto);
+    }
+
+    async function prosesBayarGaji() {
+      if (!currentPreviewData) return;
+
+      const idSupir = document.getElementById('payoutSupirSelect').value;
+      const startDate = document.getElementById('payoutStartDate').value;
+      const endDate = document.getElementById('payoutEndDate').value;
+      const potongan = getRawNumber(document.getElementById('inputPotonganHutang').value) || 0;
+
+      const confirm = await Swal.fire({
+        title: 'Konfirmasi Pembayaran Gaji',
+        text: 'Apakah Anda yakin ingin memproses pembayaran upah supir ini? Tindakan ini akan mencatat kas keluar dan mengurangi hutang supir.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Bayar Upah',
+        cancelButtonText: 'Batal'
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      const payload = {
+        id_supir: idSupir,
+        start_date: startDate,
+        end_date: endDate,
+        tarif_per_kg: currentPreviewData.tarif_per_kg,
+        gaji_kotor: currentPreviewData.gaji_kotor,
+        potongan_hutang: potongan
+      };
+
+      try {
+        const res = await fetch('/upah-api/gaji', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const r = await res.json();
+
+        if (r.success) {
+          await Swal.fire({ icon: 'success', title: 'Berhasil!', text: r.message });
+          // Reset preview
+          document.getElementById('previewResultsContainer').style.display = 'none';
+          document.getElementById('noPreviewPlaceholder').style.display = 'block';
+          document.getElementById('payoutSupirSelect').value = '';
+          // Load drivers again to update their debt indicators in dropdown list
+          await loadDrivers();
+          // Open print slip dialog
+          if (r.data && r.data.id) {
+            showSlipModal(r.data);
+          }
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal memproses pembayaran upah' });
+      }
+    }
+
+    // --- TAB 3: RIWAYAT GAJI ---
+    async function loadRiwayat() {
+      const search = document.getElementById('searchHistorySupir').value;
+      const start = document.getElementById('historyStartDate').value;
+      const end = document.getElementById('historyEndDate').value;
+
+      try {
+        const url = `/upah-api/riwayat?search=${encodeURIComponent(search)}&start_date=${start}&end_date=${end}&_t=${Date.now()}`;
+        const res = await fetch(url);
+        const r = await res.json();
+
+        if (r.success) {
+          const tbody = document.getElementById('historyTableBody');
+          if (r.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-ink-500">Tidak ada riwayat pembayaran gaji</td></tr>';
+            return;
+          }
+          currentHistoryList = r.data;
+          tbody.innerHTML = r.data.map((h, i) => {
+            const tglBayar = new Date(h.tanggal_bayar).toLocaleDateString('id-ID');
+            const periodeStr = `${new Date(h.periode_awal).toLocaleDateString('id-ID')} s/d ${new Date(h.periode_akhir).toLocaleDateString('id-ID')}`;
+            const noSlipEscaped = h.no_slip.replace(/'/g, "\\'");
+            return `
+              <tr>
+                <td>${h.no_slip}</td>
+                <td>${tglBayar}</td>
+                <td><strong>${h.nama_supir}</strong></td>
+                <td>${periodeStr}</td>
+                <td class="text-right font-bold">${new Intl.NumberFormat('id-ID').format(h.total_netto)} Kg</td>
+                <td class="text-right text-red-600">${formatRupiah(h.potongan_hutang)}</td>
+                <td class="text-right text-green-600 font-bold">${formatRupiah(h.total_dibayar)}</td>
+                <td>${h.nama_operator || '-'}</td>
+                <td>
+                  <button class="btn btn-sm btn-info" onclick="showSlipModalByIndex(${i})"><svg class="icon" aria-hidden="true"><use href="#i-printer"></use></svg> Slip</button>
+                  <button class="btn btn-sm btn-danger" onclick="batalkanPembayaranGaji(${h.id}, '${noSlipEscaped}')"><svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg> Batalkan</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function resetFilterHistory() {
+      document.getElementById('searchHistorySupir').value = '';
+      document.getElementById('historyStartDate').value = '';
+      document.getElementById('historyEndDate').value = '';
+      loadRiwayat();
+    }
+
+    async function batalkanPembayaranGaji(id, noSlip) {
+      const confirm = await Swal.fire({
+        title: 'Batalkan Gaji?',
+        html: `Apakah Anda yakin ingin membatalkan Slip <strong>${noSlip}</strong>?<br><small class="text-ink-500">Transaksi timbangan akan dikembalikan menjadi belum digaji, saldo kas akan berkurang, dan hutang supir akan dikembalikan seperti semula.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Ya, Batalkan Gaji',
+        cancelButtonText: 'Batal'
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        const res = await fetch('/upah-api/batal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        const r = await res.json();
+
+        if (r.success) {
+          Swal.fire({ icon: 'success', text: r.message, timer: 2000, showConfirmButton: false });
+          loadRiwayat();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Error membatalkan gaji' });
+      }
+    }
+
+    function showSlipModalByIndex(index) {
+      if (currentHistoryList && currentHistoryList[index]) {
+        showSlipModal(currentHistoryList[index]);
+      }
+    }
+
+    function showSlipModal(data) {
+      document.getElementById('slipNo').textContent = data.no_slip;
+      document.getElementById('slipTanggal').textContent = new Date(data.tanggal_bayar || data.created_at).toLocaleDateString('id-ID');
+      document.getElementById('slipSupir').textContent = data.nama_supir;
+
+      const start = new Date(data.periode_awal).toLocaleDateString('id-ID');
+      const end = new Date(data.periode_akhir).toLocaleDateString('id-ID');
+      document.getElementById('slipPeriode').textContent = `${start} s/d ${end}`;
+
+      const tSupir = data.tarif_supir || (data.total_netto > 0 ? Math.round((data.total_dibayar + data.potongan_hutang) / data.total_netto) : 0);
+      document.getElementById('slipNettoKg').textContent = `${new Intl.NumberFormat('id-ID').format(data.total_netto)} Kg x ${formatRupiah(tSupir)}`;
+
+      const bruto = data.total_netto * tSupir;
+      document.getElementById('slipBruto').textContent = formatRupiah(bruto);
+      document.getElementById('slipPotongan').textContent = '- ' + formatRupiah(data.potongan_hutang);
+      document.getElementById('slipNettoBayar').textContent = formatRupiah(data.total_dibayar);
+      document.getElementById('slipOperator').textContent = data.nama_operator || 'Admin';
+
+      const myModal = new bootstrap.Modal(document.getElementById('slipModal'));
+      myModal.show();
+    }
+
+    // --- TKBM PAYOUT LOGIC ---
+    let currentPreviewTkbmData = null;
+
+    async function loadTkbm() {
+      try {
+        const res = await fetch('/tkbm-api/active');
+        const r = await res.json();
+        if (r.success) {
+          const select = document.getElementById('payoutTkbmSelect');
+          select.innerHTML = '<option value="">-- Pilih TKBM --</option>';
+          r.data.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.nama_karyawan;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) { console.error('Error load tkbm:', e); }
+    }
+
+    async function hitungPreviewUpahTkbm() {
+      const idTkbm = document.getElementById('payoutTkbmSelect').value;
+      const startDate = document.getElementById('payoutTkbmStartDate').value;
+      const endDate = document.getElementById('payoutTkbmEndDate').value;
+
+      if (!idTkbm) return Swal.fire({ icon: 'warning', text: 'Pilih TKBM terlebih dahulu!' });
+
+      try {
+        const url = `/upah-api/tkbm-gaji-preview?id_tkbm=${idTkbm}&start_date=${startDate}&end_date=${endDate}&_t=${Date.now()}`;
+        const res = await fetch(url);
+        const r = await res.json();
+
+        if (r.success) {
+          currentPreviewTkbmData = r.data;
+
+          if (r.data.transaksi.length === 0) {
+            Swal.fire({ icon: 'info', text: 'Tidak ada transaksi timbangan yang belum dibayar untuk TKBM ini di periode tersebut.' });
+            document.getElementById('previewTkbmContainer').style.display = 'none';
+            return;
+          }
+
+          document.getElementById('previewTkbmContainer').style.display = 'block';
+
+          // Populate table
+          const tbody = document.getElementById('previewTkbmTableBody');
+          tbody.innerHTML = r.data.transaksi.map(t => {
+            const tgl = new Date(t.tanggal).toLocaleDateString('id-ID');
+            return `
+              <tr>
+                <td>${t.no_tiket}</td>
+                <td>${tgl}</td>
+                <td>${t.nama_pabrik}</td>
+                <td class="text-right">${new Intl.NumberFormat('id-ID').format(t.netto_ram)}</td>
+                <td class="text-center">${t.jumlah_pekerja} Orang</td>
+                <td class="text-right font-bold text-green-600">${formatRupiah(t.gaji_bagian)}</td>
+              </tr>
+            `;
+          }).join('');
+
+          // Set summary details
+          document.getElementById('previewTkbmTotalTrip').textContent = r.data.total_trip;
+          document.getElementById('previewTkbmTarif').textContent = formatRupiah(r.data.tarif_pemuat);
+          document.getElementById('previewTkbmBruto').textContent = formatRupiah(r.data.gaji_kotor);
+
+          document.getElementById('inputPotonganTkbm').value = '';
+          hitungNettoTkbm();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal melakukan kalkulasi upah TKBM' });
+      }
+    }
+
+    function hitungNettoTkbm() {
+      if (!currentPreviewTkbmData) return;
+      const bruto = currentPreviewTkbmData.gaji_kotor;
+      let pot = getRawNumber(document.getElementById('inputPotonganTkbm').value) || 0;
+      if (pot < 0) { pot = 0; document.getElementById('inputPotonganTkbm').value = ''; }
+      const netto = bruto - pot;
+      document.getElementById('previewTkbmNetto').textContent = formatRupiah(netto);
+    }
+
+    async function prosesBayarTkbm() {
+      if (!currentPreviewTkbmData) return;
+      const confirm = await Swal.fire({ title: 'Bayar Upah?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Bayar' });
+      if (!confirm.isConfirmed) return;
+
+      const payload = {
+        id_tkbm: document.getElementById('payoutTkbmSelect').value,
+        start_date: document.getElementById('payoutTkbmStartDate').value,
+        end_date: document.getElementById('payoutTkbmEndDate').value,
+        tarif_pemuat: currentPreviewTkbmData.tarif_pemuat,
+        gaji_kotor: currentPreviewTkbmData.gaji_kotor,
+        potongan_lainnya: getRawNumber(document.getElementById('inputPotonganTkbm').value) || 0
+      };
+
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const r = await res.json();
+        if (r.success) {
+          await Swal.fire({ icon: 'success', text: r.message });
+          document.getElementById('previewTkbmContainer').style.display = 'none';
+          document.getElementById('payoutTkbmSelect').value = '';
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) { Swal.fire({ icon: 'error', text: 'Gagal memproses pembayaran upah TKBM' }); }
+    }
+
+    // --- TKBM HISTORY LOGIC ---
+    async function loadRiwayatTkbm() {
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji/list?_t=' + Date.now());
+        const r = await res.json();
+        if (r.success) {
+          const tbody = document.getElementById('historyTkbmTableBody');
+          if (r.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-ink-500">Belum ada riwayat</td></tr>';
+            return;
+          }
+          tbody.innerHTML = r.data.map((h) => {
+            const tglBayar = new Date(h.created_at).toLocaleDateString('id-ID');
+            const periodeStr = `${new Date(h.periode_mulai).toLocaleDateString('id-ID')} s/d ${new Date(h.periode_akhir).toLocaleDateString('id-ID')}`;
+            return `
+              <tr>
+                <td>${tglBayar}</td>
+                <td><strong>${h.nama_karyawan}</strong></td>
+                <td>${periodeStr}</td>
+                <td class="text-center">${h.total_trip} Trip</td>
+                <td class="text-right text-green-600 font-bold">${formatRupiah(h.gaji_bersih)}</td>
+                <td>
+                  <button class="btn btn-sm btn-danger" onclick="batalGajiTkbm(${h.id})"><svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg> Batalkan</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function batalGajiTkbm(id) {
+      const confirm = await Swal.fire({ title: 'Batalkan Gaji TKBM?', text: 'Transaksi timbangan akan dikembalikan statusnya ke belum digaji', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626' });
+      if (!confirm.isConfirmed) return;
+      try {
+        const res = await fetch('/upah-api/tkbm-gaji/' + id, { method: 'DELETE' });
+        const r = await res.json();
+        if (r.success) { Swal.fire({ icon: 'success', text: r.message, timer: 1500, showConfirmButton: false }); loadRiwayatTkbm(); }
+        else Swal.fire({ icon: 'error', text: r.message });
+      } catch (e) { console.error(e); }
+    }
+
+    // --- REKAP GAJI SUPIR PER PABRIK (EXCEL FORMAT) ---
+    let currentRekapData = [];
+
+    async function initRekapPabrikTab() {
+      await loadDriversForRekap();
+      await loadRekapPabrikData();
+    }
+
+    function handleRekapFilterChange() {
+      const val = document.getElementById('rekapPabrikDateFilter').value;
+      const customRow = document.getElementById('rekapPabrikCustomDateRow');
+      if (val === 'custom_range') { customRow.style.display = 'flex'; }
+      else { customRow.style.display = 'none'; loadRekapPabrikData(); }
+    }
+
+    async function loadDriversForRekap() {
+      try {
+        const resSupir = await fetch('/masterdata/supir');
+        const r = await resSupir.json();
+        if (r.success) {
+          const select = document.getElementById('rekapPabrikSupirSelect');
+          const val = select.value;
+          select.innerHTML = '<option value="">-- Semua Supir --</option>' +
+            r.data.map(s => `<option value="${s.id}">${s.nama_supir}</option>`).join('');
+          select.value = val;
+        }
+      } catch (e) { console.error('Error load drivers for rekap:', e); }
+    }
+
+    async function loadRekapPabrikData() {
+      const supir = document.getElementById('rekapPabrikSupirSelect').value;
+      const dateFilter = document.getElementById('rekapPabrikDateFilter').value;
+      const startDate = document.getElementById('rekapPabrikStartDate').value;
+      const endDate = document.getElementById('rekapPabrikEndDate').value;
+
+      try {
+        const queryParams = new URLSearchParams({
+          id_supir: supir,
+          date_filter: dateFilter,
+          _t: Date.now()
+        });
+        if (dateFilter === 'custom_range' && startDate && endDate) {
+          queryParams.set('start_date', startDate);
+          queryParams.set('end_date', endDate);
+        }
+
+        const res = await fetch('/upah-api/rekap-supir-pabrik?' + queryParams.toString());
+        const r = await res.json();
+
+        if (r.success) {
+          currentRekapData = r.data.items || [];
+          renderRekapPabrikTable(currentRekapData, r.data.summary);
+          updateSupirPotongPanel(r.data.summary);
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal memuat data rekap supir' });
+      }
+    }
+
+    function renderRekapPabrikTable(items, summary) {
+      const tbody = document.getElementById('rekapPabrikTableBody');
+      const tfoot = document.getElementById('rekapPabrikTableFooter');
+
+      if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center text-ink-500 py-6">Data pengiriman tidak ditemukan pada periode ini</td></tr>';
+        tfoot.style.display = 'none';
+        return;
+      }
+
+      let html = '';
+      items.forEach((item, idx) => {
+        const tgl = item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+        const isLunas = item.status_bayar === 'lunas';
+        const nextStatus = isLunas ? 'belum_bayar' : 'lunas';
+
+        html += `
+          <tr>
+            <td class="text-center">${idx + 1}</td>
+            <td>${tgl}</td>
+            <td class="font-bold">${item.nama_pabrik}</td>
+            <td>${item.nama_supir}</td>
+            <td class="text-right font-mono">${item.tonase_angkut.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+            <td class="text-right font-mono">${item.harga_per_kg > 0 ? item.harga_per_kg.toLocaleString('id-ID') : '<span class="text-ink-500">0</span>'}</td>
+            <td class="text-right font-mono">${item.hasil > 0 ? formatRupiah(item.hasil) : '0'}</td>
+            <td class="text-right font-mono">${item.pinjaman > 0 ? formatRupiah(item.pinjaman) : ''}</td>
+            <td class="text-right font-mono">${item.biaya_es_jalan > 0 ? formatRupiah(item.biaya_es_jalan) : ''}</td>
+            <td class="text-right font-mono font-bold text-green-600">${formatRupiah(item.hasil_bersih)}</td>
+            <td class="text-center">
+              <span class="badge ${isLunas ? 'bg-green-600 text-white' : 'bg-amber-400 text-ink'} cursor-pointer" title="Klik untuk ubah status" onclick="toggleStatusBayar(${item.id}, '${nextStatus}')">${isLunas ? 'LUNAS' : 'BELUM BAYAR'}</span>
+            </td>
+            <td class="text-center print:hidden">
+              <button class="btn btn-sm btn-primary" onclick="bukaModalEditRekap(${item.id})">Lihat</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+      tfoot.style.display = 'table-footer-group';
+
+      document.getElementById('footTotalTonase').textContent = summary.total_tonase.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      document.getElementById('footTotalHasil').textContent = formatRupiah(summary.total_hasil);
+      document.getElementById('footTotalPinjaman').textContent = summary.total_pinjaman > 0 ? formatRupiah(summary.total_pinjaman) : '0';
+      document.getElementById('footTotalEsJalan').textContent = summary.total_es_jalan > 0 ? formatRupiah(summary.total_es_jalan) : '0';
+      document.getElementById('footTotalHasilBersih').textContent = formatRupiah(summary.total_hasil_bersih);
+    }
+
+    // --- RINGKASAN GAJI & POTONG PINJAMAN SUPIR (kolom Pinjaman → Manajemen Hutang) ---
+    function updateSupirPotongPanel(summary) {
+      const idSupir = document.getElementById('rekapPabrikSupirSelect').value;
+      const panel = document.getElementById('rekapSupirPotongPanel');
+      // Hutang bersifat per-orang → hanya tampil bila 1 supir dipilih
+      if (!idSupir || !summary) { panel.style.display = 'none'; return; }
+
+      const totalGaji = parseFloat(summary.total_hasil) || 0;
+      const potong = parseFloat(summary.total_pinjaman) || 0;         // total kolom Pinjaman
+      const belum = parseFloat(summary.total_pinjaman_belum_diproses) || 0;
+      const diterima = parseFloat(summary.total_hasil_bersih) || 0;
+      const debt = summary.hutang_saat_ini != null ? parseFloat(summary.hutang_saat_ini) : 0;
+
+      document.getElementById('potSupirTotalGaji').textContent = formatRupiah(totalGaji);
+      document.getElementById('potSupirPinjaman').textContent = formatRupiah(debt);
+      document.getElementById('potSupirPotong').textContent = formatRupiah(potong);
+      document.getElementById('potSupirDiterima').textContent = formatRupiah(diterima);
+      document.getElementById('potSupirSisa').textContent = formatRupiah(Math.max(0, debt - belum));
+      document.getElementById('potSupirBelum').textContent = formatRupiah(belum);
+
+      const btn = document.getElementById('btnProsesPotongSupir');
+      btn.disabled = belum <= 0;
+      btn.classList.toggle('disabled', belum <= 0);
+
+      panel.style.display = 'block';
+      loadRiwayatPotong('supir', idSupir, 'potSupirRiwayat');
+    }
+
+    async function prosesPotongSupir() {
+      const idSupir = document.getElementById('rekapPabrikSupirSelect').value;
+      if (!idSupir) { Swal.fire({ icon: 'warning', text: 'Pilih supir terlebih dahulu' }); return; }
+
+      const confirm = await Swal.fire({
+        icon: 'question', title: 'Proses Potong Pinjaman?',
+        html: `Total kolom <strong>Pinjaman</strong> yang belum disinkron akan dipakai untuk mengurangi hutang supir di Manajemen Hutang &amp; dicatat sebagai kas keluar.`,
+        showCancelButton: true, confirmButtonText: 'Ya, Proses', cancelButtonText: 'Batal', confirmButtonColor: '#dc3545'
+      });
+      if (!confirm.isConfirmed) return;
+
+      const dateFilter = document.getElementById('rekapPabrikDateFilter').value;
+      const startDate = document.getElementById('rekapPabrikStartDate').value;
+      const endDate = document.getElementById('rekapPabrikEndDate').value;
+      try {
+        const res = await fetch('/upah-api/proses-potong-supir', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_supir: idSupir, date_filter: dateFilter, start_date: startDate, end_date: endDate })
+        });
+        const r = await res.json();
+        if (r.success) {
+          Swal.fire({ icon: 'success', text: r.message, timer: 2000, showConfirmButton: false });
+          await loadRekapPabrikData();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) { Swal.fire({ icon: 'error', text: 'Gagal memproses potongan' }); }
+    }
+
+    // Riwayat potong pinjaman (dipakai supir & tkbm)
+    async function loadRiwayatPotong(type, id, containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      try {
+        const r = await (await fetch(`/upah-api/potong-pinjaman/riwayat/${type}/${id}?_t=` + Date.now())).json();
+        if (!r.success || !r.data || !r.data.length) { el.innerHTML = ''; return; }
+        const rows = r.data.map(h => `
+          <tr>
+            <td>${h.tanggal || '-'}</td>
+            <td class="text-right text-red-600">${formatRupiah(h.jumlah)}</td>
+            <td class="text-right">${formatRupiah(h.saldo_setelah)}</td>
+            <td>${h.keterangan || ''}</td>
+            <td class="text-center"><button class="btn btn-sm btn-outline-danger py-0" onclick="batalPotong(${h.id}, '${type}', '${id}', '${containerId}')">Batalkan</button></td>
+          </tr>`).join('');
+        el.innerHTML = `
+          <div class="text-sm font-bold mb-1">Riwayat Potong Pinjaman</div>
+          <div class="table-responsive"><table class="table table-sm table-bordered text-sm mb-0">
+            <thead class="table-light"><tr><th>Tanggal</th><th class="text-right">Jumlah</th><th class="text-right">Sisa Hutang</th><th>Keterangan</th><th class="text-center">Aksi</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>`;
+      } catch (e) { el.innerHTML = ''; }
+    }
+
+    async function batalPotong(ledgerId, type, id, containerId) {
+      const confirm = await Swal.fire({
+        icon: 'warning', title: 'Batalkan potongan ini?',
+        text: 'Hutang akan dikembalikan dan kas masuk dicatat.',
+        showCancelButton: true, confirmButtonText: 'Ya, Batalkan', cancelButtonText: 'Tidak', confirmButtonColor: '#dc3545'
+      });
+      if (!confirm.isConfirmed) return;
+      try {
+        const res = await fetch('/upah-api/potong-pinjaman/batal', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ledger_id: ledgerId })
+        });
+        const r = await res.json();
+        if (r.success) {
+          Swal.fire({ icon: 'success', text: r.message, timer: 1500, showConfirmButton: false });
+          if (type === 'supir') { await loadRekapPabrikData(); }
+          else { await loadSlipTkbm(); }
+        } else { Swal.fire({ icon: 'error', text: r.message }); }
+      } catch (e) { Swal.fire({ icon: 'error', text: 'Gagal membatalkan' }); }
+    }
+
+    async function toggleStatusBayar(id, newStatus) {
+      try {
+        const res = await fetch('/upah-api/toggle-status-bayar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, status_bayar: newStatus })
+        });
+        const r = await res.json();
+        if (r.success) {
+          loadRekapPabrikData();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal mengubah status pembayaran' });
+      }
+    }
+
+    let editRekapHutangSaatIni = 0;
+
+    async function bukaModalEditRekap(id) {
+      const item = currentRekapData.find(x => x.id === id);
+      if (!item) return;
+
+      document.getElementById('editRekapId').value = item.id;
+      document.getElementById('editRekapInfo').value = `${item.no_surat_jalan} - ${item.nama_pabrik} (${item.nama_supir})`;
+      document.getElementById('editRekapHargaKg').value = item.harga_per_kg ? formatRupiah(item.harga_per_kg) : '';
+      document.getElementById('editRekapPinjaman').value = item.pinjaman ? formatRupiah(item.pinjaman) : '';
+      document.getElementById('editRekapEsJalan').value = item.biaya_es_jalan ? formatRupiah(item.biaya_es_jalan) : '';
+
+      // Ambil hutang supir dari Manajemen Hutang untuk konteks + hitung sisa
+      editRekapHutangSaatIni = 0;
+      if (item.id_supir) {
+        try {
+          const r = await (await fetch(`/upah-api/hutang-saat-ini/supir/${item.id_supir}?_t=` + Date.now())).json();
+          if (r.success && r.data) editRekapHutangSaatIni = parseFloat(r.data.total_hutang) || 0;
+        } catch (e) { console.error('load hutang supir modal', e); }
+      }
+      hitungSisaHutangModal();
+
+      const modal = new bootstrap.Modal(document.getElementById('modalEditRekapRow'));
+      modal.show();
+    }
+
+    function hitungSisaHutangModal() {
+      const pinjaman = getRawNumber(document.getElementById('editRekapPinjaman').value) || 0;
+      document.getElementById('editRekapHutang').textContent = formatRupiah(editRekapHutangSaatIni);
+      document.getElementById('editRekapSisaHutang').textContent = formatRupiah(Math.max(0, editRekapHutangSaatIni - pinjaman));
+    }
+
+    async function simpanEditRekapRow() {
+      const id = document.getElementById('editRekapId').value;
+      const harga_per_kg = parseRupiah(document.getElementById('editRekapHargaKg').value);
+      const pinjaman = parseRupiah(document.getElementById('editRekapPinjaman').value);
+      const biaya_es_jalan = parseRupiah(document.getElementById('editRekapEsJalan').value);
+
+      try {
+        const res = await fetch('/upah-api/update-rekap-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, harga_per_kg, pinjaman, biaya_es_jalan })
+        });
+        const r = await res.json();
+        if (r.success) {
+          const modalEl = document.getElementById('modalEditRekapRow');
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          if (modal) modal.hide();
+
+          Swal.fire({ icon: 'success', text: 'Data berhasil diperbarui', timer: 1200, showConfirmButton: false });
+          loadRekapPabrikData();
+        } else {
+          Swal.fire({ icon: 'error', text: r.message });
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: 'error', text: 'Gagal memperbarui data' });
+      }
+    }
+
+    function cetakRekapPabrik() {
+      window.print();
+    }
+
+    // ─── SLIP GAJI TKBM (meniru format Excel klien) ──────────────────────────────
+    let slipTkbmData = null;
+
+    async function initSlipTkbmTab() {
+      await loadTkbmForSlip();
+      await loadSlipTkbm(); // langsung tampilkan (mode Semua TKBM bila belum memilih)
+    }
+
+    async function loadTkbmForSlip() {
+      try {
+        const r = await (await fetch('/tkbm-api/list')).json();
+        if (r.success) {
+          const sel = document.getElementById('slipTkbmSelect');
+          const val = sel.value;
+          sel.innerHTML = '<option value="">-- Semua TKBM --</option>' +
+            r.data.map(t => `<option value="${t.id}">${t.nama_karyawan}</option>`).join('');
+          sel.value = val;
+        }
+      } catch (e) { console.error('Load TKBM for slip:', e); }
+    }
+
+    function handleSlipTkbmFilterChange() {
+      const val = document.getElementById('slipTkbmDateFilter').value;
+      const row = document.getElementById('slipTkbmCustomDateRow');
+      if (val === 'custom_range') { row.style.display = 'flex'; }
+      else { row.style.display = 'none'; loadSlipTkbm(); }
+    }
+
+    function fmtSlip(n) { return (parseFloat(n) || 0).toLocaleString('id-ID'); }
+
+    async function loadSlipTkbm() {
+      const idTkbm = document.getElementById('slipTkbmSelect').value;
+      const body = document.getElementById('slipTkbmBody');
+      const foot = document.getElementById('slipTkbmFoot');
+      // idTkbm kosong = mode SEMUA TKBM (tetap tampilkan semua trip)
+      const dateFilter = document.getElementById('slipTkbmDateFilter').value;
+      const params = new URLSearchParams({ id_tkbm: idTkbm, date_filter: dateFilter, _t: Date.now() });
+      if (dateFilter === 'custom_range') {
+        const s = document.getElementById('slipTkbmStartDate').value;
+        const e = document.getElementById('slipTkbmEndDate').value;
+        if (s && e) { params.set('start_date', s); params.set('end_date', e); }
+      }
+      body.innerHTML = '<tr><td colspan="7" class="text-center text-ink-500">Memuat...</td></tr>';
+      try {
+        const r = await (await fetch('/upah-api/slip-tkbm?' + params.toString())).json();
+        if (!r.success) { body.innerHTML = `<tr><td colspan="7" class="text-center text-red-600">${r.message}</td></tr>`; foot.style.display = 'none'; return; }
+        slipTkbmData = r.data;
+        renderSlipTkbm();
+        await updateTkbmPotongPanel();
+      } catch (e) {
+        body.innerHTML = '<tr><td colspan="7" class="text-center text-red-600">Gagal memuat data</td></tr>';
+        foot.style.display = 'none';
+      }
+    }
+
+    // --- RINGKASAN GAJI & POTONG PINJAMAN TKBM (read-only; potong via Manajemen Hutang) ---
+    async function updateTkbmPotongPanel() {
+      const idTkbm = document.getElementById('slipTkbmSelect').value;
+      const panel = document.getElementById('slipTkbmPotongPanel');
+      if (!idTkbm) { panel.style.display = 'none'; return; } // hutang per-orang
+
+      const upah = slipTkbmData && slipTkbmData.summary ? Math.round(parseFloat(slipTkbmData.summary.total_upah) || 0) : 0;
+      let pinjaman = 0, potong = 0;
+      try {
+        const dateFilter = document.getElementById('slipTkbmDateFilter').value;
+        const params = new URLSearchParams({ id_tkbm: idTkbm, date_filter: dateFilter, _t: Date.now() });
+        if (dateFilter === 'custom_range') {
+          const s = document.getElementById('slipTkbmStartDate').value;
+          const e = document.getElementById('slipTkbmEndDate').value;
+          if (s && e) { params.set('start_date', s); params.set('end_date', e); }
+        }
+        const r = await (await fetch('/upah-api/tkbm-potong-info?' + params.toString())).json();
+        if (r.success && r.data) { pinjaman = parseFloat(r.data.total_hutang) || 0; potong = parseFloat(r.data.potong_periode) || 0; }
+      } catch (e) { console.error('load info potong tkbm', e); }
+
+      document.getElementById('potTkbmUpah').textContent = formatRupiah(upah);
+      document.getElementById('potTkbmPinjaman').textContent = formatRupiah(pinjaman);
+      document.getElementById('potTkbmPotong').textContent = formatRupiah(potong);
+      document.getElementById('potTkbmDiterima').textContent = formatRupiah(Math.max(0, upah - potong));
+      panel.style.display = 'block';
+    }
+
+    function renderSlipTkbm() {
+      const d = slipTkbmData;
+      const roster = d.roster || [];
+      const nCols = Math.max(roster.length, 1);
+      document.getElementById('slipTkbmNama').textContent = d.tkbm.nama;
+      document.getElementById('slipTkbmTglCetak').textContent = new Date().toLocaleString('id-ID');
+
+      // Header: kolom "TKBM" digabung di atas kolom-kolom inisial (spt Excel klien)
+      document.getElementById('slipTkbmThead').innerHTML = `
+        <tr>
+          <th class="w-[44px]">No.</th><th>Tanggal</th><th class="text-right">Tonase</th><th>Per Kg</th>
+          <th colspan="${nCols}" title="${roster.map(w => w.inisial + ' = ' + w.nama).join(', ')}">TKBM</th>
+          <th>Total</th><th class="text-right">Jumlah Uang</th>
+        </tr>`;
+
+      const body = document.getElementById('slipTkbmBody');
+      const foot = document.getElementById('slipTkbmFoot');
+      if (!d.rows.length) {
+        body.innerHTML = `<tr><td colspan="${6 + nCols}" class="text-center text-ink-500 py-6">Tidak ada pengiriman pada periode ini</td></tr>`;
+        foot.style.display = 'none';
+        return;
+      }
+      body.innerHTML = d.rows.map((row, i) => {
+        const tgl = row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-';
+        const cells = roster.length
+          ? roster.map(w => `<td class="text-center">${row.worker_ids.includes(w.id) ? w.inisial : '-'}</td>`).join('')
+          : `<td class="text-center">${row.total}</td>`;
+        const ikut = row.jumlah !== null && row.jumlah !== undefined;
+        return `<tr${ikut ? '' : ' class="text-ink-500"'}>
+          <td class="text-center">${i + 1}</td>
+          <td class="text-center">${tgl}</td>
+          <td class="text-right font-mono">${fmtSlip(row.tonase)}</td>
+          <td class="text-center">${fmtSlip(row.per_kg)}</td>
+          ${cells}
+          <td class="text-center">${row.total}</td>
+          <td class="text-right font-mono font-bold ${ikut ? 'text-success' : ''}">${ikut ? fmtSlip(row.jumlah) : ''}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('slipTkbmFootSpacer').setAttribute('colspan', nCols);
+      document.getElementById('slipTkbmTotTonase').textContent = fmtSlip(d.summary.total_tonase_ikut);
+      document.getElementById('slipTkbmTotTrip').textContent = d.summary.total_trip_ikut + ' trip';
+      document.getElementById('slipTkbmTotUpah').textContent = 'Rp ' + fmtSlip(Math.round(d.summary.total_upah));
+      foot.style.display = 'table-footer-group';
+    }
+
+    function cetakSlipTkbm() {
+      if (!slipTkbmData) { Swal.fire({ icon: 'warning', text: 'Pilih TKBM terlebih dahulu' }); return; }
+      window.print();
+    }
+
+    function exportSlipTkbmExcel() {
+      const idTkbm = document.getElementById('slipTkbmSelect').value;
+      const dateFilter = document.getElementById('slipTkbmDateFilter').value;
+      const params = new URLSearchParams({ id_tkbm: idTkbm, date_filter: dateFilter });
+      if (dateFilter === 'custom_range') {
+        const s = document.getElementById('slipTkbmStartDate').value;
+        const e = document.getElementById('slipTkbmEndDate').value;
+        if (s && e) { params.set('start_date', s); params.set('end_date', e); }
+      }
+      window.location.href = '/upah-api/slip-tkbm/export?' + params.toString();
+    }
+
+    function exportRekapPabrikExcel() {
+      const idSupir = document.getElementById('rekapPabrikSupirSelect').value;
+      const dateFilter = document.getElementById('rekapPabrikDateFilter').value;
+      const params = new URLSearchParams({ id_supir: idSupir, date_filter: dateFilter });
+      if (dateFilter === 'custom_range') {
+        const s = document.getElementById('rekapPabrikStartDate').value;
+        const e = document.getElementById('rekapPabrikEndDate').value;
+        if (s && e) { params.set('start_date', s); params.set('end_date', e); }
+      }
+      window.location.href = '/upah-api/rekap-supir/export?' + params.toString();
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadSessionInfo();
+      await loadPengaturan();
+
+      // Auto set date filter in payout tab: start_date is 1 week ago, end_date is today
+      const today = new Date();
+      const weekAgo = new Date();
+      weekAgo.setDate(today.getDate() - 7);
+
+      const startDateStr = weekAgo.toISOString().split('T')[0];
+      const endDateStr = today.toISOString().split('T')[0];
+
+      if (document.getElementById('payoutStartDate')) document.getElementById('payoutStartDate').value = startDateStr;
+      if (document.getElementById('payoutEndDate')) document.getElementById('payoutEndDate').value = endDateStr;
+      if (document.getElementById('payoutTkbmStartDate')) document.getElementById('payoutTkbmStartDate').value = startDateStr;
+      if (document.getElementById('payoutTkbmEndDate')) document.getElementById('payoutTkbmEndDate').value = endDateStr;
+
+      // Auto load tab Rekap Gaji Supir per Pabrik (PKS)
+      await initRekapPabrikTab();
+    });
+  </script>
+
+  <!-- Modal Edit Row Rekap -->
+  <div class="modal" id="modalEditRekapRow" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><svg class="icon" aria-hidden="true"><use href="#i-pencil-square"></use></svg> Edit Data Ongkos &amp; Potongan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEditRekapRow">
+            <input type="hidden" id="editRekapId">
+            <div class="mb-4">
+              <label class="form-label font-bold">Info Surat Jalan / Pabrik</label>
+              <input type="text" id="editRekapInfo" class="form-control" readonly>
+            </div>
+            <div class="mb-4">
+              <label class="form-label font-bold">Harga / Kg (Rp)</label>
+              <input type="text" inputmode="numeric" id="editRekapHargaKg" class="form-control format-rupiah"
+                placeholder="Contoh: 110">
+            </div>
+            <div class="mb-4">
+              <label class="form-label font-bold">Potongan Pinjaman / Kasbon (Rp)</label>
+              <input type="text" inputmode="numeric" id="editRekapPinjaman" class="form-control format-rupiah"
+                placeholder="0" oninput="hitungSisaHutangModal()">
+              <div class="flex justify-between text-sm mt-1 p-2 rounded bg-[#f8f9fa]">
+                <span class="text-ink-500">Hutang saat ini: <strong id="editRekapHutang" class="text-red-600">Rp
+                    0</strong></span>
+                <span class="text-ink-500">Sisa hutang: <strong id="editRekapSisaHutang" class="text-ink">Rp
+                    0</strong></span>
+              </div>
+              <div class="form-text">Dari Manajemen Hutang. Sisa = hutang − pinjaman baris ini (belum termasuk baris
+                lain yang belum diproses).</div>
+            </div>
+            <div class="mb-4">
+              <label class="form-label font-bold">Potongan Es + Jalan Poros (Rp)</label>
+              <input type="text" inputmode="numeric" id="editRekapEsJalan" class="form-control format-rupiah"
+                placeholder="0">
+              <div class="form-text">Masukkan manual nominal potongan Es + Jalan jika ada untuk angkutan ini.</div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" onclick="simpanEditRekapRow()"><svg class="icon" aria-hidden="true"><use href="#i-save"></use></svg>
+            Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/icons.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/sidebar.js"></script>
+</body>
+
+</html>

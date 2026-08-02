@@ -16,7 +16,7 @@
   <div id="site-header"></div>
 
   <div class="container-fluid vh-100 py-2 d-flex flex-column" style="max-height: 100vh; overflow: hidden;">
-    <form id="timbangan2Form" class="flex-grow d-flex flex-column justify-content-between overflow-hidden">
+    <form id="timbangan2Form" data-formnav class="flex-grow d-flex flex-column justify-content-between overflow-hidden">
       <input type="hidden" id="idTransaksi" name="id_transaksi">
 
       <!-- PILIH TIKET (Highly Compact) -->
@@ -181,7 +181,40 @@
                       </div>
                     </div>
                     
-                    <!-- Additional inputs omitted for brevity -->
+                    <!-- POTONGAN HUTANG SUPIR -->
+                    <div class="col-12" id="t2field_potongan_hutang" style="display: none;">
+                      <label class="form-label mb-0.5">Potongan Hutang <span style="font-weight:600;">(Max: <span
+                            id="maxSupirDebt">0</span>)</span></label>
+                      <input type="text" inputmode="numeric" name="potongan_hutang_rp"
+                        class="form-control py-1 text-xs font-bold focus:bg-neoYellow outline-none format-rupiah"
+                        id="potonganHutangInput" placeholder="0">
+                      <input type="hidden" id="supirDebtVal" value="0">
+                    </div>
+
+                    <!-- POTONGAN HUTANG SUPPLIER -->
+                    <div class="col-12" id="t2field_potongan_hutang_supplier" style="display: none;">
+                      <label class="form-label mb-0.5">Potongan Hutang Supplier <span style="font-weight:600;">(Max: <span
+                            id="maxSupplierDebt">0</span>)</span></label>
+                      <input type="text" inputmode="numeric" name="potongan_hutang_supplier_rp"
+                        class="form-control py-1 text-xs font-bold focus:bg-neoYellow outline-none format-rupiah"
+                        id="potonganHutangSupplierInput" placeholder="0">
+                      <input type="hidden" id="supplierDebtVal" value="0">
+                    </div>
+
+                    <!-- UPAH BONGKAR -->
+                    <div class="col-12" id="t2field_potongan_muat">
+                      <label class="form-label mb-0.5">Upah Bongkar</label>
+                      <select id="opsiUpahBongkar"
+                        class="form-select py-1 text-xs font-bold focus:bg-neoYellow outline-none mb-1">
+                        <option value="0">Tanpa Upah Bongkar (Rp 0)</option>
+                        <option value="10">Rp 10 x Netto Akhir</option>
+                        <option value="15">Rp 15 x Netto Akhir</option>
+                        <option value="manual">Manual (Input Sendiri)</option>
+                      </select>
+                      <input type="text" inputmode="numeric" name="potongan_muat_rp"
+                        class="form-control py-1 text-xs font-bold focus:bg-neoYellow outline-none format-rupiah"
+                        id="potonganMuatInput" placeholder="0">
+                    </div>
                   </div>
                 </div>
 
@@ -193,15 +226,69 @@
                     <div class="col-6">
                       <div class="border border-black rounded-none bg-neoBg p-1">
                         <div class="text-black font-black uppercase text-[9px] mb-0.5">Bruto</div>
-                        <!-- ... -->
+                        <div class="text-black font-black text-xs" id="hasilBruto">0</div>
                       </div>
                     </div>
-                    <!-- ... -->
+                    <div class="col-6">
+                      <div class="border border-black rounded-none bg-neoBg p-1">
+                        <div class="text-black font-black uppercase text-[9px] mb-0.5">Tara</div>
+                        <div class="text-black font-black text-xs" id="hasilTara">0</div>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="border border-black rounded-none bg-neoBg p-1">
+                        <div class="text-black font-black uppercase text-[9px] mb-0.5">Netto Awal</div>
+                        <div class="text-black font-black text-xs" id="hasilNettoBT">0</div>
+                      </div>
+                    </div>
+                    <div class="col-6" id="result_persen_potongan">
+                      <div class="border border-black rounded-none bg-neoBg p-1">
+                        <div class="text-black font-black uppercase text-[9px] mb-0.5">Potongan (%)</div>
+                        <div class="text-black font-black text-xs">
+                          <span id="hasilPotonganPersen">0%</span>
+                          <span id="hasilPotongan" class="text-[10px] font-bold">= 0 Kg</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="border border-black rounded-none bg-neoBg p-1">
+                        <div class="text-black font-black uppercase text-[9px] mb-0.5">Netto Akhir</div>
+                        <div class="text-black font-black text-xs" id="hasilNettoAkhir">0</div>
+                      </div>
+                    </div>
+                    <div class="col-6" id="result_harga">
+                      <div class="border border-black rounded-none bg-neoBg p-1">
+                        <div class="text-black font-black uppercase text-[9px] mb-0.5">Harga/Kg</div>
+                        <div class="text-black font-black text-xs" id="hasilHargaPerKg">0</div>
+                      </div>
+                    </div>
+                    <div class="col-6" id="result_potongan_hutang" style="display: none;">
+                      <div class="border border-black rounded-none bg-neoBg p-1">
+                        <div class="text-black font-black uppercase text-[9px] mb-0.5">Potongan Hutang</div>
+                        <div class="text-danger font-black text-xs" id="hasilPotonganHutang">0</div>
+                      </div>
+                    </div>
+                    <div class="col-6" id="result_potongan_hutang_supplier" style="display: none;">
+                      <div class="border border-black rounded-none bg-neoBg p-1">
+                        <div class="text-black font-black uppercase text-[9px] mb-0.5">Pot. Hutang Supplier</div>
+                        <div class="text-primary font-black text-xs" id="hasilPotonganHutangSupplier">0</div>
+                      </div>
+                    </div>
+                    <div class="col-6" id="result_potongan_muat" style="display: none;">
+                      <div class="border border-black rounded-none bg-neoBg p-1">
+                        <div class="text-black font-black uppercase text-[9px] mb-0.5">Upah Bongkar</div>
+                        <div class="text-danger font-black text-xs" id="hasilPotonganMuat">0</div>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Total Bayar + Kas + Simpan (inside right half) -->
                   <div class="mt-2">
-                    <!-- ... -->
+                    <div
+                      class="border-2 border-black bg-neoGreen p-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center rounded-none mb-2">
+                      <div class="text-black font-black uppercase text-[9px]">TOTAL BAYAR</div>
+                      <div class="text-black font-black" id="hasilTotalHargaFinal" style="font-size: 20px;">0</div>
+                    </div>
                     <div
                       class="border-2 border-black bg-neoBlue p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center rounded-none mb-2"
                       id="kasContainerT2">
@@ -221,8 +308,6 @@
           </div>
         </div>
       </div>
-
-      </div>
     </form>
   </div>
 
@@ -230,6 +315,7 @@
   <script src="/assets/js/bootstrap.bundle.min.js"></script>
   <script src="/assets/js/sweetalert2.min.js"></script>
   <script src="/js/auto-serial-connect.js" defer></script>
+  <script src="/js/form-nav.js" defer></script>
 
   <script>
     window.activePage = 'timbangan2';
@@ -352,6 +438,7 @@
       document.getElementById('potonganHutangSupplierInput').value = '';
       document.getElementById('t2field_potongan_hutang_supplier').style.display = 'none';
 
+      document.getElementById('opsiUpahBongkar').value = '0';
       document.getElementById('potonganMuatInput').value = '';
 
       if (window.isHutangActive && opt.dataset.pengemudi) {
@@ -419,10 +506,10 @@
         const supirDebt = parseFloat(document.getElementById('supirDebtVal').value) || 0;
         const maxPotongan = Math.max(0, Math.min(supirDebt, totalAwal));
 
-        let pInput = parseFloat(document.getElementById('potonganHutangInput').value) || 0;
+        let pInput = getRawNumber(document.getElementById('potonganHutangInput').value) || 0;
         if (pInput > maxPotongan) {
           pInput = maxPotongan;
-          document.getElementById('potonganHutangInput').value = pInput;
+          document.getElementById('potonganHutangInput').value = formatRupiah(pInput);
         }
         potonganHutang = pInput;
 
@@ -434,18 +521,46 @@
       const supplierDebt = parseFloat(document.getElementById('supplierDebtVal').value) || 0;
       const maxPotonganSupplier = Math.max(0, Math.min(supplierDebt, totalAwal - potonganHutang));
 
-      let pSupplierInput = parseFloat(document.getElementById('potonganHutangSupplierInput').value) || 0;
+      let pSupplierInput = getRawNumber(document.getElementById('potonganHutangSupplierInput').value) || 0;
       if (pSupplierInput > maxPotonganSupplier) {
         pSupplierInput = maxPotonganSupplier;
-        document.getElementById('potonganHutangSupplierInput').value = pSupplierInput;
+        document.getElementById('potonganHutangSupplierInput').value = formatRupiah(pSupplierInput);
       }
       potonganHutangSupplier = pSupplierInput;
 
       document.getElementById('result_potongan_hutang_supplier').style.display = potonganHutangSupplier > 0 ? '' : 'none';
       document.getElementById('hasilPotonganHutangSupplier').textContent = '- Rp ' + formatRibuan(potonganHutangSupplier);
 
-      let potonganMuat = parseFloat(document.getElementById('potonganMuatInput').value) || 0;
-      document.getElementById('result_potongan_muat').style.display = potonganMuat > 0 ? '' : 'none';
+      // Upah bongkar: preset (Rp 10/15 × netto akhir) atau manual
+      const fieldBongkarContainer = document.getElementById('t2field_potongan_muat');
+      const isBongkarDisabled = fieldBongkarContainer && fieldBongkarContainer.style.display === 'none';
+      let potonganMuat = 0;
+
+      if (isBongkarDisabled) {
+        potonganMuat = 0;
+        if (document.getElementById('potonganMuatInput')) document.getElementById('potonganMuatInput').value = '';
+        if (document.getElementById('opsiUpahBongkar')) document.getElementById('opsiUpahBongkar').value = '0';
+      } else {
+        const opsiBongkar = document.getElementById('opsiUpahBongkar').value;
+        if (opsiBongkar === '15') {
+          potonganMuat = nettoAkhir * 15;
+          document.getElementById('potonganMuatInput').value = formatRupiah(potonganMuat);
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else if (opsiBongkar === '10') {
+          potonganMuat = nettoAkhir * 10;
+          document.getElementById('potonganMuatInput').value = formatRupiah(potonganMuat);
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else if (opsiBongkar === '0') {
+          potonganMuat = 0;
+          document.getElementById('potonganMuatInput').value = '';
+          document.getElementById('potonganMuatInput').readOnly = true;
+        } else {
+          document.getElementById('potonganMuatInput').readOnly = false;
+          potonganMuat = getRawNumber(document.getElementById('potonganMuatInput').value) || 0;
+        }
+      }
+
+      document.getElementById('result_potongan_muat').style.display = (potonganMuat > 0 && !isBongkarDisabled) ? '' : 'none';
       document.getElementById('hasilPotonganMuat').textContent = '- Rp ' + formatRibuan(potonganMuat);
 
       const totalAkhir = Math.max(0, totalAwal - potonganHutang - potonganHutangSupplier - potonganMuat);
@@ -489,6 +604,7 @@
     document.getElementById('potonganHutangInput').addEventListener('input', hitungKalkulasi);
     document.getElementById('potonganHutangSupplierInput').addEventListener('input', hitungKalkulasi);
     document.getElementById('potonganMuatInput').addEventListener('input', hitungKalkulasi);
+    document.getElementById('opsiUpahBongkar').addEventListener('change', hitungKalkulasi);
 
     document.getElementById('captureWeight2').addEventListener('click', function () {
       const w = parseInt(document.getElementById('weightDisplay2Large').dataset.rawWeight) || 0;
@@ -542,9 +658,9 @@
           persen_potongan: persen,
           kg_potongan: kgPot,
           harga_per_kg: harga,
-          potongan_hutang_rp: parseFloat(document.getElementById('potonganHutangInput').value) || 0,
-          potongan_hutang_supplier_rp: parseFloat(document.getElementById('potonganHutangSupplierInput').value) || 0,
-          potongan_muat_rp: parseFloat(document.getElementById('potonganMuatInput').value) || 0,
+          potongan_hutang_rp: window.isHutangActive ? (getRawNumber(document.getElementById('potonganHutangInput').value) || 0) : 0,
+          potongan_hutang_supplier_rp: getRawNumber(document.getElementById('potonganHutangSupplierInput').value) || 0,
+          potongan_muat_rp: getRawNumber(document.getElementById('potonganMuatInput').value) || 0,
           keterangan: keterangan
         };
 
@@ -564,6 +680,7 @@
           document.getElementById('supirDebtVal').value = 0;
           document.getElementById('maxSupirDebt').textContent = '0';
           document.getElementById('potonganHutangInput').value = '';
+          document.getElementById('opsiUpahBongkar').value = '0';
           document.getElementById('potonganMuatInput').value = '';
           document.getElementById('cancelTiketBtn').style.display = 'none';
           window.isWeightLocked2 = false;
@@ -774,6 +891,7 @@
               document.getElementById('supirDebtVal').value = 0;
               document.getElementById('maxSupirDebt').textContent = '0';
               document.getElementById('potonganHutangInput').value = '';
+              document.getElementById('opsiUpahBongkar').value = '0';
               document.getElementById('potonganMuatInput').value = '';
               document.getElementById('cancelTiketBtn').style.display = 'none';
               hitungKalkulasi();

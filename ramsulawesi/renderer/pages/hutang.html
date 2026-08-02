@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen Hutang - Weighbridge Arroyan</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="/assets/css/sweetalert2.min.css">
+</head>
+
+<body>
+  <div id="site-header"></div>
+  <div class="main-container">
+    <div class="page-header flex justify-between items-center">
+      <h1 class="page-title"><svg class="icon" aria-hidden="true"><use href="#i-wallet2"></use></svg> Laporan &amp; Manajemen Hutang</h1>
+      <button class="btn btn-outline-success" id="exportExcelBtn">
+        <svg class="icon" aria-hidden="true"><use href="#i-file-earmark-excel-fill"></use></svg> Export Rekap Excel
+      </button>
+    </div>
+
+    <!-- Toggle Tipe Hutang (dibangun dinamis) -->
+    <div class="flex justify-center mb-4">
+      <div class="btn-group flex-wrap" role="group" id="typeToggle">
+        <span class="text-ink-500 p-2">Memuat tipe...</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-12 gap-6 mt-1">
+      <!-- List Column -->
+      <div class="col-span-12 md:col-span-4">
+        <div class="card shadow-sm">
+          <div class="card-header flex justify-between items-center">
+            <h5 class="mb-0 text-base" id="listColumnTitle">Daftar</h5>
+            <button class="btn btn-sm btn-primary" id="btnRegister" style="display:none;"><svg class="icon" aria-hidden="true"><use href="#i-person-plus-fill"></use></svg> Tambah</button>
+          </div>
+          <div class="card-body p-2">
+            <input type="text" id="searchInput" class="form-control form-control-sm mb-2" placeholder="Cari nama...">
+            <div class="list-group list-group-flush max-h-[500px] overflow-y-auto" id="partyListGroup">
+              <div class="text-ink-500 text-center p-4">Memuat data...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Column -->
+      <div class="col-span-12 md:col-span-8">
+        <div class="card shadow-sm h-full" id="detailCard" style="display: none;">
+          <div class="card-header flex justify-between items-center flex-wrap gap-1">
+            <h5 class="mb-0 text-base" id="detailName">Detail Hutang</h5>
+            <div>
+              <button class="btn btn-sm btn-success mr-1" id="btnBayar"><svg class="icon" aria-hidden="true"><use href="#i-cash-stack"></use></svg> Bayar</button>
+              <button class="btn btn-sm btn-warning mr-1" id="btnTambah"><svg class="icon" aria-hidden="true"><use href="#i-plus-circle"></use></svg> Tambah</button>
+              <button class="btn btn-sm btn-outline-dark mr-1" id="btnPrint"><svg class="icon" aria-hidden="true"><use href="#i-printer"></use></svg> Cetak Riwayat</button>
+              <button class="btn btn-sm btn-outline-secondary mr-1" id="btnEditKontak" style="display:none;"><svg class="icon" aria-hidden="true"><use href="#i-pencil"></use></svg> Edit</button>
+              <button class="btn btn-sm btn-outline-danger" id="btnHapusKontak" style="display:none;"><svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg> Hapus</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="grid grid-cols-12 gap-6 mb-4 p-4 rounded bg-bw-100 border border-bw-300">
+              <div class="col-span-6">
+                <span class="text-ink-500 text-sm">Total Sisa Hutang</span>
+                <h3 class="text-red-600 font-bold mb-0" id="detailTotalHutang">Rp 0</h3>
+              </div>
+              <div class="col-span-6 text-right">
+                <span class="text-ink-500 text-sm">Status</span>
+                <h4 id="detailStatus" class="mb-0 mt-1"><span class="badge bg-green-600">Aktif</span></h4>
+              </div>
+            </div>
+
+            <h5 class="text-base mb-2"><svg class="icon" aria-hidden="true"><use href="#i-clock-history"></use></svg> Histori Pembayaran &amp; Hutang</h5>
+            <div class="history-container table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Jenis</th>
+                    <th>Sumber</th>
+                    <th>Jumlah</th>
+                    <th>Sisa Saldo</th>
+                    <th>Keterangan</th>
+                    <th>Operator</th>
+                  </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm h-full flex items-center justify-center text-ink-500 p-12" id="noSelectionPlaceholder">
+          <div class="text-center">
+            <svg class="icon text-[5rem] font-light leading-none text-ink-600" aria-hidden="true"><use href="#i-wallet-fill"></use></svg>
+            <p class="mt-4" id="placeholderText">Pilih nama dari daftar untuk melihat detail histori hutang.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/jquery-3.7.1.min.js"></script>
+  <script src="/assets/js/sweetalert2.min.js"></script>
+  <script src="/js/icons.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/sidebar.js"></script>
+  <script>
+    window.activePage = 'hutang';
+
+    let types = [];          // [{key,label,isKontak}]
+    let currentType = null;
+    let currentCfg = null;
+    let dataList = [];
+    let selectedId = null;
+
+    function fmtRp(n) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(n || 0); }
+    function cfgOf(type) { return types.find(t => t.key === type); }
+
+    // ─── Inisialisasi daftar tipe pihak ────────────────────────────────────────
+    async function initTypes() {
+      try {
+        const r = await (await fetch('/hutang/types')).json();
+        if (!r.success || !r.data.length) throw new Error('Tipe hutang kosong');
+        types = r.data;
+        const grp = document.getElementById('typeToggle');
+        grp.innerHTML = types.map((t, i) => `
+          <input type="radio" class="btn-check" name="modeHutang" id="mt_${t.key}" value="${t.key}" ${i === 0 ? 'checked' : ''} autocomplete="off">
+          <label class="btn btn-outline-primary font-bold" for="mt_${t.key}">${t.label}</label>
+        `).join('');
+        grp.querySelectorAll('input[name="modeHutang"]').forEach(rad => {
+          rad.addEventListener('change', () => setType(rad.value));
+        });
+        setType(types[0].key);
+      } catch (e) {
+        document.getElementById('typeToggle').innerHTML = '<span class="text-red-600 p-2">Gagal memuat tipe hutang</span>';
+      }
+    }
+
+    function setType(type) {
+      currentType = type;
+      currentCfg = cfgOf(type);
+      selectedId = null;
+      document.getElementById('detailCard').style.display = 'none';
+      document.getElementById('noSelectionPlaceholder').style.display = 'flex';
+      document.getElementById('btnRegister').style.display = currentCfg.isKontak ? '' : 'none';
+      document.getElementById('listColumnTitle').textContent = 'Daftar ' + currentCfg.label;
+      document.getElementById('placeholderText').textContent =
+        `Pilih ${currentCfg.label.toLowerCase()} dari daftar untuk melihat detail histori hutang.`;
+      loadData();
+    }
+
+    async function loadData() {
+      const container = document.getElementById('partyListGroup');
+      container.innerHTML = '<div class="text-ink-500 text-center p-4">Memuat data...</div>';
+      try {
+        const r = await (await fetch(`/hutang/${currentType}/list?_t=` + Date.now())).json();
+        if (r.success) { dataList = r.data; renderList(); }
+        else container.innerHTML = `<div class="text-red-600 text-center p-4">${r.message}</div>`;
+      } catch (e) {
+        container.innerHTML = '<div class="text-red-600 text-center p-4">Gagal memuat data</div>';
+      }
+    }
+
+    function renderList() {
+      const searchVal = document.getElementById('searchInput').value.toUpperCase();
+      const container = document.getElementById('partyListGroup');
+      container.innerHTML = '';
+      const filtered = dataList.filter(s => (s.nama || '').toUpperCase().includes(searchVal));
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-ink-500 text-center p-4">Tidak ada data</div>';
+        return;
+      }
+      filtered.forEach(s => {
+        const item = document.createElement('div');
+        item.className = `list-group-item-custom flex justify-between items-center ${selectedId === s.id ? 'active' : ''}`;
+        item.onclick = () => selectItem(s.id);
+        item.innerHTML = `
+          <div>
+            <strong class="block">${s.nama}</strong>
+            ${s.no_telepon ? `<span class="text-sm text-ink-500">${s.no_telepon}</span>` : ''}
+          </div>
+          <span class="badge text-white rounded-full ${s.total_hutang > 0 ? 'bg-red-600' : 'bg-green-600'}">${fmtRp(s.total_hutang)}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function selectItem(id) {
+      selectedId = id;
+      renderList();
+      const item = dataList.find(s => s.id === id);
+      if (!item) return;
+
+      document.getElementById('noSelectionPlaceholder').style.display = 'none';
+      document.getElementById('detailCard').style.display = 'block';
+      document.getElementById('detailName').innerHTML = `<svg class="icon" aria-hidden="true"><use href="#i-person-fill"></use></svg> ${currentCfg.label}: ${item.nama}`;
+      document.getElementById('detailTotalHutang').textContent = fmtRp(item.total_hutang);
+      document.getElementById('detailStatus').innerHTML = item.status === 'active'
+        ? '<span class="badge bg-green-600">Aktif</span>'
+        : '<span class="badge bg-ink-600">Nonaktif</span>';
+
+      // Tombol edit/hapus hanya untuk kontak (petani/karyawan)
+      document.getElementById('btnEditKontak').style.display = currentCfg.isKontak ? '' : 'none';
+      document.getElementById('btnHapusKontak').style.display = currentCfg.isKontak ? '' : 'none';
+
+      const historyBody = document.getElementById('historyBody');
+      historyBody.innerHTML = '<tr><td colspan="7" class="text-center text-ink-500">Memuat histori...</td></tr>';
+      try {
+        const r = await (await fetch(`/hutang/${currentType}/history/${id}?_t=` + Date.now())).json();
+        if (r.success) {
+          if (!r.data.length) {
+            historyBody.innerHTML = '<tr><td colspan="7" class="text-center text-ink-500">Belum ada histori</td></tr>';
+            return;
+          }
+          historyBody.innerHTML = r.data.map(h => {
+            const badge = h.jenis === 'tambah'
+              ? '<span class="badge bg-red-600">Hutang</span>'
+              : '<span class="badge bg-green-600">Bayar</span>';
+            const sumber = { manual: 'Manual', timbangan: 'Timbangan', gaji: 'Gaji' }[h.sumber] || (h.sumber || '-');
+            const tgl = h.tanggal ? new Date(h.tanggal).toLocaleDateString('id-ID') : '-';
+            return `
+              <tr>
+                <td>${tgl}</td>
+                <td class="text-center">${badge}</td>
+                <td class="text-center"><span class="text-sm text-ink-500">${sumber}</span></td>
+                <td class="text-right font-bold">${fmtRp(h.jumlah)}</td>
+                <td class="text-right text-amber-500">${fmtRp(h.saldo_setelah)}</td>
+                <td>${h.keterangan || '-'}</td>
+                <td>${h.nama_operator || '-'}</td>
+              </tr>`;
+          }).join('');
+        } else {
+          historyBody.innerHTML = `<tr><td colspan="7" class="text-center text-red-600">${r.message}</td></tr>`;
+        }
+      } catch (e) {
+        historyBody.innerHTML = '<tr><td colspan="7" class="text-center text-red-600">Gagal memuat histori</td></tr>';
+      }
+    }
+
+    // ─── Mutasi hutang (bayar / tambah) ────────────────────────────────────────
+    async function mutasi(jenis) {
+      if (!selectedId) return;
+      const item = dataList.find(s => s.id === selectedId);
+      if (!item) return;
+      const judul = jenis === 'bayar' ? 'Bayar Hutang' : 'Tambah Hutang';
+      const { value: form } = await Swal.fire({
+        title: `${judul}: ${item.nama}`,
+        html: `
+          <div class="mb-4 text-left">
+            <label class="form-label">Jumlah (Rp)</label>
+            <input id="swal-jumlah" type="text" inputmode="numeric" class="form-control format-rupiah" placeholder="0">
+          </div>
+          <div class="mb-4 text-left">
+            <label class="form-label">Keterangan</label>
+            <input id="swal-ket" class="form-control" value="${jenis === 'bayar' ? 'Pembayaran manual' : 'Penambahan manual'}">
+          </div>
+          <div class="mb-4 text-left">
+            <label class="form-label">Tanggal</label>
+            <input id="swal-tgl" type="date" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="mb-2 text-left">
+            <label class="form-label">Bentuk Transaksi</label>
+            <select id="swal-tunai" class="form-control">
+              <option value="1" selected>Tunai — uang ${jenis === 'bayar' ? 'masuk ke' : 'keluar dari'} kas</option>
+              <option value="0">Non-tunai — tidak menyentuh kas</option>
+            </select>
+            <small class="text-ink-500" id="swal-tunai-hint"></small>
+          </div>`,
+        focusConfirm: false, showCancelButton: true,
+        confirmButtonText: judul, cancelButtonText: 'Batal',
+        didOpen: () => {
+          // Keterangan dampak ke kas ditampilkan langsung supaya operator tidak
+          // salah pilih: hutang barang (mis. pupuk) atau saldo awal itu non-tunai.
+          const sel = document.getElementById('swal-tunai');
+          const hint = document.getElementById('swal-tunai-hint');
+          const perbarui = () => {
+            hint.textContent = sel.value === '1'
+              ? (jenis === 'bayar'
+                  ? 'Buku Kas akan mencatat uang masuk sejumlah ini.'
+                  : 'Buku Kas akan mencatat uang keluar sejumlah ini.')
+              : 'Hanya saldo hutang yang berubah. Pilih ini untuk hutang barang/pupuk atau saldo awal.';
+          };
+          sel.addEventListener('change', perbarui);
+          perbarui();
+        },
+        preConfirm: () => {
+          const jumlah = getRawNumber(document.getElementById('swal-jumlah').value);
+          if (!jumlah || jumlah <= 0) { Swal.showValidationMessage('Jumlah harus lebih dari 0'); return false; }
+          return {
+            id: selectedId,
+            jumlah,
+            keterangan: document.getElementById('swal-ket').value,
+            tanggal: document.getElementById('swal-tgl').value,
+            is_tunai: document.getElementById('swal-tunai').value === '1'
+          };
+        }
+      });
+      if (!form) return;
+      try {
+        const r = await (await fetch(`/hutang/${currentType}/${jenis}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form)
+        })).json();
+        if (r.success) {
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1400, showConfirmButton: false });
+          await loadData();
+          await selectItem(selectedId);
+        } else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+      } catch (e) { Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal memproses transaksi' }); }
+    }
+
+    // ─── Tambah kontak baru (petani / karyawan) ────────────────────────────────
+    async function registerKontak() {
+      const { value: form } = await Swal.fire({
+        title: `Tambah ${currentCfg.label} Baru`,
+        html: `
+          <input id="rk-nama" class="swal2-input uppercase" placeholder="Nama">
+          <input id="rk-telp" class="swal2-input" placeholder="No Telepon (opsional)">
+          <input id="rk-alamat" class="swal2-input" placeholder="Alamat (opsional)">
+          <input id="rk-hutang" type="text" inputmode="numeric" class="swal2-input format-rupiah" placeholder="Hutang Awal Rp (opsional)">`,
+        focusConfirm: false, showCancelButton: true, confirmButtonText: 'Daftarkan', cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const nama = document.getElementById('rk-nama').value.trim();
+          if (!nama) { Swal.showValidationMessage('Nama harus diisi'); return false; }
+          return {
+            nama, no_telepon: document.getElementById('rk-telp').value,
+            alamat: document.getElementById('rk-alamat').value,
+            initial_debt: getRawNumber(document.getElementById('rk-hutang').value) || 0
+          };
+        }
+      });
+      if (!form) return;
+      const r = await (await fetch(`/hutang/${currentType}/kontak`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form)
+      })).json();
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1400, showConfirmButton: false }); loadData(); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+    }
+
+    async function editKontak() {
+      if (!selectedId) return;
+      const item = dataList.find(s => s.id === selectedId);
+      if (!item) return;
+      const { value: form } = await Swal.fire({
+        title: `Edit ${currentCfg.label}`,
+        html: `
+          <input id="ek-nama" class="swal2-input uppercase" value="${item.nama}">
+          <input id="ek-telp" class="swal2-input" value="${item.no_telepon || ''}" placeholder="No Telepon">
+          <input id="ek-alamat" class="swal2-input" value="${item.alamat || ''}" placeholder="Alamat">
+          <select id="ek-status" class="swal2-input">
+            <option value="active" ${item.status === 'active' ? 'selected' : ''}>Aktif</option>
+            <option value="inactive" ${item.status !== 'active' ? 'selected' : ''}>Nonaktif</option>
+          </select>`,
+        focusConfirm: false, showCancelButton: true, confirmButtonText: 'Simpan', cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const nama = document.getElementById('ek-nama').value.trim();
+          if (!nama) { Swal.showValidationMessage('Nama harus diisi'); return false; }
+          return { nama, no_telepon: document.getElementById('ek-telp').value, alamat: document.getElementById('ek-alamat').value, status: document.getElementById('ek-status').value };
+        }
+      });
+      if (!form) return;
+      const r = await (await fetch(`/hutang/${currentType}/kontak/${selectedId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form)
+      })).json();
+      if (r.success) { Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1400, showConfirmButton: false }); await loadData(); await selectItem(selectedId); }
+      else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+    }
+
+    async function hapusKontak() {
+      if (!selectedId) return;
+      const item = dataList.find(s => s.id === selectedId);
+      const conf = await Swal.fire({
+        icon: 'warning', title: 'Hapus permanen?',
+        text: `${item ? item.nama : 'Data'} beserta seluruh riwayat hutangnya akan dihapus dan tidak bisa dikembalikan.`,
+        showCancelButton: true, confirmButtonText: 'Ya, hapus', confirmButtonColor: '#dc2626'
+      });
+      if (!conf.isConfirmed) return;
+      const r = await (await fetch(`/hutang/${currentType}/kontak/${selectedId}`, { method: 'DELETE' })).json();
+      if (r.success) {
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: r.message, timer: 1400, showConfirmButton: false });
+        selectedId = null;
+        document.getElementById('detailCard').style.display = 'none';
+        document.getElementById('noSelectionPlaceholder').style.display = 'flex';
+        loadData();
+      } else Swal.fire({ icon: 'error', title: 'Gagal', text: r.message });
+    }
+
+    // ─── Event bindings ────────────────────────────────────────────────────────
+    document.getElementById('searchInput').addEventListener('input', renderList);
+    document.getElementById('btnBayar').addEventListener('click', () => mutasi('bayar'));
+    document.getElementById('btnTambah').addEventListener('click', () => mutasi('tambah'));
+    document.getElementById('btnRegister').addEventListener('click', registerKontak);
+    document.getElementById('btnEditKontak').addEventListener('click', editKontak);
+    document.getElementById('btnHapusKontak').addEventListener('click', hapusKontak);
+    document.getElementById('btnPrint').addEventListener('click', () => {
+      if (currentType && selectedId) {
+        window.open(`/hutang-print/${currentType}/${selectedId}`, '_blank', 'width=850,height=650');
+      }
+    });
+    document.getElementById('exportExcelBtn').addEventListener('click', () => {
+      if (currentType) window.location.href = `/hutang/${currentType}/export`;
+    });
+
+    initTypes();
+  </script>
+</body>
+</html>

@@ -44,7 +44,7 @@
       
       <div id="alert-message" class="alert mb-6" style="display:none"></div>
       
-      <form id="loginForm" class="space-y-6">
+      <form id="loginForm" data-formnav class="space-y-6">
         <div>
           <label for="username" class="text-sm font-black text-black uppercase tracking-wider block mb-2">Username</label>
           <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required autocomplete="username" style="border-width: 2px !important;" autofocus>
@@ -67,6 +67,7 @@
   <script src="/assets/js/jquery-3.7.1.min.js"></script>
   <script src="/assets/js/bootstrap.bundle.min.js"></script>
   <script src="/assets/js/sweetalert2.min.js"></script>
+  <script src="/js/form-nav.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', function() {
     const userInp = document.getElementById('username');

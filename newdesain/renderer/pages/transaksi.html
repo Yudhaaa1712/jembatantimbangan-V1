@@ -175,9 +175,10 @@
         const totalAwal = parseFloat(row.total_harga) > 0 ? parseFloat(row.total_harga) : nettoAkhir*harga;
         const potPupuk = parseFloat(row.potongan_pupuk_rp||0);
         const potHutang = parseFloat(row.potongan_hutang_rp||0);
+        const potHutangSupplier = parseFloat(row.potongan_hutang_supplier_rp||0);
         const potJalan = parseFloat(row.potongan_jalan||0);
         const potMuat = parseFloat(row.potongan_muat_rp||0);
-        const totalPotRp = potPupuk+potHutang+potJalan+potMuat;
+        const totalPotRp = potPupuk+potHutang+potHutangSupplier+potJalan+potMuat;
         const totalAkhir = Math.max(0, totalAwal - totalPotRp);
         const fmtDate = row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }) : '-';
 
@@ -230,7 +231,9 @@
       if (t1.material !== false) supCols++;
       const showPot = t2.persen_potongan !== false;
       const showHarga = (t1.harga !== false || t2.harga !== false);
-      const showHutang = (activeFeatures.hutang === true && t2.potongan_hutang !== false) || (t2.potongan_muat !== false);
+      const showHutangSupir = (activeFeatures.hutang === true && t2.potongan_hutang !== false);
+      const showHutangSupplier = (activeFeatures.hutang === true && t2.potongan_hutang !== false);
+      const showMuat = (t2.potongan_muat !== false);
       const showKet = (t1.keterangan !== false || t2.keterangan !== false);
 
       let theadHtml = `
@@ -246,7 +249,9 @@
           ${showPot ? `<th colspan="2" style="text-align: center;">POTONGAN BERAT</th>` : ''}
           <th rowspan="2" style="vertical-align: middle;">NETTO 2 (KG)</th>
           ${showHarga ? `<th rowspan="2" style="vertical-align: middle;">HARGA</th><th rowspan="2" style="vertical-align: middle;">TOTAL AWAL</th>` : ''}
-          ${showHutang ? `<th rowspan="2" style="vertical-align: middle;">POTONG HUTANG</th>` : ''}
+          ${showHutangSupir ? `<th rowspan="2" style="vertical-align: middle;">POTONG HUTANG SUPIR</th>` : ''}
+          ${showHutangSupplier ? `<th rowspan="2" style="vertical-align: middle;">POTONG HUTANG SUPPLIER</th>` : ''}
+          ${showMuat ? `<th rowspan="2" style="vertical-align: middle;">UPAH BONGKAR</th>` : ''}
           ${showHarga ? `<th rowspan="2" style="vertical-align: middle;">TOTAL AKHIR</th>` : ''}
           ${showKet ? `<th rowspan="2" style="vertical-align: middle;">KETERANGAN</th>` : ''}
           <th rowspan="2" style="vertical-align: middle;">OPERATOR</th>
@@ -281,9 +286,10 @@
         const totalAwal = parseFloat(row.total_harga) > 0 ? parseFloat(row.total_harga) : nettoAkhir*harga;
         const potPupuk = parseFloat(row.potongan_pupuk_rp||0);
         const potHutang = parseFloat(row.potongan_hutang_rp||0);
+        const potHutangSupplier = parseFloat(row.potongan_hutang_supplier_rp||0);
         const potJalan = parseFloat(row.potongan_jalan||0);
         const potMuat = parseFloat(row.potongan_muat_rp||0);
-        const totalPotRp = potPupuk+potHutang+potJalan+potMuat;
+        const totalPotRp = potPupuk+potHutang+potHutangSupplier+potJalan+potMuat;
         const totalAkhir = Math.max(0, totalAwal - totalPotRp);
         const fmtDate = row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-';
         const extractTimeOnly = (str) => {
@@ -319,7 +325,9 @@
           <td style="text-align:right;font-weight:bold;">${nettoAkhir.toLocaleString('id-ID')}</td>
           ${showHarga ? `<td style="text-align:right;">${harga>0?'Rp '+harga.toLocaleString('id-ID'):'-'}</td>
           <td style="text-align:right;">${totalAwal>0?'Rp '+totalAwal.toLocaleString('id-ID'):'-'}</td>` : ''}
-          ${showHutang ? `<td style="text-align:right;color:#b8860b;font-weight:bold;">${totalPotRp>0?'- Rp '+totalPotRp.toLocaleString('id-ID'):'-'}</td>` : ''}
+          ${showHutangSupir ? `<td style="text-align:right;color:#ef4444;">${potHutang>0?'- Rp '+potHutang.toLocaleString('id-ID'):'-'}</td>` : ''}
+          ${showHutangSupplier ? `<td style="text-align:right;color:#3b82f6;">${potHutangSupplier>0?'- Rp '+potHutangSupplier.toLocaleString('id-ID'):'-'}</td>` : ''}
+          ${showMuat ? `<td style="text-align:right;color:#f59e0b;">${potMuat>0?'- Rp '+potMuat.toLocaleString('id-ID'):'-'}</td>` : ''}
           ${showHarga ? `<td style="text-align:right;font-weight:bold;color:#008a36;">${totalAkhir>0?'Rp '+totalAkhir.toLocaleString('id-ID'):'-'}</td>` : ''}
           ${showKet ? `<td style="max-width:200px;">${row.keterangan||'-'}</td>` : ''}
           <td>${(row.operator_nama||'-').toUpperCase()}</td>
@@ -489,7 +497,7 @@
                <option value="semua">Semua Laporan</option>
                <option value="transaksi">Laporan Transaksi Timbangan</option>
                <option value="keuangan">Laporan Keuangan / Kas</option>
-               <option value="pengiriman">Laporan Pengiriman Pabrik</option>
+               <option value="pengiriman">Laporan Timbangan Jual</option>
              </select>`,
       focusConfirm: false,
       showCancelButton: true,

@@ -8,6 +8,7 @@ const ExcelJS = require('exceljs');
 const { query, queryOne, pool, jsonResponse, cleanInput, beginTransaction } = require('../config/database');
 const { isLoggedIn, requireRole, getCurrentUser } = require('../middleware/auth');
 const { recalculateKasBalances } = require('../helpers/kasHelper');
+const { catatHutangTx } = require('../helpers/hutang');
 
 router.use(isLoggedIn);
 
@@ -48,7 +49,7 @@ router.get('/list', async (req, res) => {
        LEFT JOIN supplier s ON tt.id_supplier = s.id
        LEFT JOIN users u ON tt.operator_id = u.id
        WHERE ${dateSql} AND ((tt.status = 'selesai' AND tt.timbang2_locked = 1) OR tt.status = 'dibatalkan')
-       ORDER BY tt.created_at DESC`,
+       ORDER BY COALESCE(tt.waktu_keluar, tt.waktu_timbangan2, tt.updated_at, tt.created_at) ASC, tt.id ASC`,
       dateParams
     );
 
@@ -225,19 +226,21 @@ router.post('/cancel', requireRole('admin', 'operator'), async (req, res) => {
     // -------------------------------------------
 
     if (actionType === 'delete') {
-      const fullTrx = await queryOne(`SELECT id_supir, id_supplier, potongan_hutang_rp, potongan_hutang_supplier_rp FROM transaksi_timbangan WHERE id = ?`, [id]);
+      const fullTrx = await queryOne(`SELECT id FROM transaksi_timbangan WHERE id = ?`, [id]);
       if (fullTrx) {
+        // Kembalikan setiap potongan hutang otomatis dari transaksi ini (berdasarkan buku besar),
+        // apa pun jenis pihaknya (supir/supplier/dll) — tidak bergantung kolom id di transaksi.
+        const potongan = await query(
+          `SELECT party_type, party_id, jumlah FROM hutang_ledger
+           WHERE id_referensi = ? AND sumber = 'timbangan' AND jenis = 'bayar'`, [id]
+        );
         const tx = beginTransaction();
         try {
-          // Restore supir debt if deducted
-          if (fullTrx.id_supir && parseFloat(fullTrx.potongan_hutang_rp) > 0) {
-            tx.execute(`UPDATE supir SET total_hutang = total_hutang + ? WHERE id = ?`, [parseFloat(fullTrx.potongan_hutang_rp), fullTrx.id_supir]);
-            tx.execute(`DELETE FROM hutang_supir_history WHERE id_transaksi = ?`, [id]);
-          }
-          // Restore supplier debt if deducted
-          if (fullTrx.id_supplier && parseFloat(fullTrx.potongan_hutang_supplier_rp) > 0) {
-            tx.execute(`UPDATE supplier SET total_hutang = total_hutang + ? WHERE id = ?`, [parseFloat(fullTrx.potongan_hutang_supplier_rp), fullTrx.id_supplier]);
-            tx.execute(`DELETE FROM hutang_supplier_history WHERE id_transaksi = ?`, [id]);
+          for (const p of potongan) {
+            catatHutangTx(tx, {
+              type: p.party_type, partyId: p.party_id, jenis: 'tambah', jumlah: p.jumlah,
+              keterangan: `Pembatalan/hapus transaksi #${id}`, idReferensi: id, sumber: 'timbangan', operatorId: req.session.user_id
+            });
           }
           // Delete kas record
           tx.execute(`DELETE FROM kas WHERE id_transaksi = ?`, [id]);
@@ -370,7 +373,9 @@ router.get('/export-excel', requireRole('admin'), async (req, res) => {
     }
 
     const showPrice = (t1Fields.harga !== false || t2Fields.harga !== false);
-    const showHutang = true;
+    const showHutang = (activeFeatures.hutang === true && t2Fields.potongan_hutang !== false);
+    const showHutangSupplier = (activeFeatures.hutang === true && t2Fields.potongan_hutang !== false);
+    const showMuat = (t2Fields.potongan_muat !== false);
     const showKas = (activeFeatures.keuangan !== false);
     const showKet = (t1Fields.keterangan !== false || t2Fields.keterangan !== false);
 
@@ -380,8 +385,10 @@ router.get('/export-excel', requireRole('admin'), async (req, res) => {
     if (t1Fields.nama_suplier !== false) totalCols++;
     totalCols += 2; // BRUTO, TARA
     if (t2Fields.persen_potongan !== false) totalCols += 2;
-    if (showPrice) totalCols += 4; // Harga, Total Awal, Potong Muat, Total Akhir
+    if (showPrice) totalCols += 3; // Harga, Total Awal, Total Akhir
     if (showHutang) totalCols++;
+    if (showHutangSupplier) totalCols++;
+    if (showMuat) totalCols++;
     if (showKas) totalCols++;
     if (showKet) totalCols++;
 
@@ -417,10 +424,15 @@ router.get('/export-excel', requireRole('admin'), async (req, res) => {
         <th rowspan="2">TOTAL AWAL</th>`;
       }
       if (showHutang) {
-        tableHtml += `<th rowspan="2">POTONG HUTANG</th>`;
+        tableHtml += `<th rowspan="2">POTONG HUTANG SUPIR</th>`;
+      }
+      if (showHutangSupplier) {
+        tableHtml += `<th rowspan="2">POTONG HUTANG SUPPLIER</th>`;
+      }
+      if (showMuat) {
+        tableHtml += `<th rowspan="2">UPAH BONGKAR</th>`;
       }
       if (showPrice) {
-        tableHtml += `<th rowspan="2">POTONG MUAT</th>`;
         tableHtml += `<th rowspan="2">TOTAL AKHIR</th>`;
       }
       if (showKas) {
@@ -446,7 +458,7 @@ router.get('/export-excel', requireRole('admin'), async (req, res) => {
         return { html: tableHtml, totals: { bruto:0, netto1:0, netto2:0, potonganKg:0, totalAwal:0, potRp:0, totalAkhir:0 }, runningKas };
       }
 
-      let no = 1, gt = { bruto:0, netto1:0, netto2:0, potonganKg:0, totalAwal:0, potRp:0, potHut:0, potMuat:0, totalAkhir:0 };
+      let no = 1, gt = { bruto:0, netto1:0, netto2:0, potonganKg:0, totalAwal:0, potRp:0, potHut:0, potHutSupplier:0, potMuat:0, totalAkhir:0 };
 
       for (const data of dataRows) {
         const calc = calculateRowValues(data);
@@ -454,9 +466,8 @@ router.get('/export-excel', requireRole('admin'), async (req, res) => {
         // Running kas berkurang setiap transaksi
         runningKas -= calc.sisa;
 
-        const potHutRow = (calc.potHut || 0) + (calc.potHutSupplier || 0);
         gt.bruto += calc.bruto; gt.netto1 += calc.netto1; gt.netto2 += calc.netto2;
-        gt.potonganKg += calc.kgPot; gt.totalAwal += calc.totGross; gt.potRp += calc.totPot; gt.potHut += potHutRow; gt.potMuat += calc.potMuat; gt.totalAkhir += calc.sisa;
+        gt.potonganKg += calc.kgPot; gt.totalAwal += calc.totGross; gt.potRp += calc.totPot; gt.potHut += calc.potHut; gt.potHutSupplier += calc.potHutSupplier; gt.potMuat += calc.potMuat; gt.totalAkhir += calc.sisa;
         
         const tgl = data.tanggal ? new Date(data.tanggal).toLocaleDateString('id-ID') : '-';
         const extractTime8 = (str) => {
@@ -500,11 +511,18 @@ router.get('/export-excel', requireRole('admin'), async (req, res) => {
         }
         if (showHutang) {
             tableHtml += `
-            <td class="currency-format" style="color: #DC2626;">${formatRupiah(potHutRow)}</td>`;
+            <td class="currency-format" style="color: #DC2626;">${formatRupiah(calc.potHut)}</td>`;
+        }
+        if (showHutangSupplier) {
+            tableHtml += `
+            <td class="currency-format" style="color: #3B82F6;">${formatRupiah(calc.potHutSupplier)}</td>`;
+        }
+        if (showMuat) {
+            tableHtml += `
+            <td class="currency-format" style="color: #F59E0B;">${formatRupiah(calc.potMuat)}</td>`;
         }
         if (showPrice) {
             tableHtml += `
-            <td class="currency-format" style="color: #F59E0B;">${formatRupiah(calc.potMuat)}</td>
             <td class="currency-format" style="font-weight: bold; color: #22C55E;">${formatRupiah(calc.sisa)}</td>`;
         }
         if (showKas) {
@@ -540,8 +558,13 @@ router.get('/export-excel', requireRole('admin'), async (req, res) => {
       if (showHutang) {
         tableHtml += `<td class="currency-format">${formatRupiah(gt.potHut)}</td>`;
       }
-      if (showPrice) {
+      if (showHutangSupplier) {
+        tableHtml += `<td class="currency-format">${formatRupiah(gt.potHutSupplier)}</td>`;
+      }
+      if (showMuat) {
         tableHtml += `<td class="currency-format">${formatRupiah(gt.potMuat)}</td>`;
+      }
+      if (showPrice) {
         tableHtml += `<td class="currency-format">${formatRupiah(gt.totalAkhir)}</td>`;
       }
       if (showKas) {

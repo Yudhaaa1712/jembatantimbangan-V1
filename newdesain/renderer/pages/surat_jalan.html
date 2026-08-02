@@ -28,54 +28,6 @@
     .sig-title { font-weight: bold; font-size: 11px; margin-bottom: 40px; }
     .sig-line { border-top: 1px solid #000; margin-top: 5px; padding-top: 3px; font-size: 10px; }
     .notes { font-size: 10px; margin-top: 8px; color: #555; }
-    
-    @media screen {
-      body {
-        background: #f4f4f0;
-        padding: 40px 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      .sj-container {
-        background: #ffffff;
-        border: 3px solid #000000;
-        box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
-        padding: 30px;
-        margin: 20px auto;
-      }
-      .btn-cetak {
-        background: #00ff66 !important;
-        color: #000000 !important;
-        border: 2px solid #000000 !important;
-        border-radius: 0px !important;
-        font-weight: 900 !important;
-        text-transform: uppercase !important;
-        box-shadow: 2px 2px 0px 0px rgba(0,0,0,1) !important;
-        transition: all 0.07s ease !important;
-      }
-      .btn-cetak:hover {
-        background: #33ff85 !important;
-        transform: translate(1px, 1px);
-        box-shadow: 1px 1px 0px 0px rgba(0,0,0,1) !important;
-      }
-      .btn-tutup {
-        background: #ff007f !important;
-        color: #ffffff !important;
-        border: 2px solid #000000 !important;
-        border-radius: 0px !important;
-        font-weight: 900 !important;
-        text-transform: uppercase !important;
-        box-shadow: 2px 2px 0px 0px rgba(0,0,0,1) !important;
-        transition: all 0.07s ease !important;
-      }
-      .btn-tutup:hover {
-        background: #ff3399 !important;
-        transform: translate(1px, 1px);
-        box-shadow: 1px 1px 0px 0px rgba(0,0,0,1) !important;
-      }
-    }
-    
     @media print {
       body { padding: 0; }
       .no-print { display: none !important; }
@@ -83,9 +35,9 @@
   </style>
 </head>
 <body>
-  <div class="no-print" style="text-align:center;margin-bottom:20px;">
-    <button class="btn btn-cetak" onclick="window.print()" style="font-size:14px;cursor:pointer;">🖨️ Cetak Surat Jalan</button>
-    <button class="btn btn-tutup" onclick="window.close()" style="font-size:14px;cursor:pointer;margin-left:10px;">✕ Tutup</button>
+  <div class="no-print" style="text-align:center;margin-bottom:10px;">
+    <button onclick="window.print()" style="padding:8px 20px;font-size:14px;cursor:pointer;">🖨️ Cetak Surat Jalan</button>
+    <button onclick="window.close()" style="padding:8px 20px;font-size:14px;cursor:pointer;margin-left:10px;">✕ Tutup</button>
   </div>
 
   <div class="sj-container" id="sjContent">

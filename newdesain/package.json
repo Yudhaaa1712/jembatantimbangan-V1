@@ -47,7 +47,7 @@
   "build": {
     "appId": "com.arroyan.weighbridge.newdesain",
     "productName": "Weighbridge - newdesain",
-    "copyright": "Copyright © 2024 Arroyan Jv Teknik",
+    "copyright": "Copyright © 2026 Arroyan Jv Teknik",
     "directories": {
       "buildResources": "build-resources",
       "output": "dist"
@@ -57,7 +57,9 @@
       "server/**/*",
       "renderer/**/*",
       "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "!license-keys/**/*",
+      "!keygen.js"
     ],
     "extraFiles": [],
     "win": {

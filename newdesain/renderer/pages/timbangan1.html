@@ -44,7 +44,7 @@
       <div class="card-body p-3 flex-grow d-flex flex-column justify-content-between overflow-hidden bg-white">
         <div id="alertContainer" class="flex-shrink-0 mb-1"></div>
 
-        <form method="POST" id="timbangan1Form"
+        <form method="POST" id="timbangan1Form" data-formnav
           class="flex-grow d-flex flex-column justify-content-between overflow-hidden">
           <!-- DISPLAY PANEL BANNER (TOP) -->
           <div class="card border-4 border-black bg-white rounded-none p-1.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex-shrink-0 mb-3">
@@ -91,38 +91,8 @@
             <!-- Left Side: Form Fields (Now col-12) -->
             <div class="col-12 d-flex flex-column justify-content-between overflow-hidden">
               <div class="row g-2">
-                <!-- Mode Timbangan & Langsir (Side-by-side in one compact row) -->
-                <div class="col-md-7">
-                  <div
-                    class="bg-neoBg border-2 border-black p-2 rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] h-100 d-flex flex-column justify-center">
-                    <label class="form-label text-black font-black uppercase tracking-wider mb-1 block">Mode
-                      Timbangan</label>
-                    <div class="d-flex gap-3 align-items-center">
-                      <div class="form-check mb-0">
-                        <input class="form-check-input border-2 border-black rounded-none accent-black" type="radio"
-                          name="mode_timbangan" id="modeBeli" value="beli" checked
-                          style="transform: scale(1.1); cursor: pointer;">
-                        <label
-                          class="form-check-label ms-1 font-black uppercase tracking-wider text-xs cursor-pointer text-black"
-                          for="modeBeli">
-                          BELI
-                        </label>
-                      </div>
-                      <div class="form-check mb-0">
-                        <input class="form-check-input border-2 border-black rounded-none accent-black" type="radio"
-                          name="mode_timbangan" id="modeJual" value="jual"
-                          style="transform: scale(1.1); cursor: pointer;">
-                        <label
-                          class="form-check-label ms-1 font-black uppercase tracking-wider text-xs cursor-pointer text-black"
-                          for="modeJual">
-                          JUAL
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-md-5">
+                <!-- Mode Langsir (mode Jual dipindah ke menu Timbangan Jual) -->
+                <div class="col-12">
                   <div
                     class="bg-neoBg border-2 border-black p-2 rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] h-100 d-flex flex-column justify-center"
                     id="field_langsir">
@@ -228,7 +198,7 @@
                   </button>
                 </div>
               </div>
-            </div></div>
+            </div>
 
           </div>
         </form>
@@ -285,6 +255,7 @@
   <script src="/assets/js/bootstrap.bundle.min.js"></script>
   <script src="/assets/js/sweetalert2.min.js"></script>
   <script src="/js/auto-serial-connect.js" defer></script>
+  <script src="/js/form-nav.js" defer></script>
 
   <script>
     // ─── Session Info ──────────────────────────────────────────────────────────
@@ -409,73 +380,104 @@
       }, 400);
     });
 
-    // ─── Check Ongoing Langsir Trip ───────────────────────────────────────────
+    // ─── Mode Langsir ─────────────────────────────────────────────────────────
     let pendingLangsirTxId = null;
     let pendingTripCount = 0;
 
+    function langsirInfoEl() { return document.getElementById('langsirInfo'); }
+
+    const LANGSIR_AKTIF_TEXT = 'MODE LANGSIR AKTIF — timbangan dengan kendaraan/supir yang sama akan menambah trip bruto.';
+
+    // Deteksi otomatis tiket langsir berjalan berdasarkan plat / nama supir yang diketik.
+    // Berjalan tiap kali field diketik — tidak perlu mengaktifkan toggle lebih dulu.
     function checkOngoingLangsir() {
       const plate = document.getElementById('noKendaraanInput').value.trim().toUpperCase();
       const supir = document.getElementById('namaPengemudiInput').value.trim().toUpperCase();
       const supplier = document.getElementById('supplierInput').value.trim().toUpperCase();
 
-      if (!plate && !supir && !supplier) {
-        resetLangsirUI();
-        return;
-      }
+      if (!plate && !supir && !supplier) { clearAutoLangsir(); return; }
 
       fetch('/timbangan/ajax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'get_pending_tickets' })
       }).then(r => r.json()).then(res => {
-        if (res.success && res.data) {
-          const activeTx = res.data.find(t => {
-            if (t.is_langsir !== 1) return false;
-            const matchPlate = plate && t.no_polisi && t.no_polisi.toUpperCase() === plate;
-            const matchSupir = supir && t.nama_supir && t.nama_supir.toUpperCase() === supir;
-            const matchSupplier = supplier && t.nama_supplier && t.nama_supplier.toUpperCase() === supplier;
-            return matchPlate || matchSupir || matchSupplier;
-          });
+        const activeTx = (res.success && res.data) ? res.data.find(t => {
+          if (t.is_langsir !== 1) return false;
+          const mP = plate && t.no_polisi && t.no_polisi.toUpperCase() === plate;
+          const mS = supir && t.nama_supir && t.nama_supir.toUpperCase() === supir;
+          const mSup = supplier && t.nama_supplier && t.nama_supplier.toUpperCase() === supplier;
+          return mP || mS || mSup;
+        }) : null;
 
-          if (activeTx) {
-            pendingLangsirTxId = activeTx.id;
-            pendingTripCount = activeTx.jumlah_trip_langsir || 1;
+        if (activeTx) {
+          pendingLangsirTxId = activeTx.id;
+          pendingTripCount = activeTx.jumlah_trip_langsir || 1;
 
-            document.getElementById('isLangsir').checked = true;
-            document.getElementById('isLangsir').disabled = true;
+          document.getElementById('isLangsir').checked = true;
+          document.getElementById('isLangsir').disabled = true; // tidak boleh dimatikan saat tiket berjalan
 
-            // Fill other fields if currently empty
-            if (!document.getElementById('noKendaraanInput').value.trim() && activeTx.no_polisi) {
-              document.getElementById('noKendaraanInput').value = activeTx.no_polisi;
-            }
-            if (!document.getElementById('namaPengemudiInput').value.trim() && activeTx.nama_supir) {
-              document.getElementById('namaPengemudiInput').value = activeTx.nama_supir;
-            }
-            if (!document.getElementById('supplierInput').value.trim() && activeTx.nama_supplier) {
-              document.getElementById('supplierInput').value = activeTx.nama_supplier;
-            }
-
-            const info = document.getElementById('langsirInfo');
-            info.innerHTML = `Trip ke-${pendingTripCount + 1} ${activeTx.nama_supir || ''}`;
-            info.style.display = 'block';
-
-            document.getElementById('btnSimpanText').textContent = 'TAMBAH TRIP LANGSIR';
-          } else {
-            resetLangsirUI();
+          // Fill other fields if currently empty
+          if (!document.getElementById('noKendaraanInput').value.trim() && activeTx.no_polisi) {
+            document.getElementById('noKendaraanInput').value = activeTx.no_polisi;
           }
+          if (!document.getElementById('namaPengemudiInput').value.trim() && activeTx.nama_supir) {
+            document.getElementById('namaPengemudiInput').value = activeTx.nama_supir;
+          }
+          if (!document.getElementById('supplierInput').value.trim() && activeTx.nama_supplier) {
+            document.getElementById('supplierInput').value = activeTx.nama_supplier;
+          }
+
+          const info = langsirInfoEl();
+          info.innerHTML = `Trip ke-${pendingTripCount + 1} ${activeTx.nama_supir || ''}`;
+          info.style.display = 'block';
+
+          document.getElementById('btnSimpanText').textContent = `TAMBAH TRIP LANGSIR (Trip ke-${pendingTripCount + 1})`;
+        } else {
+          clearAutoLangsir();
         }
       }).catch(e => console.error(e));
+    }
+
+    // Reset khusus hasil deteksi-otomatis; hormati pilihan manual toggle.
+    function clearAutoLangsir() {
+      pendingLangsirTxId = null;
+      pendingTripCount = 0;
+      const cb = document.getElementById('isLangsir');
+      cb.disabled = false;
+      document.getElementById('btnSimpanText').textContent = 'SIMPAN DATA';
+      if (cb.checked) {
+        // toggle masih dinyalakan manual → tampilkan keterangan mode aktif
+        langsirInfoEl().innerHTML = LANGSIR_AKTIF_TEXT;
+        langsirInfoEl().style.display = 'block';
+      } else {
+        langsirInfoEl().style.display = 'none';
+      }
     }
 
     document.getElementById('noKendaraanInput').addEventListener('input', checkOngoingLangsir);
     document.getElementById('namaPengemudiInput').addEventListener('input', checkOngoingLangsir);
     document.getElementById('supplierInput').addEventListener('input', checkOngoingLangsir);
 
+    // Toggle manual: ON → tampilkan pemberitahuan (dan cek tiket berjalan); OFF → hilang
+    document.getElementById('isLangsir').addEventListener('change', function () {
+      if (this.checked) {
+        langsirInfoEl().innerHTML = LANGSIR_AKTIF_TEXT;
+        langsirInfoEl().style.display = 'block';
+        checkOngoingLangsir();
+      } else {
+        resetLangsirUI();
+      }
+    });
+
+    // Reset penuh (dipakai setelah simpan / reset form)
     function resetLangsirUI() {
       pendingLangsirTxId = null;
       pendingTripCount = 0;
-      document.getElementById('isLangsir').disabled = false;
-      document.getElementById('langsirInfo').style.display = 'none';
+      const cb = document.getElementById('isLangsir');
+      cb.disabled = false;
+      cb.checked = false;
+      langsirInfoEl().style.display = 'none';
       document.getElementById('btnSimpanText').textContent = 'SIMPAN DATA';
     }
 
@@ -542,7 +544,7 @@
           harga: formData.get('harga') || '0',
           berat: formData.get('berat'),
           keterangan: formData.get('keterangan') || '',
-          mode_timbangan: document.querySelector('input[name="mode_timbangan"]:checked')?.value || 'beli'
+          mode_timbangan: 'beli' // mode jual dihapus — penjualan lewat menu Timbangan Jual
         };
 
         if (pendingLangsirTxId) {
@@ -673,24 +675,6 @@
       // Will be initialized after script loads
       setTimeout(initSerialConnector, 500);
 
-      // ── Auto-focus: Fokus ke field pertama yang terlihat ──
-      setTimeout(() => {
-        const tabFields = [
-          'noKendaraanInput',
-          'namaPengemudiInput',
-          'supplierInput',
-          'materialSelect',
-          'hargaInput'
-        ];
-        for (const id of tabFields) {
-          const el = document.getElementById(id);
-          if (el && el.offsetParent !== null) { // visible check
-            el.focus();
-            break;
-          }
-        }
-      }, 300);
-
       // ── Skip hidden fields in tab order ──
       // After loadFieldSettings, set tabindex=-1 on inputs inside hidden field containers
       const fieldContainers = document.querySelectorAll('[id^="field_"]');
@@ -702,23 +686,15 @@
         }
       });
 
-      // ── Enter key: Submit form dari input manapun ──
-      const form = document.getElementById('timbangan1Form');
-      form.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          const tag = e.target.tagName.toLowerCase();
-          // Jangan submit jika sedang di textarea atau select (biarkan default behavior)
-          if (tag === 'textarea') return;
-          // Jika di select, biarkan Enter memilih option
-          if (tag === 'select') return;
-          // Jika di input, cegah default dan submit form
-          if (tag === 'input' || tag === 'button') {
-            e.preventDefault();
-            // Klik tombol Simpan
-            document.getElementById('btnSimpan').click();
-          }
+      // Fokus awal ditangani oleh form-nav.js (data-formnav), dijalankan ulang
+      // setelah field settings selesai agar field tersembunyi ikut dilewati.
+      setTimeout(() => {
+        if (typeof window.formNavFocus === 'function') {
+          window.formNavFocus(document.getElementById('timbangan1Form'));
         }
-      });
+      }, 300);
+
+      // Navigasi Enter antar-field & submit di field terakhir ditangani form-nav.js
     });
 
     async function initSerialConnector() {

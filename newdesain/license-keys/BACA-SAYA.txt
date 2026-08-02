@@ -1,0 +1,28 @@
+KUNCI LISENSI ED25519 — Weighbridge Arroyan Jv Teknik
+=====================================================
+
+private.pem  -> RAHASIA. Dipakai `node keygen.js` untuk membuat kunci lisensi.
+                JANGAN pernah dikirim ke klien, di-commit ke Git, atau ikut
+                dimasukkan ke installer.
+public.pem   -> Boleh disebar. Isinya sudah ditanam di
+                server/helpers/license.js sebagai LICENSE_PUBLIC_KEY.
+
+PENTING — SIMPAN CADANGAN private.pem
+-------------------------------------
+Kalau private.pem hilang, Anda TIDAK BISA lagi membuat lisensi baru maupun
+memperpanjang lisensi klien yang sudah ada. Satu-satunya jalan adalah membuat
+keypair baru, mengganti LICENSE_PUBLIC_KEY di server/helpers/license.js, lalu
+membangun ulang installer dan menerbitkan ulang semua lisensi klien.
+
+Simpan salinannya di tempat aman (flashdisk terenkripsi / password manager /
+cloud pribadi).
+
+Membuat lisensi
+---------------
+    node keygen.js
+
+Lalu masukkan Hardware ID klien (klien bisa melihatnya di halaman aktivasi
+aplikasi) dan masa aktif dalam hari. Ketik 0 untuk lisensi permanen.
+
+Folder ini otomatis TIDAK ikut ter-build ke installer karena package.json
+hanya menyertakan folder electron/, server/, renderer/, dan node_modules/.
