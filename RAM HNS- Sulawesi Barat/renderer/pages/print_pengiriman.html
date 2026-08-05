@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cetak Struk Pengiriman</title>
+    <link rel="stylesheet" href="/assets/css/print.css">
+    <script src="/js/print-settings.js"></script>
+    <style>
+        /* Default kertas struk. Nilai sebenarnya ditimpa saat runtime oleh
+           print-settings.js dari Pengaturan → Profil & Tampilan, karena @page
+           tidak bisa dinyatakan sebagai utility Tailwind. Margin selalu 0. */
+        @media print {
+            @page { size: 9.5in 11in; margin: 0; }
+        }
+    </style>
+</head>
+
+<body class="receipt-screen">
+    <div class="receipt-container">
+        <pre id="ticketContent">
+Memuat data...
+</pre>
+    </div>
+    <button class="print-btn no-print" onclick="window.print()">Cetak Struk</button>
+
+    <script>
+        const idPengiriman = window.location.pathname.split('/').pop();
+
+        function padRight(str, len) { return String(str).padEnd(len, ' '); }
+        function padLeft(str, len) { return String(str).padStart(len, ' '); }
+        function wrapText(text, width) {
+            let lines = String(text).split('\n');
+            let result = [];
+            for (let line of lines) {
+                line = line.trim();
+                if (line === '') { result.push(''); continue; }
+                while (line.length > width) {
+                    let splitAt = line.lastIndexOf(' ', width);
+                    if (splitAt === -1 || splitAt === 0) splitAt = width;
+                    result.push(line.substring(0, splitAt).trim());
+                    line = line.substring(splitAt).trim();
+                }
+                if (line.length > 0) result.push(line);
+            }
+            return result;
+        }
+        function centerLine(text, width = 80) {
+            if (!text) return '';
+            let lines = wrapText(text, width);
+            return lines.map(str => {
+                let spaces = width - str.length;
+                if (spaces <= 0) return str;
+                let left = Math.floor(spaces / 2);
+                return ' '.repeat(left) + str;
+            }).join('\n');
+        }
+        function centerText(text, width) {
+            if (!text) return '';
+            let lines = wrapText(text, width);
+            return lines.map(str => {
+                if (str.length >= width) return str;
+                const leftPad = Math.floor((width - str.length) / 2);
+                const rightPad = width - str.length - leftPad;
+                return ' '.repeat(leftPad) + str + ' '.repeat(rightPad);
+            }).join('\n');
+        }
+
+        const fmt = n => (n !== null && n !== undefined && n !== '' && !isNaN(parseFloat(n)))
+            ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(n))
+            : '0';
+
+        function wLine(label, val) {
+            const l = padRight(label, 17);
+            const v = padLeft(String(Math.round(val || 0)), 16);
+            return l + ': ' + v + ' kg';
+        }
+        function rpLine(label, val) {
+            const l = padRight(label, 17);
+            const v = padLeft('Rp ' + fmt(val), 19);
+            return l + ': ' + v;
+        }
+
+        const getFormattedDate = (dateVal) => {
+            const dt = dateVal ? new Date(dateVal) : new Date();
+            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            return `${days[dt.getDay()]} ${String(dt.getDate()).padStart(2, '0')} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
+        };
+
+        const extractTimeOnly = (str, len = 5) => {
+            if (!str) return '-';
+            const timeStr = String(str).includes(' ') ? String(str).split(' ')[1] : String(str);
+            return timeStr ? timeStr.slice(0, len) : '-';
+        };
+
+        async function loadReceipt(W) {
+            W = W || 80;
+            const res = await fetch(`/pengiriman/detail/${idPengiriman}`);
+            const result = await res.json();
+            if (!result.success || !result.data) {
+                document.getElementById('ticketContent').textContent = 'Data tidak ditemukan';
+                return;
+            }
+            const d = result.data;
+            const s = window.setupSettings || {};
+
+            if (s.print_mode && s.print_mode !== 'text') {
+                return renderReceiptA6(d, s);
+            }
+
+            const cName = d.company?.company_name || 'NAMA PERUSAHAAN';
+            const cAddr = d.company?.company_address || 'ALAMAT PERUSAHAAN';
+            const cPhone = d.company?.company_phone || 'TELEPON PERUSAHAAN';
+
+            const noPolisi = (d.no_polisi || '-').toUpperCase();
+            const barang = (d.jenis_material || '-').toUpperCase();
+            const pabrik = (d.nama_pabrik || '-').toUpperCase();
+
+            const jamMasuk = extractTimeOnly(d.waktu_timbangan1);
+            const jamKeluar = extractTimeOnly(d.waktu_timbangan2);
+            const dateStr = getFormattedDate(d.waktu_timbangan2 || d.waktu_timbangan1 || d.tanggal);
+
+            function centerDateLine(leftText, centerTextStr, width = 80) {
+                const left = String(leftText || '');
+                const center = String(centerTextStr || '');
+                const targetStart = Math.max(left.length + 1, Math.floor((width - center.length) / 2));
+                const padCount = targetStart - left.length;
+                return left + ' '.repeat(padCount > 0 ? padCount : 1) + center;
+            }
+
+            let out = '';
+            out += centerLine(cName, W) + '\n';
+            out += centerLine(cAddr, W) + '\n';
+            out += centerLine(cPhone, W) + '\n';
+            out += '═'.repeat(W) + '\n';
+            out += centerLine('TIMBANGAN PENGIRIMAN', W) + '\n';
+            out += '═'.repeat(W) + '\n';
+            out += centerDateLine(d.no_surat_jalan, dateStr, W) + '\n';
+            out += '─'.repeat(W) + '\n';
+
+            out += padRight('Nama Barang', 17) + ': ' + barang + '\n';
+
+            if (jamMasuk && jamMasuk !== '-') {
+                out += padRight('Jam Masuk', 17) + ': ' + jamMasuk + '\n';
+            }
+            if (jamKeluar && jamKeluar !== '-') {
+                out += padRight('Jam Keluar', 17) + ': ' + jamKeluar + '\n';
+            }
+
+            out += padRight('No. Polisi', 17) + ': ' + noPolisi + '\n';
+            out += padRight('Nama Supir', 17) + ': ' + (d.nama_supir || '-').toUpperCase() + '\n';
+            out += padRight('Pabrik Tujuan', 17) + ': ' + pabrik + '\n';
+
+            if (d.keterangan && String(d.keterangan).trim() !== '') {
+                out += padRight('Keterangan', 17) + ': ' + String(d.keterangan).toUpperCase() + '\n';
+            }
+
+            out += '\n';
+
+            out += wLine('Bruto', d.berat_bruto) + '\n';
+            out += wLine('Tara', d.berat_tara) + '\n';
+            out += wLine('Netto RAM', d.netto_ram) + '\n';
+
+            if (d.netto_pabrik !== null && d.netto_pabrik !== undefined && d.netto_pabrik !== '') {
+                out += wLine('Netto Pabrik', d.netto_pabrik) + '\n';
+                if (d.susut !== null && d.susut !== undefined && d.susut !== '') {
+                    const persen = (d.persen_susut !== null && d.persen_susut !== undefined && d.persen_susut !== '')
+                        ? Number(d.persen_susut).toFixed(2) : '0.00';
+                    out += padRight('Susut', 17) + ': ' + padLeft(String(Math.round(d.susut || 0)), 16) + ' kg (' + persen + '%)\n';
+                }
+            }
+
+            // Struk pengiriman sengaja tidak menampilkan nilai rupiah
+            // (ongkos/kg, total ongkos, total bayar) — cukup data berat.
+            out += '\n';
+
+            const sigLeftTitle = s.print_sig_left_title || 'Penimbang';
+            const sigRightTitle = s.print_sig_right_title || 'Pengemudi';
+            const leftVal = `( ${(d.operator_nama || '             ').toUpperCase()} )`;
+            const rightVal = `( ${(d.nama_supir || '             ').toUpperCase()} )`;
+
+            const colWidth = 30;
+            const sigGap = Math.max(1, W - colWidth * 2);
+
+            const titleLine = centerText(sigLeftTitle, colWidth) + ' '.repeat(sigGap) + centerText(sigRightTitle, colWidth);
+            const valLine = centerText(leftVal, colWidth) + ' '.repeat(sigGap) + centerText(rightVal, colWidth);
+
+            out += titleLine + '\n';
+            out += '\n\n';
+            out += valLine + '\n';
+            document.getElementById('ticketContent').textContent = out;
+        }
+
+        function renderReceiptA6(d, s) {
+            const container = document.querySelector('.receipt-container');
+
+            const W = 38;
+            const garisTebal = '='.repeat(W);
+            const garisTipis = '-'.repeat(W);
+
+            const cName = d.company?.company_name || 'NAMA PERUSAHAAN';
+            const cAddr = d.company?.company_address || 'ALAMAT PERUSAHAAN';
+            const cPhone = d.company?.company_phone || 'TELEPON PERUSAHAAN';
+
+            const barang = (d.jenis_material || '-').toUpperCase();
+            const pabrik = (d.nama_pabrik || '-').toUpperCase();
+            const supir = (d.nama_supir || '-').toUpperCase();
+            const noPolisi = (d.no_polisi || '-').toUpperCase();
+
+            const jam = extractTimeOnly(d.waktu_timbangan2 || d.waktu_timbangan1, 8);
+            const tgl = d.waktu_timbangan2 ? new Date(d.waktu_timbangan2) : new Date(d.tanggal || Date.now());
+            const months = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+            const tglStr = `${String(tgl.getDate()).padStart(2, '0')} ${months[tgl.getMonth()]} ${tgl.getFullYear()}`;
+
+            const row = (label, val) => padRight(label, 13) + ': ' + padLeft(val, 23);
+
+            let out = '';
+            out += centerText(cName, W) + '\n';
+            out += centerText(cAddr, W) + '\n';
+            out += centerText('No HP. ' + cPhone, W) + '\n';
+            out += garisTebal + '\n';
+            out += centerText('TIMBANGAN PENGIRIMAN', W) + '\n';
+            out += garisTebal + '\n';
+            out += centerText(jam, W) + '\n';
+            out += garisTipis + '\n';
+            out += row('NO. SJ', d.no_surat_jalan || '-') + '\n';
+            out += row('TANGGAL', tglStr) + '\n';
+            out += row('NO. POLISI', noPolisi) + '\n';
+            out += row('SUPIR', supir) + '\n';
+            out += row('PABRIK', pabrik) + '\n';
+            out += row('JENIS BARANG', barang) + '\n';
+            out += garisTipis + '\n';
+            out += row('BRUTTO', fmt(d.berat_bruto)) + '\n';
+            out += row('TARRA', fmt(d.berat_tara)) + '\n';
+            out += row('NETTO RAM', fmt(d.netto_ram)) + '\n';
+            if (d.netto_pabrik !== null && d.netto_pabrik !== undefined && d.netto_pabrik !== '') {
+                out += row('NETTO PABRIK', fmt(d.netto_pabrik)) + '\n';
+                out += row('SUSUT', `${fmt(d.susut)} kg (${Number(d.persen_susut || 0).toFixed(1)}%)`) + '\n';
+            }
+            out += garisTebal + '\n';
+
+            const kasir = (d.operator_nama || 'KASIR').toUpperCase();
+            const leftName = supir.length > 15 ? supir.substring(0, 15) : supir;
+            const rightName = kasir.length > 15 ? kasir.substring(0, 15) : kasir;
+
+            const titleLine = centerText('PENGEMUDI', 19) + centerText('PENIMBANG', 19);
+            const valLine = centerText(`(${leftName})`, 19) + centerText(`(${rightName})`, 19);
+
+            out += '\n' + titleLine + '\n\n\n\n' + valLine + '\n';
+
+            container.innerHTML = `<pre class="w-full font-mono font-bold text-[11pt] text-[#000] leading-[1.05] overflow-hidden m-0 p-0 whitespace-pre-wrap" id="ticketContent">${out}</pre>`;
+        }
+
+        async function init() {
+            const W = await window.applyPrintSettings();
+            await loadReceipt(W);
+            setTimeout(() => window.print(), 500);
+        }
+        init();
+    </script>
+    <script src="/js/sidebar.js"></script>
+</body>
+
+</html>

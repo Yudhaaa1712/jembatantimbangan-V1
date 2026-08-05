@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+
+# JANGAN PERNAH commit / bagikan private key lisensi
+license-keys/private.pem

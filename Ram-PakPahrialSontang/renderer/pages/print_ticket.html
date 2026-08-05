@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cetak Struk</title>
+    <style>
+        @media print {
+            @page {
+                /* Continuous form 9.5 x 11 inch */
+                size: 9.5in 11in;
+                margin: 0;
+                /* margin 0, diatur via pengaturan (Geser X / Geser Y) */
+            }
+
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+                display: block;
+            }
+
+            .receipt-container {
+                padding: 0;
+                /* padding 0, diatur via pengaturan (Geser X / Geser Y) */
+                margin: 0;
+                box-shadow: none;
+                border: none;
+                width: auto;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        body {
+            background: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .receipt-container {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            overflow-x: auto;
+            display: inline-block;
+        }
+
+        pre {
+            font-family: 'Courier', monospace;
+            /* Courier renders best on dot matrix */
+            font-size: 11pt;
+            /* 11pt is equivalent to 10 CPI on dot matrix */
+            font-weight: bold;
+            /* Semua tulisan bold */
+            line-height: 1.15;
+            margin: 0;
+            color: #000;
+        }
+
+        .print-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: sans-serif;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="receipt-container">
+        <pre id="ticketContent">
+Memuat data...
+</pre>
+    </div>
+    <button class="print-btn no-print" onclick="window.print()">Cetak Struk</button>
+
+    <script>
+        const noTiket = window.location.pathname.split('/').pop();
+
+        function padRight(str, len) { return String(str).padEnd(len, ' '); }
+        function padLeft(str, len) { return String(str).padStart(len, ' '); }
+        function splitLine(left, right, width = 80) {
+            let spaces = width - String(left).length - String(right).length;
+            if (spaces < 1) spaces = 1;
+            return left + ' '.repeat(spaces) + right;
+        }
+        function wrapText(text, width) {
+            let lines = String(text).split('\n');
+            let result = [];
+            for (let line of lines) {
+                line = line.trim();
+                if (line === '') {
+                    result.push('');
+                    continue;
+                }
+                while (line.length > width) {
+                    let splitAt = line.lastIndexOf(' ', width);
+                    if (splitAt === -1 || splitAt === 0) splitAt = width;
+                    result.push(line.substring(0, splitAt).trim());
+                    line = line.substring(splitAt).trim();
+                }
+                if (line.length > 0) result.push(line);
+            }
+            return result;
+        }
+        function centerLine(text, width = 80) {
+            if (!text) return '';
+            let lines = wrapText(text, width);
+            return lines.map(str => {
+                let spaces = width - str.length;
+                if (spaces <= 0) return str;
+                let left = Math.floor(spaces / 2);
+                return ' '.repeat(left) + str;
+            }).join('\n');
+        }
+        function rightCol(label, val, padLbl = 19) {
+            return padRight(label, padLbl) + ': ' + val;
+        }
+        function centerText(text, width) {
+            if (!text) return '';
+            let lines = wrapText(text, width);
+            return lines.map(str => {
+                if (str.length >= width) return str;
+                const leftPad = Math.floor((width - str.length) / 2);
+                const rightPad = width - str.length - leftPad;
+                return ' '.repeat(leftPad) + str + ' '.repeat(rightPad);
+            }).join('\n');
+        }
+
+        const fmt = n => n ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(n)) : '0';
+        function wLine(label, val) {
+            const l = padRight(label, 17);
+            const v = padLeft(String(Math.round(val || 0)), 16);
+            return l + ': ' + v + ' kg';
+        }
+        function rpLine(label, val) {
+            const l = padRight(label, 17);
+            const v = padLeft('Rp ' + fmt(val), 19);
+            return l + ': ' + v;
+        }
+
+        async function loadPrintSettings() {
+            try {
+                const res = await fetch('/setup/settings?t=' + new Date().getTime());
+                const r = await res.json();
+                if (r.success && r.data) {
+                    const s = r.data;
+                    window.setupSettings = s;
+                    const offsetX = parseFloat(s.print_offset_x) !== undefined && !isNaN(parseFloat(s.print_offset_x)) ? parseFloat(s.print_offset_x) : 2.5;
+                    const offsetY = parseFloat(s.print_offset_y) !== undefined && !isNaN(parseFloat(s.print_offset_y)) ? parseFloat(s.print_offset_y) : 0;
+                    const contentWidth = parseFloat(s.print_content_width) || 19;
+                    const paperW = parseFloat(s.print_paper_width) || 9.5;
+                    const paperH = parseFloat(s.print_paper_height) || 11;
+                    const fontSize = parseFloat(s.print_font_size) || 11;
+                    const lineWidth = parseInt(s.print_line_width) || 80;
+
+                    const style = document.createElement('style');
+                    
+                    let finalPaperW = paperW;
+                    let finalPaperH = paperH;
+                    if (s.print_mode && s.print_mode !== 'text') {
+                        finalPaperW = 4.13;
+                        finalPaperH = 5.83;
+                    }
+
+                    style.innerHTML = `
+                        @media print {
+                            @page {
+                                size: ${finalPaperW}in ${finalPaperH}in;
+                                margin: 0; 
+                            }
+                            body {
+                                margin: 0 !important;
+                                padding: 0 !important;
+                            }
+                            .receipt-container {
+                                padding-top: ${offsetY}cm !important;
+                                padding-left: ${offsetX}cm !important;
+                                padding-right: 0 !important;
+                                padding-bottom: 0 !important;
+                                margin: 0 !important;
+                                width: ${contentWidth}cm !important;
+                                max-width: none !important;
+                                box-sizing: border-box !important;
+                            }
+                            pre {
+                                font-size: ${fontSize}pt !important;
+                                width: 100% !important;
+                            }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                    return lineWidth;
+                }
+            } catch(e) {
+                console.error('Failed to load print settings:', e);
+            }
+            return 80;
+        }
+
+        async function loadReceipt(W) {
+            W = W || 80;
+            const res = await fetch(`/transaksi/receipt/${noTiket}`);
+            const result = await res.json();
+            if (!result.success || !result.data) { document.getElementById('ticketContent').textContent = 'Data tidak ditemukan'; return; }
+            const d = result.data;
+
+            const s = window.setupSettings || {};
+            
+            if (s.print_mode && s.print_mode !== 'text') {
+                return renderReceiptA6(d, s);
+            }
+
+            let t1Fields = { no_kendaraan: true, nama_pengemudi: true, nama_suplier: true, material: true, harga: true, keterangan: true };
+            let t2Fields = { persen_potongan: true, harga: true, potongan_hutang: true, keterangan: true };
+            let activeFeatures = { hutang: false };
+
+            if (s.timbangan1_fields) {
+                try { t1Fields = JSON.parse(s.timbangan1_fields); } catch(e) {}
+            }
+            if (s.timbangan2_fields) {
+                try { t2Fields = JSON.parse(s.timbangan2_fields); } catch(e) {}
+            }
+            if (s.active_features) {
+                try { activeFeatures = JSON.parse(s.active_features); } catch(e) {}
+            }
+
+            const garis = '─'.repeat(W);
+            const cName = d.company?.company_name || 'NAMA PERUSAHAAN';
+            const cAddr = d.company?.company_address || 'ALAMAT PERUSAHAAN';
+            const cPhone = d.company?.company_phone || 'TELEPON PERUSAHAAN';
+            const header1 = centerLine(cName, W);
+            const header2 = centerLine(cAddr, W);
+            const header3 = centerLine(cPhone, W);
+
+            const noPolisi = (d.no_polisi || '-').toUpperCase();
+            const barang = (d.jenis_material || '-').toUpperCase();
+            const supplier = (d.nama_supplier || '-').toUpperCase();
+
+            const extractTimeOnly = (str) => {
+                if (!str) return '-';
+                const timeStr = str.includes(' ') ? str.split(' ')[1] : str;
+                return timeStr ? timeStr.slice(0, 5) : '-';
+            };
+
+            const jamMasuk = extractTimeOnly(d.waktu_timbangan1);
+            const tglMasuk = d.tanggal ? new Date(d.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+
+            let jamKeluar = '-', tglKeluar = '-';
+            if (d.status === 'selesai' && d.waktu_keluar) {
+                jamKeluar = extractTimeOnly(d.waktu_keluar);
+                tglKeluar = d.waktu_keluar ? new Date(d.tanggal || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+            }
+
+            let out = '';
+            out += header1 + '\n';
+            out += header2 + '\n';
+            out += header3 + '\n';
+            out += garis + '\n';
+            out += centerLine(`NO. TIKET: ${d.no_tiket}   JAM MASUK: ${jamMasuk}`, W) + '\n';
+            out += '═'.repeat(W) + '\n';
+            
+            if (t1Fields.no_kendaraan !== false) {
+                out += padRight('No. Kendaraan', 17) + ': ' + noPolisi + '\n';
+            }
+
+            if (t1Fields.material !== false) {
+                out += padRight('Nama Barang', 17) + ': ' + barang + '\n';
+            }
+
+            if (t1Fields.nama_pengemudi !== false) {
+                out += padRight('Nama Supir', 17) + ': ' + (d.nama_supir || '-').toUpperCase() + '\n';
+            }
+
+            if (d.keterangan && d.keterangan.trim() !== '' && (t1Fields.keterangan !== false || t2Fields.keterangan !== false)) {
+                out += padRight('Keterangan', 17) + ': ' + d.keterangan.toUpperCase() + '\n';
+            }
+
+            if (t1Fields.nama_suplier !== false) {
+                out += padRight('Customer/Supplier', 17) + ': ' + supplier + '\n\n';
+            } else {
+                out += '\n';
+            }
+
+            if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
+                out += padRight('Tipe Tiket', 17) + ': LANGSIR (' + d.jumlah_trip_langsir + ' TRIP)\n';
+                const tripsStr = d.langsir_trips.map(t => Math.round(t.berat_bruto)).join(', ');
+                const wrappedTrips = wrapText(tripsStr, W - 19);
+                if (wrappedTrips.length > 0) {
+                    out += padRight('Bruto Trip', 17) + ': ' + wrappedTrips[0] + '\n';
+                    for (let i = 1; i < wrappedTrips.length; i++) {
+                        out += padRight('', 17) + '  ' + wrappedTrips[i] + '\n';
+                    }
+                }
+                out += '─'.repeat(W) + '\n';
+                out += wLine('Total Bruto', d.bruto) + '\n';
+                out += wLine(`Tara`, d.tara) + '\n';
+            } else {
+                out += wLine('Bruto', d.bruto) + '\n';
+                out += wLine('Tara', d.tara) + '\n';
+            }
+            
+            out += wLine('Netto I', d.netto_awal) + '\n';
+
+            if (t2Fields.persen_potongan !== false) {
+                const labelPotongan = 'Potongan';
+                out += wLine(labelPotongan, d.kg_potongan) + '\n';
+            }
+            out += wLine('Netto II', d.netto_akhir) + '\n';
+
+            const showPrice = (t1Fields.harga !== false || t2Fields.harga !== false);
+            if (showPrice) {
+                out += '─'.repeat(38) + '\n';
+                out += rpLine('Harga/Kg', d.harga_per_kg) + '\n';
+                out += rpLine('Total Harga', d.total_awal) + '\n';
+                let hasPotongan = false;
+                if (d.pot_jalan > 0) {
+                    out += rpLine('Potongan Jalan', d.pot_jalan) + '\n';
+                    hasPotongan = true;
+                }
+                if (d.pot_pupuk > 0) {
+                    out += rpLine('Potongan Pupuk', d.pot_pupuk) + '\n';
+                    hasPotongan = true;
+                }
+                if (activeFeatures.hutang === true && t2Fields.potongan_hutang !== false && d.pot_hutang > 0) {
+                    out += rpLine('Potongan Hutang', d.pot_hutang) + '\n';
+                    hasPotongan = true;
+                }
+                if (d.pot_hutang_supplier > 0) {
+                    out += rpLine('Potongan Hutang', d.pot_hutang_supplier) + '\n';
+                    hasPotongan = true;
+                }
+                if (d.pot_muat > 0) {
+                    out += rpLine('Upah Bongkar', d.pot_muat) + '\n';
+                    hasPotongan = true;
+                }
+                if (hasPotongan) {
+                    out += '─'.repeat(38) + '\n';
+                }
+                out += rpLine('Total Bayar', d.total_akhir) + '\n';
+
+
+            }
+            out += '\n\n';
+
+            const sSetting = window.setupSettings || {};
+            const sigLeftTitle = sSetting.print_sig_left_title || 'Penimbang';
+            const sigLeftType = sSetting.print_sig_left_type || 'operator';
+            const sigRightTitle = sSetting.print_sig_right_title || 'Pengemudi';
+            const sigRightType = sSetting.print_sig_right_type || 'supir';
+
+            const getSigValue = (type) => {
+                if (type === 'operator') return `( ${(d.nama_operator || '             ').toUpperCase()} )`;
+                if (type === 'supir') return `( ${(d.nama_supir || '             ').toUpperCase()} )`;
+                if (type === 'supplier') return `( ${(d.nama_supplier || '             ').toUpperCase()} )`;
+                if (type === 'kosong') return '(             )';
+                return '';
+            };
+
+            const leftVal = getSigValue(sigLeftType);
+            const rightVal = getSigValue(sigRightType);
+
+            const colWidth = 30;
+            const sigGap = Math.max(1, W - colWidth * 2);
+
+            let titleLine = '';
+            if (sigLeftType !== 'hide') {
+                titleLine += centerText(sigLeftTitle, colWidth);
+            } else {
+                titleLine += ' '.repeat(colWidth);
+            }
+            titleLine += ' '.repeat(sigGap);
+            if (sigRightType !== 'hide') {
+                titleLine += centerText(sigRightTitle, colWidth);
+            } else {
+                titleLine += ' '.repeat(colWidth);
+            }
+
+            let valLine = '';
+            if (sigLeftType !== 'hide') {
+                valLine += centerText(leftVal, colWidth);
+            } else {
+                valLine += ' '.repeat(colWidth);
+            }
+            valLine += ' '.repeat(sigGap);
+            if (sigRightType !== 'hide') {
+                valLine += centerText(rightVal, colWidth);
+            } else {
+                valLine += ' '.repeat(colWidth);
+            }
+
+            out += titleLine + '\n';
+            out += '\n\n\n\n';
+            out += valLine + '\n';
+            document.getElementById('ticketContent').textContent = out;
+        }
+
+        function renderReceiptA6(d, s) {
+            const container = document.querySelector('.receipt-container');
+            
+            const W = 38;
+            const garisTebal = '='.repeat(W);
+            const garisTipis = '-'.repeat(W);
+
+            const cName = d.company?.company_name || 'NAMA PERUSAHAAN';
+            const cAddr = d.company?.company_address || 'ALAMAT PERUSAHAAN';
+            const cPhone = d.company?.company_phone || 'TELEPON PERUSAHAAN';
+
+            const noPolisi = (d.no_polisi || '').toUpperCase();
+            const barang = (d.jenis_material || '-').toUpperCase();
+            const supplier = (d.nama_supplier || d.nama_supir || '-').toUpperCase();
+
+            const extractTimeOnly = (str) => {
+                if (!str) return '-';
+                const timeStr = str.includes(' ') ? str.split(' ')[1] : str;
+                return timeStr ? timeStr.slice(0, 8) : '-';
+            };
+            const jamMasuk = extractTimeOnly(d.waktu_keluar || d.waktu_timbangan1 || d.waktu_timbangan2);
+            const tgl = d.waktu_keluar ? new Date(d.waktu_keluar) : new Date(d.tanggal || Date.now());
+            
+            const months = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+            const tglStr = `${String(tgl.getDate()).padStart(2, '0')} ${months[tgl.getMonth()]} ${tgl.getFullYear()}`;
+
+            let potText = `${fmt(d.kg_potongan)} kg`;
+
+            let totalPotonganRp = (d.pot_jalan||0) + (d.pot_pupuk||0) + (d.pot_hutang||0) + (d.pot_hutang_supplier||0) + (d.pot_muat||0);
+
+            const row = (label, val) => padRight(label, 13) + ': ' + padLeft(val, 23);
+            const rowRp = (label, val) => padRight(label, 13) + ': Rp ' + padLeft(fmt(val), 20);
+
+            let out = '';
+            out += centerText(cName, W) + '\n';
+            out += centerText(cAddr, W) + '\n';
+            out += centerText('No HP. ' + cPhone, W) + '\n';
+            out += garisTebal + '\n';
+            out += centerText(jamMasuk, W) + '\n';
+            out += garisTipis + '\n';
+            out += row('TANGGAL', tglStr) + '\n';
+            out += row('NAMA', supplier) + '\n';
+            out += row('JENIS BARANG', barang) + '\n';
+            out += garisTipis + '\n';
+            
+            if (d.is_langsir === 1 && d.langsir_trips && d.langsir_trips.length > 0) {
+                out += row('TIPE', `LANGSIR (${d.jumlah_trip_langsir} TRIP)`) + '\n';
+                const tripsStr = d.langsir_trips.map(t => fmt(t.berat_bruto)).join(', ');
+                const wrappedTrips = wrapText(tripsStr, 23);
+                if (wrappedTrips.length > 0) {
+                    out += row('BRUTTO TRIP', wrappedTrips[0]) + '\n';
+                    for (let i = 1; i < wrappedTrips.length; i++) {
+                        out += row('', wrappedTrips[i]) + '\n';
+                    }
+                }
+                out += garisTipis + '\n';
+                out += row('TOT BRUTTO', fmt(d.bruto)) + '\n';
+                out += row(`TARRA`, fmt(d.tara)) + '\n';
+            } else {
+                out += row('BRUTTO', fmt(d.bruto)) + '\n';
+                out += row('TARRA', fmt(d.tara)) + '\n';
+            }
+            
+            out += row('NETTO-1', fmt(d.netto_awal)) + '\n';
+            out += row('POTONGAN', potText) + '\n';
+            out += row('NETTO-2', fmt(d.netto_akhir)) + '\n';
+            out += row('HARGA', fmt(d.harga_per_kg)) + '\n';
+            out += garisTipis + '\n';
+            out += rowRp('JUMLAH', d.total_awal) + '\n';
+            if (totalPotonganRp > 0) {
+                out += rowRp('ASAM', totalPotonganRp) + '\n';
+            }
+            out += garisTipis + '\n';
+            out += rowRp('JUMLAH', d.total_akhir) + '\n';
+            out += garisTebal + '\n';
+            const kasir = (d.nama_operator || 'KASIR').toUpperCase();
+            let leftName = supplier.length > 15 ? supplier.substring(0, 15) : supplier;
+            let rightName = kasir.length > 15 ? kasir.substring(0, 15) : kasir;
+            
+            const titleLine = centerText('PENGIRIM', 19) + centerText('PENERIMA', 19);
+            const valLine = centerText(`(${leftName})`, 19) + centerText(`(${rightName})`, 19);
+            
+            out += '\n' + titleLine + '\n\n\n\n' + valLine + '\n';
+
+            // Ensure we use a <pre> tag so formatting is preserved
+            container.innerHTML = `<pre id="ticketContent" style="width: 100%; white-space: pre-wrap; font-family: 'Courier', monospace; font-weight: bold; font-size: 11pt; color: #000; line-height: 1.15; overflow: hidden; margin: 0; padding: 0; padding-top: 30px; padding-left: 20px;">${out}</pre>`;
+        }
+
+        async function init() {
+            const W = await loadPrintSettings();
+            await loadReceipt(W);
+            setTimeout(() => window.print(), 500);
+        }
+        init();
+    </script>
+    <script src="/js/sidebar.js"></script>
+</body>
+
+</html>

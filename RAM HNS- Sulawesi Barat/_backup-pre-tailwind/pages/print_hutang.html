@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Riwayat Hutang</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #000; margin: 0; padding: 16px; font-size: 12px; }
+    .sheet { max-width: 800px; margin: 0 auto; }
+    .company-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+    .company-name { font-size: 18px; font-weight: bold; text-transform: uppercase; }
+    .company-address { font-size: 10px; margin-top: 2px; }
+    .doc-title { text-align: center; font-size: 15px; font-weight: bold; text-decoration: underline; margin: 12px 0 4px; text-transform: uppercase; }
+    .meta { display: flex; justify-content: space-between; margin: 10px 0; font-size: 12px; }
+    .meta div { line-height: 1.6; }
+    .meta b { display: inline-block; min-width: 70px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    th, td { border: 1px solid #000; padding: 4px 6px; font-size: 11px; }
+    th { background: #e5e5e5; text-align: center; }
+    .num { text-align: right; white-space: nowrap; }
+    .center { text-align: center; }
+    tfoot td { font-weight: bold; background: #f2f2f2; }
+    .summary { margin-top: 14px; width: 46%; margin-left: auto; }
+    .summary td { border: none; padding: 3px 6px; }
+    .summary .lbl { color: #333; }
+    .summary .val { text-align: right; font-weight: bold; }
+    .summary .sisa td { border-top: 2px solid #000; font-size: 13px; }
+    .sign { margin-top: 40px; display: flex; justify-content: space-between; }
+    .sign div { text-align: center; width: 40%; }
+    .sign .line { margin-top: 55px; border-top: 1px solid #000; }
+    .foot-note { margin-top: 18px; font-size: 10px; color: #555; text-align: center; }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none !important; }
+      @page { margin: 12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="text-align:center;margin-bottom:12px;">
+    <button onclick="window.print()" style="padding:8px 22px;font-size:14px;cursor:pointer;">🖨️ Cetak</button>
+    <button onclick="window.close()" style="padding:8px 22px;font-size:14px;cursor:pointer;">Tutup</button>
+  </div>
+
+  <div class="sheet">
+    <div class="company-header">
+      <div class="company-name" id="companyName">PERUSAHAAN</div>
+      <div class="company-address" id="companyAddress"></div>
+      <div class="company-address" id="companyPhone"></div>
+    </div>
+
+    <div class="doc-title" id="docTitle">Riwayat Hutang</div>
+
+    <div class="meta">
+      <div>
+        <div><b>Nama</b>: <span id="mNama">-</span></div>
+        <div><b>Kategori</b>: <span id="mTipe">-</span></div>
+        <div><b>No. HP</b>: <span id="mHp">-</span></div>
+      </div>
+      <div style="text-align:right;">
+        <div><b>Alamat</b>: <span id="mAlamat">-</span></div>
+        <div><b>Tgl Cetak</b>: <span id="mTanggal">-</span></div>
+        <div><b>Status</b>: <span id="mStatus">-</span></div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:34px;">No</th>
+          <th style="width:80px;">Tanggal</th>
+          <th>Keterangan</th>
+          <th style="width:70px;">Sumber</th>
+          <th style="width:95px;">Pinjam (Rp)</th>
+          <th style="width:95px;">Bayar (Rp)</th>
+          <th style="width:100px;">Saldo (Rp)</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="7" class="center">Memuat data...</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="center">TOTAL</td>
+          <td class="num" id="tPinjam">0</td>
+          <td class="num" id="tBayar">0</td>
+          <td class="num" id="tSaldo">0</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <table class="summary">
+      <tr><td class="lbl">Total Pinjaman</td><td class="val" id="sPinjam">Rp 0</td></tr>
+      <tr><td class="lbl">Total Pembayaran</td><td class="val" id="sBayar">Rp 0</td></tr>
+      <tr class="sisa"><td class="lbl">Sisa Hutang</td><td class="val" id="sSisa">Rp 0</td></tr>
+    </table>
+
+    <div class="sign">
+      <div>Yang Berhutang,<div class="line" id="signNama">(&nbsp;)</div></div>
+      <div>Hormat Kami,<div class="line">(&nbsp;)</div></div>
+    </div>
+
+    <div class="foot-note">Dokumen ini dicetak otomatis dari sistem Weighbridge. Saldo dihitung berdasarkan urutan transaksi.</div>
+  </div>
+
+  <script>
+    function fmt(n) { return new Intl.NumberFormat('id-ID').format(Math.round(n || 0)); }
+    function rp(n) { return 'Rp ' + fmt(n); }
+
+    async function load() {
+      // Ambil type & id dari URL: /hutang-print/:type/:id
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      const type = decodeURIComponent(parts[1] || '');
+      const id = parts[2] || '';
+
+      try {
+        const [setRes, detRes, hisRes] = await Promise.all([
+          fetch('/setup/settings').then(r => r.json()),
+          fetch(`/hutang/${type}/detail/${id}`).then(r => r.json()),
+          fetch(`/hutang/${type}/history/${id}`).then(r => r.json())
+        ]);
+
+        // Company
+        const cs = setRes.success ? setRes.data : {};
+        document.getElementById('companyName').textContent = cs.company_name || 'PERUSAHAAN';
+        document.getElementById('companyAddress').textContent = cs.company_address || '';
+        document.getElementById('companyPhone').textContent = cs.company_phone ? 'Telp: ' + cs.company_phone : '';
+
+        if (!detRes.success) { document.getElementById('rows').innerHTML = '<tr><td colspan="7" class="center">Data tidak ditemukan</td></tr>'; return; }
+        const p = detRes.data.party;
+        const label = detRes.data.label || type;
+
+        document.getElementById('docTitle').textContent = 'Riwayat Hutang ' + label;
+        document.getElementById('mNama').textContent = p.nama || '-';
+        document.getElementById('mTipe').textContent = label;
+        document.getElementById('mHp').textContent = p.no_telepon || '-';
+        document.getElementById('mAlamat').textContent = p.alamat || '-';
+        document.getElementById('mStatus').textContent = (p.status === 'active' ? 'Aktif' : 'Nonaktif');
+        document.getElementById('mTanggal').textContent = new Date().toLocaleDateString('id-ID');
+        document.getElementById('signNama').innerHTML = '( ' + (p.nama || '') + ' )';
+
+        // History (urut lama -> baru untuk saldo berjalan)
+        const data = (hisRes.success ? hisRes.data : []).slice().reverse();
+        const sumberMap = { manual: 'Manual', timbangan: 'Timbangan', gaji: 'Gaji' };
+        let totalPinjam = 0, totalBayar = 0;
+
+        if (!data.length) {
+          document.getElementById('rows').innerHTML = '<tr><td colspan="7" class="center">Belum ada riwayat</td></tr>';
+        } else {
+          document.getElementById('rows').innerHTML = data.map((h, i) => {
+            const pinjam = h.jenis === 'tambah' ? h.jumlah : 0;
+            const bayar = h.jenis === 'bayar' ? h.jumlah : 0;
+            totalPinjam += pinjam; totalBayar += bayar;
+            const tgl = h.tanggal ? new Date(h.tanggal).toLocaleDateString('id-ID') : '-';
+            return `<tr>
+              <td class="center">${i + 1}</td>
+              <td class="center">${tgl}</td>
+              <td>${h.keterangan || '-'}</td>
+              <td class="center">${sumberMap[h.sumber] || (h.sumber || '-')}</td>
+              <td class="num">${pinjam ? fmt(pinjam) : '-'}</td>
+              <td class="num">${bayar ? fmt(bayar) : '-'}</td>
+              <td class="num">${fmt(h.saldo_setelah)}</td>
+            </tr>`;
+          }).join('');
+        }
+
+        document.getElementById('tPinjam').textContent = fmt(totalPinjam);
+        document.getElementById('tBayar').textContent = fmt(totalBayar);
+        document.getElementById('tSaldo').textContent = fmt(p.total_hutang);
+        document.getElementById('sPinjam').textContent = rp(totalPinjam);
+        document.getElementById('sBayar').textContent = rp(totalBayar);
+        document.getElementById('sSisa').textContent = rp(p.total_hutang);
+
+        setTimeout(() => window.print(), 400);
+      } catch (e) {
+        document.getElementById('rows').innerHTML = '<tr><td colspan="7" class="center">Gagal memuat data</td></tr>';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', load);
+  </script>
+</body>
+</html>

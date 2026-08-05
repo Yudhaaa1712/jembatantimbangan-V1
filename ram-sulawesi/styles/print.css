@@ -1,0 +1,227 @@
+/* ============================================================================
+   Weighbridge Arroyan — sumber Tailwind untuk DOKUMEN CETAK
+   Build: npm run css:print   (hasil -> renderer/assets/css/print.css)
+
+   Dipakai oleh: surat_jalan.html, print_hutang.html, print_ticket.html
+   Dipisah dari app.css karena dokumen cetak tidak memakai sidebar, tema
+   aplikasi, maupun komponen UI — dan bundelnya jadi jauh lebih kecil.
+
+   Catatan: aturan @page (ukuran & margin kertas) tidak punya padanan utility
+   di Tailwind, jadi ditulis sebagai CSS biasa di bawah ini. Khusus
+   print_ticket.html, @page dibangkitkan saat runtime dari Pengaturan
+   (ukuran kertas / geser X / geser Y), jadi tetap berada di halaman itu.
+   ========================================================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ----------------------------------------------------------------------------
+   GEOMETRI KERTAS
+   -------------------------------------------------------------------------- */
+@page sjA5 {
+  size: A5 landscape;
+  margin: 8mm;
+}
+@page sheetA4 {
+  margin: 12mm;
+}
+
+body.paper-a5-landscape {
+  page: sjA5;
+}
+body.paper-a4 {
+  page: sheetA4;
+}
+
+@layer base {
+  body {
+    @apply m-0 bg-white font-sans text-black;
+  }
+}
+
+@layer components {
+  /* --------------------------------------------------------------
+     Umum untuk semua dokumen
+     -------------------------------------------------------------- */
+  .company-header {
+    @apply mb-2.5 border-b-2 border-black pb-2 text-center;
+  }
+  .company-name {
+    @apply text-lg font-bold uppercase;
+  }
+  .company-address {
+    @apply mt-0.5 text-[10px];
+  }
+  .doc-title {
+    @apply mb-1 mt-3 text-center text-[15px] font-bold uppercase underline;
+  }
+  .no-print {
+    @apply text-center;
+  }
+  .print-toolbar button {
+    @apply cursor-pointer rounded border border-neutral-400 bg-neutral-100 px-5 py-2
+           text-sm hover:bg-neutral-200;
+  }
+
+  /* --------------------------------------------------------------
+     SURAT JALAN (A5 landscape)
+     -------------------------------------------------------------- */
+  .sj-container {
+    @apply mx-auto w-full max-w-[210mm] p-2.5 text-[11px];
+  }
+  .sj-title {
+    @apply my-2.5 text-center text-base font-bold underline;
+  }
+  .sj-number {
+    @apply mb-2.5 text-center text-xs text-neutral-700;
+  }
+  .info-grid {
+    @apply mb-3 grid grid-cols-2 gap-x-5 gap-y-[5px] text-[11px];
+  }
+  .info-item {
+    @apply flex;
+  }
+  .info-label {
+    @apply w-[120px] font-bold;
+  }
+  .info-value {
+    @apply flex-1 border-b border-dotted border-neutral-400;
+  }
+  .weight-table {
+    @apply my-2.5 w-full border-collapse;
+  }
+  .weight-table th,
+  .weight-table td {
+    @apply border border-black px-2.5 py-1.5 text-[11px];
+  }
+  .weight-table th {
+    @apply bg-neutral-100 text-center font-bold;
+  }
+  .weight-table td {
+    @apply text-right;
+  }
+  .weight-table td:first-child {
+    @apply text-left font-bold;
+  }
+  .netto-row {
+    @apply bg-green-50 text-xs font-bold;
+  }
+  .signature-grid {
+    @apply mt-5 grid grid-cols-2 gap-2.5 text-center;
+  }
+  .sig-box {
+    @apply border border-neutral-300 p-2;
+  }
+  .sig-title {
+    @apply mb-10 text-[11px] font-bold;
+  }
+  .sig-line {
+    @apply mt-[5px] border-t border-black pt-[3px] text-[10px];
+  }
+  .notes {
+    @apply mt-2 text-[10px] text-neutral-600;
+  }
+
+  /* --------------------------------------------------------------
+     RIWAYAT HUTANG (A4)
+     -------------------------------------------------------------- */
+  .sheet {
+    @apply mx-auto max-w-[800px] p-4 text-xs;
+  }
+  .meta {
+    @apply my-2.5 flex justify-between text-xs;
+  }
+  .meta div {
+    @apply leading-relaxed;
+  }
+  .meta b {
+    @apply inline-block min-w-[70px];
+  }
+  .sheet table {
+    @apply mt-1.5 w-full border-collapse;
+  }
+  .sheet th,
+  .sheet td {
+    @apply border border-black px-1.5 py-1 text-[11px];
+  }
+  .sheet th {
+    @apply bg-neutral-200 text-center;
+  }
+  .sheet tfoot td {
+    @apply bg-neutral-100 font-bold;
+  }
+  .num {
+    @apply whitespace-nowrap text-right;
+  }
+  .center {
+    @apply text-center;
+  }
+  .summary {
+    @apply ml-auto mt-3.5 w-[46%];
+  }
+  .summary td {
+    @apply border-0 px-1.5 py-[3px];
+  }
+  .summary .lbl {
+    @apply text-neutral-700;
+  }
+  .summary .val {
+    @apply text-right font-bold;
+  }
+  .summary .sisa td {
+    @apply border-t-2 border-black text-[13px];
+  }
+  .sign {
+    @apply mt-10 flex justify-between;
+  }
+  .sign div {
+    @apply w-2/5 text-center;
+  }
+  .sign .line {
+    @apply mt-14 border-t border-black;
+  }
+  .foot-note {
+    @apply mt-[18px] text-center text-[10px] text-neutral-600;
+  }
+
+  /* --------------------------------------------------------------
+     STRUK TIMBANGAN (dot matrix / continuous form)
+     -------------------------------------------------------------- */
+  .receipt-container {
+    @apply inline-block max-w-full overflow-x-auto bg-white p-5
+           shadow-[0_0_10px_rgba(0,0,0,0.1)];
+  }
+  .receipt-container pre {
+    @apply m-0 font-mono text-[11pt] font-bold leading-[1.05] text-black;
+  }
+  .print-btn {
+    @apply fixed bottom-5 right-5 cursor-pointer rounded border-0 bg-blue-600 px-5 py-2.5
+           font-sans text-base text-white shadow-[0_2px_5px_rgba(0,0,0,0.2)];
+  }
+  .receipt-screen {
+    @apply flex justify-center bg-neutral-200 p-5;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   SAAT DICETAK
+   -------------------------------------------------------------------------- */
+@media print {
+  body {
+    padding: 0 !important;
+    background: #fff !important;
+    display: block !important;
+  }
+  .no-print,
+  .print-btn {
+    display: none !important;
+  }
+  .receipt-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

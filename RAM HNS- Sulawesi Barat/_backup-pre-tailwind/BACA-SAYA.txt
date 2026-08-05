@@ -1,0 +1,40 @@
+CADANGAN SEBELUM MIGRASI TAILWIND
+=================================
+
+Isi folder ini adalah salinan utuh folder `renderer/` PERSIS sebelum Bootstrap
+dilepas dan Tailwind dipasang (28 Juli 2026).
+
+Termasuk semua file yang dihapus saat migrasi:
+  assets/css/bootstrap.min.css
+  assets/css/bw-theme.css
+  assets/css/all.min.css
+  assets/css/custom.css
+  assets/css/non-critical.css
+  assets/css/main.min.css
+  assets/css/pages/*.css
+  assets/js/bootstrap.bundle.min.js
+
+CARA MENGEMBALIKAN SEMUANYA
+---------------------------
+Dari folder arroyan-app, jalankan di PowerShell:
+
+    Remove-Item -Recurse -Force renderer
+    Copy-Item -Recurse _backup-pre-tailwind renderer
+
+Aplikasi akan kembali persis seperti sebelum migrasi. File Tailwind
+(tailwind.config.js, styles/, scripts/) boleh dibiarkan — tidak berpengaruh
+kalau tidak ada yang memuatnya.
+
+CARA MENGEMBALIKAN SATU HALAMAN SAJA
+------------------------------------
+    Copy-Item _backup-pre-tailwind\pages\timbangan1.html renderer\pages\
+
+Tapi halaman itu akan butuh CSS lamanya juga, jadi salin sekalian:
+
+    Copy-Item _backup-pre-tailwind\assets\css\bootstrap.min.css renderer\assets\css\
+    Copy-Item _backup-pre-tailwind\assets\css\bw-theme.css renderer\assets\css\
+    Copy-Item -Recurse _backup-pre-tailwind\assets\css\pages renderer\assets\css\
+    Copy-Item _backup-pre-tailwind\assets\js\bootstrap.bundle.min.js renderer\assets\js\
+
+Folder ini aman dihapus kalau hasil migrasi sudah dipastikan beres.
+Ukurannya ~2,3 MB.

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Riwayat Hutang</title>
+  <link rel="stylesheet" href="/assets/css/print.css">
+  <script src="/js/print-settings.js"></script>
+  <script>
+    // Cetak lewat Electron agar margin bawaan dialog (± 1 cm) tidak
+    // menggeser isi struk turun dari tepi atas kertas.
+    function cetak() {
+      if (window.cetakStruk) return window.cetakStruk();
+      return window.print();
+    }
+  </script>
+</head>
+<body>
+  <div class="no-print text-center mb-[12px]">
+    <button class="py-[8px] px-[22px] text-[14px] cursor-pointer" onclick="cetak()">🖨️ Cetak</button>
+    <button class="py-[8px] px-[22px] text-[14px] cursor-pointer" onclick="window.close()">Tutup</button>
+  </div>
+
+  <div class="sheet">
+    <div class="company-header">
+      <div id="companyHeaderRow" style="display:flex;align-items:center;justify-content:center;gap:4mm;">
+        <img id="companyLogo" alt="" class="hidden"
+          style="height:24mm;width:auto;max-width:36%;object-fit:contain;flex:none;">
+        <div id="companyHeaderText" style="min-width:0;">
+          <div class="company-name" id="companyName" style="font-size:1.6rem;line-height:1.2;">PERUSAHAAN</div>
+          <div class="company-address" id="companyAddress"></div>
+          <div class="company-address" id="companyPhone"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-title" id="docTitle">Riwayat Hutang</div>
+
+    <div class="meta">
+      <div>
+        <div><b>Nama</b>: <span id="mNama">-</span></div>
+        <div><b>Kategori</b>: <span id="mTipe">-</span></div>
+        <div><b>No. HP</b>: <span id="mHp">-</span></div>
+      </div>
+      <div class="text-right">
+        <div><b>Alamat</b>: <span id="mAlamat">-</span></div>
+        <div><b>Tgl Cetak</b>: <span id="mTanggal">-</span></div>
+        <div><b>Status</b>: <span id="mStatus">-</span></div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="w-[34px]">No</th>
+          <th class="w-[80px]">Tanggal</th>
+          <th>Keterangan</th>
+          <th class="w-[70px]">Sumber</th>
+          <th class="w-[95px]">Pinjam (Rp)</th>
+          <th class="w-[95px]">Bayar (Rp)</th>
+          <th class="w-[100px]">Saldo (Rp)</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="7" class="center">Memuat data...</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="center">TOTAL</td>
+          <td class="num" id="tPinjam">0</td>
+          <td class="num" id="tBayar">0</td>
+          <td class="num" id="tSaldo">0</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <table class="summary">
+      <tr><td class="lbl">Total Pinjaman</td><td class="val" id="sPinjam">Rp 0</td></tr>
+      <tr><td class="lbl">Total Pembayaran</td><td class="val" id="sBayar">Rp 0</td></tr>
+      <tr class="sisa"><td class="lbl">Sisa Hutang</td><td class="val" id="sSisa">Rp 0</td></tr>
+    </table>
+
+    <div class="sign">
+      <div>Yang Berhutang,<div class="line" id="signNama">(&nbsp;)</div></div>
+      <div>Hormat Kami,<div class="line">(&nbsp;)</div></div>
+    </div>
+
+    <div class="foot-note">Dokumen ini dicetak otomatis dari sistem Weighbridge. Saldo dihitung berdasarkan urutan transaksi.</div>
+  </div>
+
+  <script>
+    function fmt(n) { return new Intl.NumberFormat('id-ID').format(Math.round(n || 0)); }
+    function rp(n) { return 'Rp ' + fmt(n); }
+
+    async function load() {
+      // Ambil type & id dari URL: /hutang-print/:type/:id
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      const type = decodeURIComponent(parts[1] || '');
+      const id = parts[2] || '';
+
+      try {
+        const [setRes, detRes, hisRes] = await Promise.all([
+          fetch('/setup/settings').then(r => r.json()),
+          fetch(`/hutang/${type}/detail/${id}`).then(r => r.json()),
+          fetch(`/hutang/${type}/history/${id}`).then(r => r.json())
+        ]);
+
+        // Company
+        const cs = setRes.success ? setRes.data : {};
+        document.getElementById('companyName').textContent = cs.company_name || 'PERUSAHAAN';
+        document.getElementById('companyAddress').textContent = cs.company_address || '';
+        document.getElementById('companyPhone').textContent = cs.company_phone ? 'Telp: ' + cs.company_phone : '';
+
+        // Logo dikunci tingginya dan memakai object-fit: contain, jadi gambar
+        // berbentuk apa pun muat utuh tanpa gepeng. Tanpa logo, kop kembali
+        // rata tengah seperti semula.
+        if (cs.company_logo) {
+          const logo = document.getElementById('companyLogo');
+          logo.src = cs.company_logo;
+          logo.classList.remove('hidden');
+          document.getElementById('companyHeaderText').style.textAlign = 'left';
+        }
+
+        if (!detRes.success) { document.getElementById('rows').innerHTML = '<tr><td colspan="7" class="center">Data tidak ditemukan</td></tr>'; return; }
+        const p = detRes.data.party;
+        const label = detRes.data.label || type;
+
+        document.getElementById('docTitle').textContent = 'Riwayat Hutang ' + label;
+        document.getElementById('mNama').textContent = p.nama || '-';
+        document.getElementById('mTipe').textContent = label;
+        document.getElementById('mHp').textContent = p.no_telepon || '-';
+        document.getElementById('mAlamat').textContent = p.alamat || '-';
+        document.getElementById('mStatus').textContent = (p.status === 'active' ? 'Aktif' : 'Nonaktif');
+        document.getElementById('mTanggal').textContent = new Date().toLocaleDateString('id-ID');
+        document.getElementById('signNama').innerHTML = '( ' + (p.nama || '') + ' )';
+
+        // History (urut lama -> baru untuk saldo berjalan)
+        const data = (hisRes.success ? hisRes.data : []).slice().reverse();
+        const sumberMap = { manual: 'Manual', timbangan: 'Timbangan', gaji: 'Gaji' };
+        let totalPinjam = 0, totalBayar = 0;
+
+        if (!data.length) {
+          document.getElementById('rows').innerHTML = '<tr><td colspan="7" class="center">Belum ada riwayat</td></tr>';
+        } else {
+          document.getElementById('rows').innerHTML = data.map((h, i) => {
+            const pinjam = h.jenis === 'tambah' ? h.jumlah : 0;
+            const bayar = h.jenis === 'bayar' ? h.jumlah : 0;
+            totalPinjam += pinjam; totalBayar += bayar;
+            const tgl = h.tanggal ? new Date(h.tanggal).toLocaleDateString('id-ID') : '-';
+            return `<tr>
+              <td class="center">${i + 1}</td>
+              <td class="center">${tgl}</td>
+              <td>${h.keterangan || '-'}</td>
+              <td class="center">${sumberMap[h.sumber] || (h.sumber || '-')}</td>
+              <td class="num">${pinjam ? fmt(pinjam) : '-'}</td>
+              <td class="num">${bayar ? fmt(bayar) : '-'}</td>
+              <td class="num">${fmt(h.saldo_setelah)}</td>
+            </tr>`;
+          }).join('');
+        }
+
+        document.getElementById('tPinjam').textContent = fmt(totalPinjam);
+        document.getElementById('tBayar').textContent = fmt(totalBayar);
+        document.getElementById('tSaldo').textContent = fmt(p.total_hutang);
+        document.getElementById('sPinjam').textContent = rp(totalPinjam);
+        document.getElementById('sBayar').textContent = rp(totalBayar);
+        document.getElementById('sSisa').textContent = rp(p.total_hutang);
+
+        setTimeout(cetak, 400);
+      } catch (e) {
+        document.getElementById('rows').innerHTML = '<tr><td colspan="7" class="center">Gagal memuat data</td></tr>';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Ukuran kertas & geser X/Y mengikuti Pengaturan → Profil & Tampilan
+      // (a6Override dimatikan: halaman ini selalu memakai ukuran kertas penuh)
+      await window.applyPrintSettings({ a6Override: false });
+      await load();
+    });
+  </script>
+</body>
+</html>
